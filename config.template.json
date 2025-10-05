@@ -1,0 +1,55 @@
+{
+  "tenant": {
+    "name": "Insurance Dudes",
+    "slug": "idudes",
+    "domain": "theidudes.com",
+    "branding": {
+      "primaryColor": "#0066CC",
+      "logo": "/logos/idudes.png",
+      "title": "Knowledge Base"
+    }
+  },
+  "infrastructure": {
+    "database": {
+      "url": "${DATABASE_URL}",
+      "schema": "tenant_${TENANT_SLUG}",
+      "vectorTable": "document_embeddings"
+    },
+    "redis": {
+      "url": "${REDIS_URL}",
+      "prefix": "${TENANT_SLUG}:"
+    },
+    "storage": {
+      "type": "minio",
+      "bucket": "${TENANT_SLUG}-documents",
+      "endpoint": "${STORAGE_URL}"
+    },
+    "webhooks": {
+      "n8n": "${N8N_WEBHOOK_BASE}/${TENANT_SLUG}/ingest",
+      "callback": "${TENANT_DOMAIN}/api/callback"
+    }
+  },
+  "features": {
+    "allowedFileTypes": [".pdf", ".doc", ".docx", ".txt", ".md"],
+    "maxFileSize": "50MB",
+    "chunkSize": 2000,
+    "chunkOverlap": 200,
+    "embeddingModel": "text-embedding-3-small",
+    "searchResultLimit": 20,
+    "enableOCR": true,
+    "enableAutoTagging": true,
+    "enableDuplicateDetection": true
+  },
+  "ui": {
+    "theme": "professional",
+    "modules": {
+      "upload": true,
+      "search": true,
+      "chat": false,
+      "analytics": true,
+      "admin": false
+    },
+    "customCSS": "",
+    "customJS": ""
+  }
+}

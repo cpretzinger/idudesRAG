@@ -1,0 +1,71 @@
+{
+  "name": "Simple Document RAG",
+  "nodes": [
+    {
+      "name": "Webhook - Document Upload",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "path": "ingest-document",
+        "httpMethod": "POST",
+        "responseMode": "onReceived"
+      },
+      "webhookUrl": "https://your-n8n.com/webhook/ingest-document"
+    },
+    {
+      "name": "Chunk Text",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "// Simple chunking - 1000 chars with 100 char overlap\nconst text = $input.first().json.content;\nconst chunks = [];\nconst chunkSize = 1000;\nconst overlap = 100;\n\nfor (let i = 0; i < text.length; i += (chunkSize - overlap)) {\n  chunks.push({\n    text: text.slice(i, i + chunkSize),\n    index: chunks.length\n  });\n}\n\nreturn chunks.map(chunk => ({ json: chunk }));"
+      }
+    },
+    {
+      "name": "Generate Embeddings",
+      "type": "n8n-nodes-base.openAi",
+      "parameters": {
+        "resource": "embedding",
+        "model": "text-embedding-3-small",
+        "input": "={{ $json.text }}"
+      }
+    },
+    {
+      "name": "Store in PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH doc AS (\n  INSERT INTO core.documents (content, metadata)\n  VALUES ($1, $2::jsonb)\n  RETURNING id\n)\nINSERT INTO core.document_embeddings (document_id, chunk, embedding, chunk_index)\nSELECT \n  doc.id,\n  $3,\n  $4::vector,\n  $5\nFROM doc\nRETURNING *;",
+        "additionalFields": {
+          "queryParams": "={{ $json.originalContent }},{{ $json.metadata }},{{ $json.text }},{{ $json.embedding }},{{ $json.index }}"
+        }
+      }
+    },
+    {
+      "name": "Webhook - Search",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "path": "search",
+        "httpMethod": "POST"
+      },
+      "webhookUrl": "https://your-n8n.com/webhook/search"
+    },
+    {
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.openAi",
+      "parameters": {
+        "resource": "embedding",
+        "model": "text-embedding-3-small",
+        "input": "={{ $json.query }}"
+      }
+    },
+    {
+      "name": "Vector Search",
+      "type": "n8n-nodes-base.postgres",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  de.chunk,\n  d.metadata,\n  1 - (de.embedding <=> $1::vector) as similarity\nFROM core.document_embeddings de\nJOIN core.documents d ON d.id = de.document_id\nWHERE 1 - (de.embedding <=> $1::vector) > 0.7\nORDER BY de.embedding <=> $1::vector\nLIMIT 10;",
+        "additionalFields": {
+          "queryParams": "={{ JSON.stringify($json.embedding) }}"
+        }
+      }
+    }
+  ]
+}

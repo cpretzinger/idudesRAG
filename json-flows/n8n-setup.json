@@ -1,0 +1,125 @@
+{
+  "name": "Simple Document RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "ingest-document",
+        "httpMethod": "POST",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook1",
+      "name": "Webhook - Document Upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.content;\nconst chunks = [];\nconst chunkSize = 1000;\nconst overlap = 100;\n\nfor (let i = 0; i < text.length; i += (chunkSize - overlap)) {\n  chunks.push({\n    text: text.slice(i, i + chunkSize),\n    index: chunks.length,\n    originalContent: $input.first().json.content,\n    metadata: $input.first().json.metadata || {}\n  });\n}\n\nreturn chunks.map(chunk => ({ json: chunk }));"
+      },
+      "id": "code1",
+      "name": "Chunk Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "embedding",
+        "model": "text-embedding-3-small",
+        "text": "={{ $json.text }}"
+      },
+      "id": "openai1",
+      "name": "Generate Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH doc AS (\n  INSERT INTO core.documents (content, metadata)\n  VALUES ($1, $2::jsonb)\n  ON CONFLICT DO NOTHING\n  RETURNING id\n)\nINSERT INTO core.document_embeddings (document_id, chunk, embedding, chunk_index)\nSELECT \n  doc.id,\n  $3,\n  $4::vector,\n  $5\nFROM doc\nRETURNING *;",
+        "additionalFields": {}
+      },
+      "id": "postgres1",
+      "name": "Store in PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [850, 300],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PostgreSQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "search",
+        "httpMethod": "POST",
+        "responseMode": "lastNode"
+      },
+      "id": "webhook2",
+      "name": "Webhook - Search",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "resource": "embedding",
+        "model": "text-embedding-3-small",
+        "text": "={{ $json.query }}"
+      },
+      "id": "openai2",
+      "name": "Embed Query",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  de.chunk,\n  d.metadata,\n  1 - (de.embedding <=> $1::vector) as similarity\nFROM core.document_embeddings de\nJOIN core.documents d ON d.id = de.document_id\nWHERE 1 - (de.embedding <=> $1::vector) > 0.7\nORDER BY de.embedding <=> $1::vector\nLIMIT 10;",
+        "additionalFields": {}
+      },
+      "id": "postgres2",
+      "name": "Vector Search",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [650, 500],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PostgreSQL account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Document Upload": {
+      "main": [[{ "node": "Chunk Text", "type": "main", "index": 0 }]]
+    },
+    "Chunk Text": {
+      "main": [[{ "node": "Generate Embeddings", "type": "main", "index": 0 }]]
+    },
+    "Generate Embeddings": {
+      "main": [[{ "node": "Store in PostgreSQL", "type": "main", "index": 0 }]]
+    },
+    "Webhook - Search": {
+      "main": [[{ "node": "Embed Query", "type": "main", "index": 0 }]]
+    },
+    "Embed Query": {
+      "main": [[{ "node": "Vector Search", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

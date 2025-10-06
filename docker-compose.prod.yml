@@ -1,6 +1,3 @@
-# Production Docker Compose for idudesRAG
-version: '3.8'
-
 services:
   ui:
     build:
@@ -37,7 +34,7 @@ services:
       - .env
     
     networks:
-      - idudes-network
+      - 3e-network
     
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/test-env"]
@@ -53,5 +50,5 @@ services:
         max-file: "3"
 
 networks:
-  idudes-network:
+  3e-network:
     driver: bridge

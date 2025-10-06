@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthHandler } from '@/lib/middleware'
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+}
+
 export const POST = createAuthHandler(async (req: NextRequest, user) => {
   try {
     const formData = await req.formData()

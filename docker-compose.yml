@@ -3,7 +3,7 @@ networks:
     external: true
 
 services:
-  # Document Processing Service
+  # Document Processing Service - SIMPLIFIED
   doc-processor:
     container_name: idudes-doc-processor
     image: node:20-alpine
@@ -16,50 +16,22 @@ services:
       - ./processed:/processed
     environment:
       - NODE_ENV=production
-      - REDIS_URL=${REDIS_URL}
       - DATABASE_URL=${DATABASE_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - N8N_WEBHOOK_URL=https://n8n.yourdomain.com/webhook/documents
+      - SPACES_ACCESS_KEY=${SPACES_ACCESS_KEY}
+      - SPACES_SECRET_KEY=${SPACES_SECRET_KEY}
+      - SPACES_BUCKET=${SPACES_BUCKET}
+      - SPACES_REGION=${SPACES_REGION}
+      - SPACES_ENDPOINT=${SPACES_ENDPOINT}
     working_dir: /app
     command: npm start
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.docprocessor.rule=Host(`docs.yourdomain.com`)"
-      - "traefik.http.routers.docprocessor.tls=true"
-      - "traefik.http.routers.docprocessor.tls.certresolver=letsencrypt"
-      - "traefik.http.services.docprocessor.loadbalancer.server.port=3000"
+      - "traefik.http.routers.idudes-processor.rule=Host(`docs.thirdeyediagnostics.com`)"
+      - "traefik.http.routers.idudes-processor.tls=true"
+      - "traefik.http.routers.idudes-processor.tls.certresolver=acmehttp"
+      - "traefik.http.services.idudes-processor.loadbalancer.server.port=3000"
 
-  # Document Storage (MinIO for S3-compatible storage)
-  minio:
-    container_name: idudes-minio
-    image: minio/minio:latest
-    restart: unless-stopped
-    networks:
-      - 3e-network
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - ./minio-data:/data
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
-    command: server /data --console-address ":9001"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.minio.rule=Host(`storage.yourdomain.com`)"
-      - "traefik.http.routers.minio.tls=true"
-      - "traefik.http.routers.minio.tls.certresolver=letsencrypt"
-      - "traefik.http.services.minio.loadbalancer.server.port=9001"
-
-  # Redis for queue management (if not using existing)
-  # Uncomment if you need a dedicated Redis instance
-  # redis:
-  #   container_name: idudes-redis
-  #   image: redis:7-alpine
-  #   restart: unless-stopped
-  #   networks:
-  #     - 3e-network
-  #   volumes:
-  #     - ./redis-data:/data
-  #   command: redis-server --appendonly yes
+# NO MINIO - Using DigitalOcean Spaces
+# NO REDIS - Not needed for document processing
+# NO POSTGRESQL - Using Railway pgvector

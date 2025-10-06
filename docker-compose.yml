@@ -3,7 +3,42 @@ networks:
     external: true
 
 services:
-  # Document Processing Service - SIMPLIFIED
+  # UI Service
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: idudes-rag-ui
+    restart: unless-stopped
+    networks:
+      - 3e-network
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SPACES_ACCESS_KEY=${SPACES_ACCESS_KEY}
+      - SPACES_SECRET_KEY=${SPACES_SECRET_KEY}
+      - SPACES_BUCKET=${SPACES_BUCKET}
+      - SPACES_REGION=${SPACES_REGION}
+      - SPACES_ENDPOINT=${SPACES_ENDPOINT}
+      - SPACES_CDN_URL=${SPACES_CDN_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NEXT_PUBLIC_N8N_URL=${NEXT_PUBLIC_N8N_URL}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.idudes-rag-ui.rule=Host(`rag.thirdeyediagnostics.com`)"
+      - "traefik.http.routers.idudes-rag-ui.tls=true"
+      - "traefik.http.routers.idudes-rag-ui.tls.certresolver=acmehttp"
+      - "traefik.http.services.idudes-rag-ui.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/test-env"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Document Processing Service
   doc-processor:
     container_name: idudes-doc-processor
     image: node:20-alpine
@@ -31,7 +66,3 @@ services:
       - "traefik.http.routers.idudes-processor.tls=true"
       - "traefik.http.routers.idudes-processor.tls.certresolver=acmehttp"
       - "traefik.http.services.idudes-processor.loadbalancer.server.port=3000"
-
-# NO MINIO - Using DigitalOcean Spaces
-# NO REDIS - Not needed for document processing
-# NO POSTGRESQL - Using Railway pgvector

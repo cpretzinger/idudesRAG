@@ -46,7 +46,7 @@ export const POST = createAuthHandler(async (req: NextRequest, user) => {
     const client = await pool.connect()
 
     const conditions = ['1 - (de.embedding <=> $1::vector) > $3']
-    const params: any[] = [JSON.stringify(queryEmbedding), limit, minSimilarity]
+    const params: (string | number | Date | string[])[] = [JSON.stringify(queryEmbedding), limit, minSimilarity]
     let paramIndex = 4
 
     if (startDate) {

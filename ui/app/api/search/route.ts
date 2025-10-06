@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Pool } from 'pg'
-import { createAuthHandler } from '@/lib/middleware'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
 
-export const POST = createAuthHandler(async (req: NextRequest, user) => {
+export async function POST(req: NextRequest) {
   try {
     const {
       query,
@@ -101,9 +100,9 @@ export const POST = createAuthHandler(async (req: NextRequest, user) => {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
-})
+}
 
-export const GET = createAuthHandler(async (req: NextRequest, user) => {
+export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const query = searchParams.get('q')
   const limit = parseInt(searchParams.get('limit') || '10')
@@ -118,4 +117,4 @@ export const GET = createAuthHandler(async (req: NextRequest, user) => {
     body: JSON.stringify({ query, limit }),
     headers: { 'Content-Type': 'application/json' }
   }))
-})
+}

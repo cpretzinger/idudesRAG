@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAuthHandler } from '@/lib/middleware'
 
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
-export const POST = createAuthHandler(async (req: NextRequest, user) => {
+export async function POST(req: NextRequest) {
   try {
     const { messages, model = 'gpt-5-nano' } = await req.json()
 
@@ -62,4 +61,4 @@ Be concise and helpful.`
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
-})
+}

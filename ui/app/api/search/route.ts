@@ -8,8 +8,15 @@ const pool = new Pool({
 
 export const POST = createAuthHandler(async (req: NextRequest, user) => {
   try {
-    const { query, limit = 10 } = await req.json()
-    
+    const {
+      query,
+      limit = 10,
+      startDate,
+      endDate,
+      fileTypes,
+      minSimilarity = 0.7
+    } = await req.json()
+
     if (!query) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 })
     }
@@ -35,24 +42,49 @@ export const POST = createAuthHandler(async (req: NextRequest, user) => {
     const embeddingData = await embeddingResponse.json()
     const queryEmbedding = embeddingData.data[0].embedding
 
-    // Search documents using vector similarity
+    // Search documents using vector similarity with temporal/metadata filters
     const client = await pool.connect()
-    
+
+    const conditions = ['1 - (de.embedding <=> $1::vector) > $3']
+    const params: any[] = [JSON.stringify(queryEmbedding), limit, minSimilarity]
+    let paramIndex = 4
+
+    if (startDate) {
+      conditions.push(`d.created_at >= $${paramIndex}`)
+      params.push(startDate)
+      paramIndex++
+    }
+
+    if (endDate) {
+      conditions.push(`d.created_at <= $${paramIndex}`)
+      params.push(endDate)
+      paramIndex++
+    }
+
+    if (fileTypes && Array.isArray(fileTypes) && fileTypes.length > 0) {
+      conditions.push(`d.file_type = ANY($${paramIndex})`)
+      params.push(fileTypes)
+      paramIndex++
+    }
+
     const searchQuery = `
-      SELECT 
+      SELECT
         d.id as document_id,
         d.filename,
         d.spaces_url,
+        d.file_type,
+        d.created_at,
+        d.metadata,
         de.chunk_text,
         1 - (de.embedding <=> $1::vector) as similarity
       FROM document_embeddings de
       JOIN documents d ON d.id = de.document_id
-      WHERE 1 - (de.embedding <=> $1::vector) > 0.7
+      WHERE ${conditions.join(' AND ')}
       ORDER BY de.embedding <=> $1::vector
       LIMIT $2
     `
-    
-    const result = await client.query(searchQuery, [JSON.stringify(queryEmbedding), limit])
+
+    const result = await client.query(searchQuery, params)
     client.release()
 
     return NextResponse.json({

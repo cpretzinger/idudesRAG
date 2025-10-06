@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null)
@@ -128,8 +129,18 @@ export default function Home() {
           )}
         </div>
         
+        {/* Chat Link */}
+        <div className="mt-6">
+          <Link
+            href="/chat"
+            className="block text-center py-3 px-6 rounded-xl border border-zinc-700/50 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700/50 hover:text-zinc-100 transition-all"
+          >
+            💬 Chat with AI Assistant
+          </Link>
+        </div>
+
         {/* Footer */}
-        <div className="mt-10 text-center">
+        <div className="mt-6 text-center">
           <p className="text-zinc-600 text-xs">
             Powered by RAG-as-a-Service © 2024
           </p>

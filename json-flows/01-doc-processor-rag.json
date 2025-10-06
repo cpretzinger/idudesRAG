@@ -32,7 +32,7 @@
     {
       "parameters": {
         "jsonMode": "expressionData",
-        "jsonData": "={{ $json.pageContent }}",
+        "jsonData": "={{ $json.metadata.original_input.body.content }}",
         "textSplittingMode": "custom",
         "options": {
           "metadata": {
@@ -46,7 +46,7 @@
                 "value": "={{ $json.metadata.source }}"
               },
               {
-                "name": "file_type",
+                "name": "ftype",
                 "value": "={{ $json.metadata.file_type }}"
               },
               {

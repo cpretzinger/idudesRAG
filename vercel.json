@@ -1,4 +1,9 @@
 {
+  "buildCommand": "pnpm install && pnpm build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install -g pnpm",
+  "devCommand": "pnpm dev",
+  "framework": "nextjs",
   "functions": {
     "app/api/upload/route.ts": {
       "maxDuration": 60,

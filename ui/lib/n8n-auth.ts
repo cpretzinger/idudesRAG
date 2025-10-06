@@ -21,7 +21,9 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'admin' | 'user'
+  role: 'superadmin' | 'admin' | 'user'
+  mustResetPassword?: boolean
+  lastLogin?: Date | null
 }
 
 /**
@@ -165,8 +167,9 @@ export async function logout(): Promise<void> {
 export function hasRole(userRole: User['role'], requiredRole: User['role']): boolean {
   const roleHierarchy: Record<User['role'], number> = {
     user: 0,
-    admin: 1
+    admin: 1,
+    superadmin: 2
   }
-  
+
   return roleHierarchy[userRole] >= roleHierarchy[requiredRole]
 }

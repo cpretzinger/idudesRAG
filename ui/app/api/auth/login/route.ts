@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateUser, createSession } from '@/lib/auth'
+import { login } from '@/lib/n8n-auth'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,34 +12,25 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const user = await authenticateUser(email, password)
+    const result = await login(email, password)
 
-    if (!user) {
+    if (!result.success || !result.session_token || !result.user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: result.error || 'Invalid credentials' },
         { status: 401 }
       )
     }
 
-    const session = await createSession(user.id)
-
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        mustResetPassword: user.mustResetPassword
-      }
+      user: result.user
     })
 
-    // Set secure cookie
-    response.cookies.set('session_token', session.token, {
+    response.cookies.set('session_token', result.session_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 7 * 24 * 60 * 60,
       path: '/'
     })
 

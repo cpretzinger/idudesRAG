@@ -27,7 +27,7 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.idudes-rag-ui.rule=Host(`rag.thirdeyediagnostics.com`)"
+      - "traefik.http.routers.idudes-rag-ui.rule=Host(`idudes.thirdeyediagnostics.com`)"
       - "traefik.http.routers.idudes-rag-ui.tls=true"
       - "traefik.http.routers.idudes-rag-ui.tls.certresolver=acmehttp"
       - "traefik.http.services.idudes-rag-ui.loadbalancer.server.port=3000"

@@ -1,17 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { deleteSession } from '@/lib/auth'
+import { NextResponse } from 'next/server'
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
-    const token = req.cookies.get('session_token')?.value
-
-    if (token) {
-      await deleteSession(token)
-    }
-
     const response = NextResponse.json({ success: true })
-    
-    // Clear cookie
+
     response.cookies.set('session_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

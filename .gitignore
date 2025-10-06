@@ -50,3 +50,6 @@ configs/*
 n8n-workflows/*
 !n8n-workflows/idudesRAG-*.json
 !n8n-workflows/PODCAST-INGESTION-WORKFLOW.json
+
+# Qdrant vector database storage (regenerated locally)
+qdrant_storage/

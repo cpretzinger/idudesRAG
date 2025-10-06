@@ -11,45 +11,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 })
     }
 
-    // Call OpenAI API with GPT-5-nano (cheapest model for search/classification)
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Send to n8n chat webhook
+    const webhookUrl = process.env.N8N_CHAT_WEBHOOK_URL || 'https://ai.thirdeyediagnostics.com/webhook/chat'
+
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'idudesRAG-UI/1.0'
       },
       body: JSON.stringify({
-        model: model === 'gpt-5-nano' ? 'gpt-5-thinking-nano' : model,
-        messages: [
-          {
-            role: 'system',
-            content: `You are an AI assistant for Insurance Dudes document management system.
-You have access to semantic search over uploaded documents.
-Help users search documents, answer questions, and generate content.
-Be concise and helpful.`
-          },
-          ...messages
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
+        messages,
+        model,
+        timestamp: new Date().toISOString(),
+        source: 'vercel-ui'
       })
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('OpenAI API error:', response.status, errorText)
+      console.error('n8n chat webhook failed:', response.status, response.statusText)
       return NextResponse.json({
-        error: 'AI request failed',
-        details: `API returned ${response.status}`
+        error: 'Chat request failed',
+        details: `Webhook returned ${response.status}`
       }, { status: 500 })
     }
 
     const data = await response.json()
-    const assistantMessage = data.choices[0].message.content
 
     return NextResponse.json({
       success: true,
-      message: assistantMessage,
+      message: data.message || data.response,
       model: model,
       usage: data.usage
     })

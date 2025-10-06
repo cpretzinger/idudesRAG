@@ -41,7 +41,7 @@ services:
   # Document Processing Service
   doc-processor:
     container_name: idudes-doc-processor
-    image: node:20-alpine
+    image: node:22-alpine
     restart: unless-stopped
     networks:
       - 3e-network

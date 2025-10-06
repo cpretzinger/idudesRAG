@@ -1,9 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Pool } from 'pg'
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-})
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,77 +15,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 })
     }
 
-    // Generate embedding for query
-    const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+    // Send to n8n search webhook
+    const webhookUrl = process.env.N8N_SEARCH_WEBHOOK_URL || 'https://ai.thirdeyediagnostics.com/webhook/search'
+
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'idudesRAG-UI/1.0'
       },
       body: JSON.stringify({
-        input: query,
-        model: 'text-embedding-3-small',
-        dimensions: 1536
+        query,
+        limit,
+        startDate,
+        endDate,
+        fileTypes,
+        minSimilarity,
+        timestamp: new Date().toISOString(),
+        source: 'vercel-ui'
       })
     })
 
-    if (!embeddingResponse.ok) {
-      throw new Error('Failed to generate embedding')
+    if (!response.ok) {
+      console.error('n8n search webhook failed:', response.status, response.statusText)
+      return NextResponse.json({
+        error: 'Search request failed',
+        details: `Webhook returned ${response.status}`
+      }, { status: 500 })
     }
 
-    const embeddingData = await embeddingResponse.json()
-    const queryEmbedding = embeddingData.data[0].embedding
-
-    // Search documents using vector similarity with temporal/metadata filters
-    const client = await pool.connect()
-
-    const conditions = ['1 - (de.embedding <=> $1::vector) > $3']
-    const params: (string | number | Date | string[])[] = [JSON.stringify(queryEmbedding), limit, minSimilarity]
-    let paramIndex = 4
-
-    if (startDate) {
-      conditions.push(`d.created_at >= $${paramIndex}`)
-      params.push(startDate)
-      paramIndex++
-    }
-
-    if (endDate) {
-      conditions.push(`d.created_at <= $${paramIndex}`)
-      params.push(endDate)
-      paramIndex++
-    }
-
-    if (fileTypes && Array.isArray(fileTypes) && fileTypes.length > 0) {
-      conditions.push(`d.file_type = ANY($${paramIndex})`)
-      params.push(fileTypes)
-      paramIndex++
-    }
-
-    const searchQuery = `
-      SELECT
-        d.id as document_id,
-        d.filename,
-        d.spaces_url,
-        d.file_type,
-        d.created_at,
-        d.metadata,
-        de.chunk_text,
-        1 - (de.embedding <=> $1::vector) as similarity
-      FROM document_embeddings de
-      JOIN documents d ON d.id = de.document_id
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY de.embedding <=> $1::vector
-      LIMIT $2
-    `
-
-    const result = await client.query(searchQuery, params)
-    client.release()
+    const data = await response.json()
 
     return NextResponse.json({
       success: true,
       query,
-      results: result.rows,
-      count: result.rows.length
+      results: data.results || [],
+      count: data.count || 0
     })
 
   } catch (error) {

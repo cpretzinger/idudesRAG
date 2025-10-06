@@ -42,3 +42,11 @@ tmp/
 temp/
 
 configs/*
+
+# VSCode settings with secrets
+.vscode/settings.json
+
+# N8N workflows (selectively track)
+n8n-workflows/*
+!n8n-workflows/idudesRAG-*.json
+!n8n-workflows/PODCAST-INGESTION-WORKFLOW.json

@@ -1,0 +1,24 @@
+# Development files
+.git
+.gitignore
+.env
+.vscode
+node_modules
+
+# Documentation
+documentation
+*.md
+!README.md
+
+# Config templates
+*.template.json
+
+# Build artifacts
+.next
+dist
+build
+
+# IDE
+.idea
+*.swp
+*.swo

@@ -1,0 +1,420 @@
+{
+  "workflows": [
+    {
+      "name": "RAG Content Ingestion - Universal",
+      "description": "Handles all content types with specialized chunking and processing",
+      "nodes": [
+        {
+          "parameters": {
+            "path": "/webhook/rag/ingest",
+            "options": {}
+          },
+          "id": "a8f5b2c1-1234-5678-9abc-def012345678",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [240, 300]
+        },
+        {
+          "parameters": {
+            "jsCode": "// ================================================================\n// CONTENT TYPE DETECTION AND ROUTING\n// ================================================================\n\nconst inputData = $input.all();\nconst contentItem = inputData[0].json;\n\n// Detect content type from webhook payload\nfunction detectContentType(data) {\n  if (data.transcript || data.episode_number || data.hosts) return 'podcast';\n  if (data.chapters || data.isbn || data.author) return 'book';\n  if (data.personality_traits || data.expertise_areas || data.prompt_template) return 'avatar';\n  if (data.platform || data.campaign_name || data.content_pillars) return 'social';\n  if (data.prompt_text || data.system_message || data.parameters) return 'prompt';\n  \n  // Fallback detection based on content structure\n  if (data.text && data.text.includes('[') && data.text.includes(']:')) return 'podcast';\n  \n  return 'unknown';\n}\n\nconst contentType = data.content_type || detectContentType(contentItem);\nconst contentId = data.content_id || $('Webhook').item.json.content_id || require('crypto').randomUUID();\n\n// Prepare routing data\nconst routingData = {\n  contentType,\n  contentId,\n  originalData: contentItem,\n  timestamp: new Date().toISOString(),\n  processingId: require('crypto').randomUUID()\n};\n\nreturn {\n  json: routingData\n};"
+          },
+          "id": "b9f6c3d2-2345-6789-abcd-ef0123456789",
+          "name": "Content Type Detection",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [460, 300]
+        },
+        {
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "caseSensitive": true,
+                      "leftValue": "",
+                      "typeValidation": "strict"
+                    },
+                    "conditions": [
+                      {
+                        "leftValue": "={{ $json.contentType }}",
+                        "rightValue": "podcast",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        }
+                      }
+                    ],
+                    "combinator": "and"
+                  },
+                  "renameOutput": true,
+                  "outputKey": "podcast"
+                },
+                {
+                  "conditions": {
+                    "options": {
+                      "caseSensitive": true,
+                      "leftValue": "",
+                      "typeValidation": "strict"
+                    },
+                    "conditions": [
+                      {
+                        "leftValue": "={{ $json.contentType }}",
+                        "rightValue": "book",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        }
+                      }
+                    ],
+                    "combinator": "and"
+                  },
+                  "renameOutput": true,
+                  "outputKey": "book"
+                },
+                {
+                  "conditions": {
+                    "options": {
+                      "caseSensitive": true,
+                      "leftValue": "",
+                      "typeValidation": "strict"
+                    },
+                    "conditions": [
+                      {
+                        "leftValue": "={{ $json.contentType }}",
+                        "rightValue": "avatar",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        }
+                      }
+                    ],
+                    "combinator": "and"
+                  },
+                  "renameOutput": true,
+                  "outputKey": "avatar"
+                },
+                {
+                  "conditions": {
+                    "options": {
+                      "caseSensitive": true,
+                      "leftValue": "",
+                      "typeValidation": "strict"
+                    },
+                    "conditions": [
+                      {
+                        "leftValue": "={{ $json.contentType }}",
+                        "rightValue": "social",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        }
+                      }
+                    ],
+                    "combinator": "and"
+                  },
+                  "renameOutput": true,
+                  "outputKey": "social"
+                },
+                {
+                  "conditions": {
+                    "options": {
+                      "caseSensitive": true,
+                      "leftValue": "",
+                      "typeValidation": "strict"
+                    },
+                    "conditions": [
+                      {
+                        "leftValue": "={{ $json.contentType }}",
+                        "rightValue": "prompt",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        }
+                      }
+                    ],
+                    "combinator": "and"
+                  },
+                  "renameOutput": true,
+                  "outputKey": "prompt"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "id": "c0g7d4e3-3456-789a-bcde-f01234567890",
+          "name": "Route by Content Type",
+          "type": "n8n-nodes-base.switch",
+          "typeVersion": 3,
+          "position": [680, 300]
+        },
+        {
+          "parameters": {
+            "jsCode": "// ================================================================\n// PODCAST TRANSCRIPT PROCESSING\n// ================================================================\n\nconst { ContentChunker } = require('./chunking-strategies.js');\nconst chunker = new ContentChunker();\n\nconst data = $input.first().json;\nconst podcastData = data.originalData;\n\n// Extract podcast metadata\nconst metadata = {\n  episodeNumber: podcastData.episode_number,\n  title: podcastData.title,\n  hosts: podcastData.hosts || [],\n  guests: podcastData.guests || [],\n  duration: podcastData.duration_seconds,\n  publishDate: podcastData.publish_date\n};\n\n// Chunk the transcript\nconst transcript = podcastData.transcript || podcastData.text;\nconst chunks = chunker.chunkPodcastTranscript(transcript, metadata);\n\n// Prepare database inserts\nconst results = [];\n\n// 1. Insert episode record\nresults.push({\n  table: 'podcast_episodes',\n  operation: 'insert',\n  data: {\n    id: data.contentId,\n    episode_number: metadata.episodeNumber,\n    title: metadata.title,\n    duration_seconds: metadata.duration,\n    publish_date: metadata.publishDate,\n    hosts: JSON.stringify(metadata.hosts),\n    guests: JSON.stringify(metadata.guests),\n    topics: JSON.stringify(podcastData.topics || []),\n    metadata: JSON.stringify(metadata)\n  }\n});\n\n// 2. Insert chunks\nchunks.forEach(chunk => {\n  results.push({\n    table: 'content_chunks',\n    operation: 'insert',\n    data: {\n      content_type: 'podcast',\n      content_id: data.contentId,\n      chunk_index: chunk.chunkIndex,\n      total_chunks: chunk.totalChunks,\n      chunk_text: chunk.chunkText,\n      chunk_size: chunk.chunkSize,\n      overlap_size: chunk.overlapSize || 0,\n      timestamp_start: chunk.timestampStart,\n      timestamp_end: chunk.timestampEnd,\n      speaker: chunk.speaker,\n      section_type: chunk.sectionType,\n      importance_score: chunk.importanceScore,\n      metadata: JSON.stringify(chunk.metadata || {})\n    }\n  });\n});\n\nreturn results.map(item => ({ json: item }));"
+          },
+          "id": "d1h8e5f4-4567-89ab-cdef-012345678901",
+          "name": "Process Podcast",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [900, 100]
+        },
+        {
+          "parameters": {
+            "jsCode": "// ================================================================\n// BOOK CONTENT PROCESSING\n// ================================================================\n\nconst { ContentChunker } = require('./chunking-strategies.js');\nconst chunker = new ContentChunker();\n\nconst data = $input.first().json;\nconst bookData = data.originalData;\n\n// Extract book metadata\nconst metadata = {\n  title: bookData.title,\n  author: bookData.author,\n  isbn: bookData.isbn,\n  genre: bookData.genre,\n  pageCount: bookData.page_count,\n  difficultyLevel: bookData.difficulty_level || 3\n};\n\n// Chunk the book content\nconst content = bookData.content || bookData.text;\nconst chunks = chunker.chunkBookContent(content, metadata);\n\n// Prepare database inserts\nconst results = [];\n\n// 1. Insert book record\nresults.push({\n  table: 'books',\n  operation: 'insert',\n  data: {\n    id: data.contentId,\n    title: metadata.title,\n    author: metadata.author,\n    isbn: metadata.isbn,\n    genre: metadata.genre,\n    page_count: metadata.pageCount,\n    difficulty_level: metadata.difficultyLevel,\n    summary: bookData.summary,\n    table_of_contents: JSON.stringify(bookData.table_of_contents || []),\n    chapters: JSON.stringify(bookData.chapters || []),\n    key_concepts: JSON.stringify(bookData.key_concepts || []),\n    metadata: JSON.stringify(metadata)\n  }\n});\n\n// 2. Insert chunks\nchunks.forEach(chunk => {\n  results.push({\n    table: 'content_chunks',\n    operation: 'insert',\n    data: {\n      content_type: 'book',\n      content_id: data.contentId,\n      chunk_index: chunk.chunkIndex,\n      total_chunks: chunk.totalChunks,\n      chunk_text: chunk.chunkText,\n      chunk_size: chunk.chunkSize,\n      overlap_size: chunk.overlapSize || 0,\n      chapter_title: chunk.chapterTitle,\n      section_type: chunk.sectionType,\n      importance_score: chunk.importanceScore || 5.0,\n      metadata: JSON.stringify(chunk.metadata || {})\n    }\n  });\n});\n\nreturn results.map(item => ({ json: item }));"
+          },
+          "id": "e2i9f6g5-5678-9abc-def0-123456789012",
+          "name": "Process Book",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [900, 200]
+        },
+        {
+          "parameters": {
+            "operation": "executeQuery",
+            "query": "=INSERT INTO core.{{ $json.table }} ({{ Object.keys($json.data).join(', ') }}) VALUES ({{ Object.keys($json.data).map((key, index) => `$${index + 1}`).join(', ') }}) ON CONFLICT (id) DO UPDATE SET updated_at = NOW()",
+            "additionalFields": {
+              "queryParameters": "={{ Object.values($json.data).map(value => typeof value === 'string' ? value : JSON.stringify(value)) }}"
+            }
+          },
+          "id": "f3j0g7h6-6789-abcd-ef01-234567890123",
+          "name": "Database Insert",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 2.4,
+          "position": [1120, 300],
+          "credentials": {
+            "postgres": {
+              "id": "railway-postgres",
+              "name": "Railway PostgreSQL"
+            }
+          }
+        },
+        {
+          "parameters": {
+            "jsCode": "// ================================================================\n// EMBEDDING GENERATION AND CACHING\n// ================================================================\n\nconst items = $input.all();\nconst embeddingRequests = [];\n\nfor (const item of items) {\n  if (item.json.table === 'content_chunks') {\n    embeddingRequests.push({\n      chunkId: item.json.data.id || require('crypto').randomUUID(),\n      text: item.json.data.chunk_text,\n      contentType: item.json.data.content_type,\n      contentId: item.json.data.content_id,\n      chunkIndex: item.json.data.chunk_index\n    });\n  }\n}\n\nreturn embeddingRequests.map(req => ({ json: req }));"
+          },
+          "id": "g4k1h8i7-789a-bcde-f012-345678901234",
+          "name": "Prepare Embeddings",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [1340, 300]
+        },
+        {
+          "parameters": {
+            "model": "text-embedding-3-small",
+            "options": {
+              "dimensions": 1536
+            }
+          },
+          "id": "h5l2i9j8-89ab-cdef-0123-456789012345",
+          "name": "Generate Embeddings",
+          "type": "n8n-nodes-base.openAi",
+          "typeVersion": 1,
+          "position": [1560, 300],
+          "credentials": {
+            "openAiApi": {
+              "id": "openai-embeddings",
+              "name": "OpenAI Embeddings"
+            }
+          }
+        },
+        {
+          "parameters": {
+            "operation": "executeQuery",
+            "query": "UPDATE core.content_chunks SET embedding = $1::vector WHERE content_type = $2 AND content_id = $3 AND chunk_index = $4",
+            "additionalFields": {
+              "queryParameters": "=['[' + $json.embedding.join(',') + ']', $json.contentType, $json.contentId, $json.chunkIndex]"
+            }
+          },
+          "id": "i6m3j0k9-9abc-def0-1234-56789012345a",
+          "name": "Update Embeddings",
+          "type": "n8n-nodes-base.postgres",
+          "typeVersion": 2.4,
+          "position": [1780, 300],
+          "credentials": {
+            "postgres": {
+              "id": "railway-postgres",
+              "name": "Railway PostgreSQL"
+            }
+          }
+        }
+      ],
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Content Type Detection",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Content Type Detection": {
+          "main": [
+            [
+              {
+                "node": "Route by Content Type",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Route by Content Type": {
+          "main": [
+            [
+              {
+                "node": "Process Podcast",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Process Book",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [],
+            [],
+            []
+          ]
+        },
+        "Process Podcast": {
+          "main": [
+            [
+              {
+                "node": "Database Insert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Process Book": {
+          "main": [
+            [
+              {
+                "node": "Database Insert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Database Insert": {
+          "main": [
+            [
+              {
+                "node": "Prepare Embeddings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare Embeddings": {
+          "main": [
+            [
+              {
+                "node": "Generate Embeddings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate Embeddings": {
+          "main": [
+            [
+              {
+                "node": "Update Embeddings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "RAG Hybrid Search - Optimized",
+      "description": "High-performance search with Redis caching for <250ms responses",
+      "nodes": [
+        {
+          "parameters": {
+            "path": "/webhook/rag/search",
+            "options": {}
+          },
+          "id": "search-webhook-001",
+          "name": "Search Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 1,
+          "position": [240, 300]
+        },
+        {
+          "parameters": {
+            "jsCode": "// ================================================================\n// SEARCH REQUEST PROCESSING AND VALIDATION\n// ================================================================\n\nconst request = $input.first().json;\n\n// Extract and validate search parameters\nconst searchParams = {\n  queryText: request.query || request.q || '',\n  contentTypes: request.content_types || request.types || [],\n  filters: request.filters || {},\n  limit: Math.min(parseInt(request.limit) || 20, 100), // Max 100 results\n  similarityThreshold: parseFloat(request.similarity_threshold) || 0.7,\n  includeRelationships: request.include_relationships === true,\n  userId: request.user_id || 'anonymous'\n};\n\n// Validation\nif (!searchParams.queryText || searchParams.queryText.trim().length < 2) {\n  throw new Error('Query text must be at least 2 characters long');\n}\n\n// Normalize content types\nif (typeof searchParams.contentTypes === 'string') {\n  searchParams.contentTypes = searchParams.contentTypes.split(',').map(t => t.trim());\n}\n\nconst validContentTypes = ['podcast', 'book', 'avatar', 'social', 'prompt'];\nsearchParams.contentTypes = searchParams.contentTypes.filter(t => validContentTypes.includes(t));\n\n// Add search metadata\nsearchParams.searchId = require('crypto').randomUUID();\nsearchParams.timestamp = new Date().toISOString();\nsearchParams.requestStartTime = Date.now();\n\nreturn {\n  json: searchParams\n};"
+          },
+          "id": "search-process-002",
+          "name": "Process Search Request",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [460, 300]
+        },
+        {
+          "parameters": {
+            "jsCode": "// ================================================================\n// REDIS CACHE CHECK (L1 - Complete Results)\n// ================================================================\n\nconst { RAGCacheManager } = require('./redis-cache-layer.js');\nconst cacheManager = new RAGCacheManager(process.env.REDIS_URL);\n\nconst searchParams = $input.first().json;\n\ntry {\n  // Check for cached results\n  const cachedResults = await cacheManager.getCachedSearchResults(\n    searchParams.queryText,\n    searchParams.contentTypes,\n    searchParams.filters\n  );\n  \n  if (cachedResults) {\n    // Cache hit - return immediately\n    const response = {\n      results: cachedResults,\n      totalResults: cachedResults.length,\n      executionTimeMs: Date.now() - searchParams.requestStartTime,\n      cacheHit: true,\n      searchId: searchParams.searchId,\n      timestamp: new Date().toISOString()\n    };\n    \n    return {\n      json: response,\n      cacheHit: true\n    };\n  }\n  \n  // No cache hit - proceed to database search\n  return {\n    json: searchParams,\n    cacheHit: false\n  };\n  \n} catch (error) {\n  console.error('Cache check failed:', error);\n  // Proceed without cache on error\n  return {\n    json: searchParams,\n    cacheHit: false\n  };\n}"
+          },
+          "id": "cache-check-003",
+          "name": "Check Cache (L1)",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [680, 300]
+        },
+        {
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "caseSensitive": true,
+                      "leftValue": "",
+                      "typeValidation": "strict"
+                    },
+                    "conditions": [
+                      {
+                        "leftValue": "={{ $json.cacheHit }}",
+                        "rightValue": true,
+                        "operator": {
+                          "type": "boolean",
+                          "operation": "true"
+                        }
+                      }
+                    ],
+                    "combinator": "and"
+                  },
+                  "renameOutput": true,
+                  "outputKey": "cache_hit"
+                },
+                {
+                  "conditions": {
+                    "options": {
+                      "caseSensitive": true,
+                      "leftValue": "",
+                      "typeValidation": "strict"
+                    },
+                    "conditions": [
+                      {
+                        "leftValue": "={{ $json.cacheHit }}",
+                        "rightValue": false,
+                        "operator": {
+                          "type": "boolean",
+                          "operation": "false"
+                        }
+                      }
+                    ],\n                    \"combinator\": \"and\"\n                  },\n                  \"renameOutput\": true,\n                  \"outputKey\": \"database_search\"\n                }\n              ]\n            },\n            \"options\": {}\n          },\n          \"id\": \"cache-route-004\",\n          \"name\": \"Route Cache Result\",\n          \"type\": \"n8n-nodes-base.switch\",\n          \"typeVersion\": 3,\n          \"position\": [900, 300]\n        },\n        {\n          \"parameters\": {\n            \"jsCode\": \"// ================================================================\\n// EMBEDDING GENERATION WITH L2 CACHE\\n// ================================================================\\n\\nconst { RAGCacheManager } = require('./redis-cache-layer.js');\\nconst cacheManager = new RAGCacheManager(process.env.REDIS_URL);\\n\\nconst searchParams = $input.first().json;\\n\\ntry {\\n  // Check L2 cache for query embedding\\n  let queryEmbedding = await cacheManager.getCachedEmbedding(searchParams.queryText);\\n  \\n  if (queryEmbedding) {\\n    // Embedding cache hit\\n    return {\\n      json: {\\n        ...searchParams,\\n        queryEmbedding,\\n        embeddingCacheHit: true\\n      }\\n    };\\n  }\\n  \\n  // Need to generate embedding\\n  return {\\n    json: {\\n      ...searchParams,\\n      needsEmbedding: true,\\n      embeddingCacheHit: false\\n    }\\n  };\\n  \\n} catch (error) {\\n  console.error('Embedding cache check failed:', error);\\n  return {\\n    json: {\\n      ...searchParams,\\n      needsEmbedding: true,\\n      embeddingCacheHit: false\\n    }\\n  };\\n}\"\n          },\n          \"id\": \"embedding-cache-005\",\n          \"name\": \"Check Embedding Cache (L2)\",\n          \"type\": \"n8n-nodes-base.code\",\n          \"typeVersion\": 2,\n          \"position\": [1120, 200]\n        },\n        {\n          \"parameters\": {\n            \"model\": \"text-embedding-3-small\",\n            \"options\": {\n              \"dimensions\": 1536\n            }\n          },\n          \"id\": \"generate-embedding-006\",\n          \"name\": \"Generate Query Embedding\",\n          \"type\": \"n8n-nodes-base.openAi\",\n          \"typeVersion\": 1,\n          \"position\": [1340, 200],\n          \"credentials\": {\n            \"openAiApi\": {\n              \"id\": \"openai-embeddings\",\n              \"name\": \"OpenAI Embeddings\"\n            }\n          }\n        },\n        {\n          \"parameters\": {\n            \"operation\": \"executeQuery\",\n            \"query\": \"SELECT * FROM core.hybrid_search($1, $2, $3, $4, $5)\",\n            \"additionalFields\": {\n              \"queryParameters\": \"=[$json.queryText, $json.contentTypes.length > 0 ? '{' + $json.contentTypes.join(',') + '}' : '{}', $json.limit, $json.similarityThreshold, $json.includeRelationships]\"\n            }\n          },\n          \"id\": \"hybrid-search-007\",\n          \"name\": \"Execute Hybrid Search\",\n          \"type\": \"n8n-nodes-base.postgres\",\n          \"typeVersion\": 2.4,\n          \"position\": [1560, 300],\n          \"credentials\": {\n            \"postgres\": {\n              \"id\": \"railway-postgres\",\n              \"name\": \"Railway PostgreSQL\"\n            }\n          }\n        },\n        {\n          \"parameters\": {\n            \"jsCode\": \"// ================================================================\\n// RESULT PROCESSING AND CACHE STORAGE\\n// ================================================================\\n\\nconst { RAGCacheManager } = require('./redis-cache-layer.js');\\nconst cacheManager = new RAGCacheManager(process.env.REDIS_URL);\\n\\nconst searchResults = $input.all();\\nconst searchParams = $('Check Embedding Cache (L2)').first().json;\\n\\nconst results = searchResults.map(item => item.json);\\nconst executionTime = Date.now() - searchParams.requestStartTime;\\n\\n// Process and enhance results\\nconst processedResults = results.map(result => ({\\n  contentType: result.content_type,\\n  contentId: result.content_id,\\n  chunkId: result.chunk_id,\\n  text: result.chunk_text,\\n  similarityScore: parseFloat(result.similarity_score) || 0,\\n  ftsRank: parseFloat(result.fts_rank) || 0,\\n  combinedScore: parseFloat(result.combined_score) || 0,\\n  metadata: result.metadata || {},\\n  relationships: result.relationships || null\\n}));\\n\\n// Sort by combined score\\nprocessedResults.sort((a, b) => b.combinedScore - a.combinedScore);\\n\\n// Cache the results (fire and forget)\\ntry {\\n  cacheManager.cacheSearchResults(\\n    searchParams.queryText,\\n    searchParams.contentTypes,\\n    searchParams.filters,\\n    processedResults,\\n    executionTime\\n  );\\n  \\n  // Cache the embedding if it was generated\\n  if (searchParams.needsEmbedding && searchParams.queryEmbedding) {\\n    cacheManager.cacheEmbedding(searchParams.queryText, searchParams.queryEmbedding);\\n  }\\n  \\n  // Track performance analytics\\n  cacheManager.trackCachePerformance('search', false, executionTime);\\n} catch (error) {\\n  console.error('Cache storage failed:', error);\\n}\\n\\n// Prepare final response\\nconst response = {\\n  results: processedResults,\\n  totalResults: processedResults.length,\\n  executionTimeMs: executionTime,\\n  cacheHit: false,\\n  searchId: searchParams.searchId,\\n  timestamp: new Date().toISOString(),\\n  query: {\\n    text: searchParams.queryText,\\n    contentTypes: searchParams.contentTypes,\\n    filters: searchParams.filters,\\n    limit: searchParams.limit\\n  },\\n  performance: {\\n    embeddingCacheHit: searchParams.embeddingCacheHit || false,\\n    dbExecutionTime: executionTime\\n  }\\n};\\n\\nreturn {\\n  json: response\\n};\"\n          },\n          \"id\": \"process-results-008\",\n          \"name\": \"Process Results & Cache\",\n          \"type\": \"n8n-nodes-base.code\",\n          \"typeVersion\": 2,\n          \"position\": [1780, 300]\n        },\n        {\n          \"parameters\": {\n            \"respondWith\": \"json\",\n            \"responseBody\": \"={{ $json }}\"\n          },\n          \"id\": \"cache-response-009\",\n          \"name\": \"Return Cached Response\",\n          \"type\": \"n8n-nodes-base.respondToWebhook\",\n          \"typeVersion\": 1,\n          \"position\": [1120, 400]\n        },\n        {\n          \"parameters\": {\n            \"respondWith\": \"json\",\n            \"responseBody\": \"={{ $json }}\"\n          },\n          \"id\": \"final-response-010\",\n          \"name\": \"Return Search Response\",\n          \"type\": \"n8n-nodes-base.respondToWebhook\",\n          \"typeVersion\": 1,\n          \"position\": [2000, 300]\n        }\n      ],\n      \"connections\": {\n        \"Search Webhook\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Process Search Request\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        },\n        \"Process Search Request\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Check Cache (L1)\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        },\n        \"Check Cache (L1)\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Route Cache Result\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        },\n        \"Route Cache Result\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Return Cached Response\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ],\n            [\n              {\n                \"node\": \"Check Embedding Cache (L2)\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        },\n        \"Check Embedding Cache (L2)\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Generate Query Embedding\",\n                \"type\": \"main\",\n                \"index\": 0\n              },\n              {\n                \"node\": \"Execute Hybrid Search\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        },\n        \"Generate Query Embedding\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Execute Hybrid Search\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        },\n        \"Execute Hybrid Search\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Process Results & Cache\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        },\n        \"Process Results & Cache\": {\n          \"main\": [\n            [\n              {\n                \"node\": \"Return Search Response\",\n                \"type\": \"main\",\n                \"index\": 0\n              }\n            ]\n          ]\n        }\n      }\n    }\n  ]\n}"

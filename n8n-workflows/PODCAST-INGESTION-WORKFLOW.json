@@ -1,0 +1,187 @@
+{
+  "meta": {
+    "instanceId": "idudesRAG-podcast-chunking"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "path": "idudesRAG/ingest-podcast",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1a2b3c4d-5e6f-7890-abcd-ef1234567890",
+      "name": "Podcast Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        240,
+        300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// STEP 1: Load the chunking strategies\nconst { ContentChunker } = require('/opt/n8n/custom/chunking-strategies.js');\nconst chunker = new ContentChunker();\n\n// STEP 2: Get the input data\nconst input = $input.first().json;\n\n// Validate required fields\nif (!input.transcript) {\n  return [{ \n    json: { \n      error: \"Transcript is required\",\n      status: 400 \n    } \n  }];\n}\n\nif (!input.episode_title) {\n  return [{ \n    json: { \n      error: \"Episode title is required\",\n      status: 400 \n    } \n  }];\n}\n\n// STEP 3: Chunk the podcast transcript\nconst metadata = {\n  episode: input.episode_title,\n  date: input.date || new Date().toISOString().split('T')[0],\n  guest: input.guest || 'Unknown',\n  duration: input.duration || 'Unknown',\n  topics: input.topics || []\n};\n\nconst chunks = chunker.chunkPodcastTranscript(input.transcript, metadata);\n\n// STEP 4: Return chunked data for processing\nreturn chunks.map(chunk => ({\n  json: {\n    content: chunk.chunkText,\n    metadata: {\n      contentType: 'podcast',\n      episode: metadata.episode,\n      chunkIndex: chunk.chunkIndex,\n      totalChunks: chunk.totalChunks,\n      speaker: chunk.speaker,\n      timestampStart: chunk.timestampStart,\n      timestampEnd: chunk.timestampEnd,\n      importanceScore: chunk.importanceScore,\n      ...metadata\n    },\n    filename: `${metadata.episode}_chunk_${chunk.chunkIndex}.txt`,\n    spaces_url: input.spaces_url || `https://datainjestion.nyc3.cdn.digitaloceanspaces.com/${metadata.episode}_chunk_${chunk.chunkIndex}.txt`\n  }\n}));"
+      },
+      "id": "2b3c4d5e-6f78-9012-bcde-f23456789012",
+      "name": "Chunk Podcast",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        460,
+        300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "embedding",
+        "model": "text-embedding-3-small",
+        "text": "={{ $json.content }}",
+        "options": {
+          "dimensions": 1536
+        }
+      },
+      "id": "3c4d5e6f-7890-1234-cdef-345678901234",
+      "name": "OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "position": [
+        680,
+        300
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-creds",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.documents (filename, spaces_url, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id;",
+        "additionalFields": {
+          "mode": "independently",
+          "queryParameters": "={{ JSON.stringify([$json.filename, $json.spaces_url, $json.content, $json.metadata]) }}"
+        }
+      },
+      "id": "4d5e6f78-9012-3456-def0-456789012345",
+      "name": "Insert Document",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        900,
+        300
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "postgres": {
+          "id": "railway-pgvector",
+          "name": "Railway PGVector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.document_embeddings (document_id, chunk_text, embedding, chunk_index) VALUES ($1, $2, $3, $4);",
+        "additionalFields": {
+          "mode": "independently",
+          "queryParameters": "={{ JSON.stringify([$('Insert Document').item.json.id, $('Chunk Podcast').item.json.content, $('OpenAI Embeddings').item.json.data, $('Chunk Podcast').item.json.metadata.chunkIndex]) }}"
+        }
+      },
+      "id": "5e6f7890-1234-5678-ef01-567890123456",
+      "name": "Insert Embedding",
+      "type": "n8n-nodes-base.postgres",
+      "position": [
+        1120,
+        300
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "postgres": {
+          "id": "railway-pgvector",
+          "name": "Railway PGVector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Podcast ingested successfully\", \"episode\": $('Chunk Podcast').first().json.metadata.episode, \"chunks_created\": $('Chunk Podcast').all().length, \"document_id\": $('Insert Document').first().json.id } }}"
+      },
+      "id": "6f789012-3456-7890-f012-678901234567",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1340,
+        300
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Podcast Webhook": {
+      "main": [
+        [
+          {
+            "node": "Chunk Podcast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Podcast": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Insert Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Document": {
+      "main": [
+        [
+          {
+            "node": "Insert Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Embedding": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-06T16:15:00.000Z"
+}

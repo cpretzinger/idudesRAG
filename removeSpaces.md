@@ -1,0 +1,307 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "documents",
+        "options": {}
+      },
+      "id": "2a560b07-9757-47bb-a6bb-60fdc1d0cc76",
+      "name": "Webhook - Document Upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -352
+      ],
+      "webhookId": "07af34ea-15fa-468c-804a-7176b5b2a733"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $('map').item.json.pageContent }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "filename",
+                "value": "={{ $('map').first().json.metadata.filename }}"
+              },
+              {
+                "name": "source",
+                "value": "={{ $('map').first().json.metadata.source }}"
+              },
+              {
+                "name": "file_type",
+                "value": "={{ $('map').first().json.metadata.file_type }}"
+              },
+              {
+                "name": "file_size",
+                "value": "={{ $('map').first().json.metadata.file_size }}"
+              },
+              {
+                "name": "timestamp",
+                "value": "={{ $('map').first().json.metadata.timestamp }}"
+              },
+              {
+                "name": "document_id",
+                "value": "={{ $('map').first().json.metadata.document_id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        -128
+      ],
+      "id": "bebc8bdd-a278-44c8-80de-f589be1edc58",
+      "name": "DocLoader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 10000,
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        80
+      ],
+      "id": "ab0c7333-2c60-44ff-9424-b2634236b66f",
+      "name": "Text Splitter"
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 1536,
+          "batchSize": 200
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        -128
+      ],
+      "id": "4402f494-642d-447d-a380-209883abf025",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
+          "name": "ZARAapiKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "core.document_embeddings",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        -352
+      ],
+      "id": "5e9d245f-5ee4-49fe-a445-5c5adfea55e7",
+      "name": "PGVector Store",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.documents (filename, content, file_size, file_type, metadata)\nSELECT\n  (j->'metadata'->>'filename')::text,\n  (j->>'pageContent')::text,\n  COALESCE(NULLIF(j->'metadata'->>'file_size','')::bigint, 0),\n  (j->'metadata'->>'file_type')::text,\n  COALESCE((j->'metadata')::jsonb, '{}'::jsonb)\nFROM (SELECT $1::jsonb AS j) payload\nON CONFLICT (filename)\nDO UPDATE SET\n  content = EXCLUDED.content,\n  file_size = EXCLUDED.file_size,\n  file_type = EXCLUDED.file_type,\n  metadata = EXCLUDED.metadata,\n  updated_at = NOW() AT TIME ZONE 'America/Phoenix'\nRETURNING id, filename, created_at, updated_at;\n",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        -352
+      ],
+      "id": "3f1777d2-bb9f-4332-8dd6-32860584248f",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first();\nlet content = '';\nlet filename = 'unknown';\nlet file_type = 'text/plain';\nlet file_size = 0;\nlet source = 'idudesRAG-upload';\n\n// Extract metadata from webhook BODY\nif (input.json.body?.filename) filename = input.json.body.filename;\nif (input.json.body?.type) file_type = input.json.body.type;\nif (input.json.body?.size) file_size = parseInt(input.json.body.size);\nif (input.json.body?.source) source = input.json.body.source;\n\n// Extract and DECODE content from body\nif (input.json.body?.content) {\n  content = input.json.body.content;\n  // DECODE if base64 encoded\n  if (content && /^[A-Za-z0-9+/=]+$/.test(content) && content.length > 50) {\n    try {\n      content = Buffer.from(content, 'base64').toString('utf-8');\n    } catch (e) {\n      // Not base64, keep original\n    }\n  }\n}\n\nreturn [{\n  json: {\n    pageContent: content,\n    metadata: {\n      filename: filename,\n      file_type: file_type,\n      file_size: file_size || content.length,\n      source: source,\n      timestamp: new Date().toISOString(),\n      upload_source: 'webhook'\n    }\n  }\n}];\n"
+      },
+      "id": "324fe44a-33ed-4932-a4eb-f6d6391a11e1",
+      "name": "PrepDoc",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// FINAL VERSION - CLOSE DB CONNECTIONS NODE FOR n8n\n// Copy this entire code into a Code node (JavaScript) at the end of your workflow\n// This version works without external modules\n\n// 1. Clean up any global connection objects\nconst globalCleanup = () => {\n  const targets = ['pgPool', 'pgClient', 'dbConn', 'redisClient'];\n  let cleaned = 0;\n\n  targets.forEach(name => {\n    if (global[name]) {\n      try {\n        delete global[name];\n        cleaned++;\n      } catch (e) {\n        // Silent fail\n      }\n    }\n  });\n\n  return cleaned;\n};\n\n// 2. Generate cleanup report\nconst generateReport = (cleaned) => {\n  return {\n    workflow: $workflow.name || 'Unknown',\n    workflowId: $workflow.id,\n    execution: $execution.id,\n    timestamp: new Date().toISOString(),\n    connectionsCleared: cleaned,\n    status: 'success'\n  };\n};\n\n// 3. Execute cleanup\nconst cleaned = globalCleanup();\nconst report = generateReport(cleaned);\n\n// 4. Log the results\nconsole.log('🧹 Cleanup Complete:', JSON.stringify(report, null, 2));\n\n// 5. Pass through the data with cleanup metadata\nreturn $input.all().map(item => ({\n  ...item,\n  json: {\n    ...item.json,\n    _cleanup: report\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        -352
+      ],
+      "id": "734ec10a-414d-4024-b506-78344031caa2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"pageContent\": \"{{ $('PrepDoc').first().json.pageContent }}\",\n  \"metadata\": {\n    \"filename\": \"{{ $('PrepDoc').first().json.metadata.filename }}\",\n    \"file_type\": \"{{ $('PrepDoc').first().json.metadata.file_type }}\",\n    \"file_size\": \"{{ $('PrepDoc').first().json.metadata.file_size }}\",\n    \"source\": \"{{ $('PrepDoc').first().json.metadata.source }}\",\n    \"timestamp\": \"{{ $('PrepDoc').first().json.metadata.timestamp }}\",\n    \"upload_source\": \"{{ $('PrepDoc').first().json.metadata.upload_source }}\",\n    \"document_id\": \"{{ $('Execute a SQL query').first().json.id }}\"\n  }\n}",
+        "options": {
+          "dotNotation": true
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        -352
+      ],
+      "id": "9595598f-2697-496f-bf37-2f6c4200d5fd",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node: map/normalize doc → PGVector-ready\n\n// --- helpers ---\nconst toInt = (v) => {\n  if (v === null || v === undefined) return 0;\n  const n = parseInt(String(v), 10);\n  return Number.isNaN(n) ? 0 : n;\n};\n\nconst asIso = (v) => {\n  try {\n    if (!v) return new Date().toISOString();\n    const d = new Date(v);\n    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();\n  } catch {\n    return new Date().toISOString();\n  }\n};\n\nconst isUuid = (v) =>\n  typeof v === 'string' &&\n  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);\n\n// try to read DB id from the SQL node; safe if missing\nlet dbId;\ntry {\n  dbId = $('Execute a SQL query').first().json?.id;\n} catch (_) {\n  dbId = undefined;\n}\n\n// accept current items or fall back to PrepDoc\nlet raw = $input.all().map(i => i.json);\nif (raw.length === 0) {\n  try {\n    const p = $('PrepDoc').first().json;\n    if (p) raw = [p];\n  } catch (_) {}\n}\n\nconst out = [];\n\nfor (const doc of raw) {\n  const md = doc?.metadata ?? {};\n  const pageContent = String(doc?.pageContent ?? '');\n\n  // choose document_id priority: DB id → existing metadata\n  let document_id = dbId ?? md.document_id;\n  if (!isUuid(document_id)) document_id = undefined; // or throw if you want to hard-fail\n\n  const mapped = {\n    pageContent,\n    metadata: {\n      filename: md.filename ?? 'unknown',\n      file_type: md.file_type ?? 'text/plain',\n      file_size: toInt(md.file_size ?? pageContent.length),\n      source: md.source ?? 'idudesRAG-upload',\n      timestamp: asIso(md.timestamp),\n      upload_source: md.upload_source ?? 'webhook',\n      ...(document_id ? { document_id } : {})\n    }\n  };\n\n  out.push({ json: mapped });\n}\n\nconsole.log('Mapped docs →', JSON.stringify(out.map(i => i.json), null, 2));\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        -352
+      ],
+      "id": "2a6244bb-33fb-4778-96b8-736b8d092f2d",
+      "name": "map"
+    }
+  ],
+  "connections": {
+    "Webhook - Document Upload": {
+      "main": [
+        [
+          {
+            "node": "PrepDoc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DocLoader": {
+      "ai_document": [
+        [
+          {
+            "node": "PGVector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "DocLoader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "PGVector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PGVector Store": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepDoc": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "map": {
+      "main": [
+        [
+          {
+            "node": "PGVector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
+}

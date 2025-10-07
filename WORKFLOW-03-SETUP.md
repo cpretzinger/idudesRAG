@@ -3,6 +3,7 @@
 ## SQL - Create enrichment_logs table
 
 ```sql
+-- Create the table
 CREATE TABLE IF NOT EXISTS core.enrichment_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant TEXT NOT NULL DEFAULT 'idudes',
@@ -10,14 +11,14 @@ CREATE TABLE IF NOT EXISTS core.enrichment_logs (
   status TEXT NOT NULL CHECK (status IN ('success', 'error', 'pending')),
   metadata_extracted JSONB,
   error_message TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Phoenix'),
-
-  -- Indexes for performance
-  INDEX idx_enrichment_logs_tenant (tenant),
-  INDEX idx_enrichment_logs_document_id (document_id),
-  INDEX idx_enrichment_logs_status (status),
-  INDEX idx_enrichment_logs_created_at (created_at DESC)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Phoenix')
 );
+
+-- Create indexes separately
+CREATE INDEX IF NOT EXISTS idx_enrichment_logs_tenant ON core.enrichment_logs(tenant);
+CREATE INDEX IF NOT EXISTS idx_enrichment_logs_document_id ON core.enrichment_logs(document_id);
+CREATE INDEX IF NOT EXISTS idx_enrichment_logs_status ON core.enrichment_logs(status);
+CREATE INDEX IF NOT EXISTS idx_enrichment_logs_created_at ON core.enrichment_logs(created_at DESC);
 
 -- Grant permissions
 GRANT ALL ON core.enrichment_logs TO postgres;
@@ -61,14 +62,21 @@ curl -X POST https://ai.thirdeyediagnostics.com/webhook/idudesRAG/enrich \
 
 ```javascript
 // Extract metadata from document content using GPT-5-nano
-const content = $input.first().json.content;
-const filename = $input.first().json.filename;
+const item = $input.first().json;
+const content = item.content || '';
+const filename = item.filename || 'unknown';
+
+// Handle empty content
+if (!content || content.trim().length === 0) {
+  throw new Error('Document has no content to analyze');
+}
 
 // Prepare enrichment request
+const contentPreview = content.substring(0, 2000);
 const enrichmentPrompt = `Analyze this document and extract metadata. Return JSON only.
 
 Document: ${filename}
-Content: ${content.substring(0, 2000)}...
+Content: ${contentPreview}...
 
 Extract:
 1. document_type (email, contract, report, memo, policy, claim, etc.)
@@ -82,7 +90,7 @@ Return as clean JSON object only.`;
 
 return [{
   json: {
-    document_id: $input.first().json.id,
+    document_id: item.id,
     filename: filename,
     content_preview: content.substring(0, 500),
     enrichment_prompt: enrichmentPrompt,

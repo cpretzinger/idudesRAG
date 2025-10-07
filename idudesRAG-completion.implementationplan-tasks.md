@@ -15,6 +15,7 @@
 - [ ] 1.4 Verify n8n webhook connectivity (5 min)
 
 ### 🛡️ Priority 2: Security & Automation (90 min)
+- [ ] 2.0 Confirm you are using n8n auth flows
 - [ ] 2.1 Add API key middleware (15 min)
 - [ ] 2.2 Create Google Drive n8n workflow (30 min)
 - [ ] 2.3 Add master chat prompt (15 min)

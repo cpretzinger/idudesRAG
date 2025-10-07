@@ -53,3 +53,4 @@ n8n-workflows/*
 
 # Qdrant vector database storage (regenerated locally)
 qdrant_storage/
+.env

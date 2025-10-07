@@ -238,3 +238,4 @@ USING ivfflat (embedding vector_cosine_ops);
 
 **Last Updated**: October 6, 2025
 **Status**: 70% Complete - Core RAG working, auth & GDrive pending
+

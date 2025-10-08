@@ -23,7 +23,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, email, name, password_hash, role FROM users WHERE email = $1",
+        "query": "SELECT id, email, name, password_hash, role FROM core.users WHERE email = $1",
         "additionalFields": {
           "parameters": [
             "={{ $json.body.email }}"
@@ -61,7 +61,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO user_sessions (token, user_id, expires_at, created_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (token) DO UPDATE SET expires_at = $3, created_at = NOW()",
+        "query": "INSERT INTO core.user_sessions (token, user_id, expires_at, created_at) VALUES ($1, $2, $3, NOW() AT TIME ZONE 'America/Phoenix') ON CONFLICT (token) DO UPDATE SET expires_at = $3, created_at = NOW() AT TIME ZONE 'America/Phoenix'",
         "additionalFields": {
           "parameters": [
             "={{ $json.session_token }}",

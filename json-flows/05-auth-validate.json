@@ -23,7 +23,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT u.id, u.email, u.name, u.role, s.expires_at FROM user_sessions s JOIN users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()",
+        "query": "SELECT u.id, u.email, u.name, u.role, s.expires_at FROM core.user_sessions s JOIN core.users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()",
         "additionalFields": {
           "parameters": [
             "={{ $json.body.session_token }}"
@@ -76,7 +76,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE user_sessions SET last_accessed = NOW() WHERE token = $1",
+        "query": "UPDATE core.user_sessions SET last_accessed = NOW() AT TIME ZONE 'America/Phoenix' WHERE token = $1",
         "additionalFields": {
           "parameters": [
             "={{ $('Webhook - Validate').item.json.body.session_token }}"

@@ -53,4 +53,9 @@ n8n-workflows/*
 
 # Qdrant vector database storage (regenerated locally)
 qdrant_storage/
-.env
+
+# Google Cloud Service Account Credentials
+n8n-*.json
+*-credentials.json
+*.keyfile.json
+service-account*.json

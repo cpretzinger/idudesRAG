@@ -14,28 +14,26 @@
 
 **⚠️ IMPORTANT**: The Next.js app is in the `ui/` subdirectory, NOT the repository root!
 
-You have **TWO OPTIONS** to configure this:
+**🚨 BREAKING CHANGE**: The [`vercel.json`](../vercel.json) file has been **REMOVED** to fix 404 errors on API routes.
 
-#### **Option A: Vercel Dashboard (Recommended)**
+#### **✅ REQUIRED: Vercel Dashboard Configuration**
 1. Go to Vercel Dashboard → Project Settings → General
 2. Find **"Root Directory"** setting
 3. Set to: `ui/`
 4. Click **Save**
-5. Redeploy the project
+5. **Framework Preset**: Should auto-detect as "Next.js"
+6. **Build Command**: Leave blank (auto-detect)
+7. **Install Command**: Leave blank (auto-detect)
+8. **Output Directory**: Leave blank (auto-detect)
+9. Redeploy the project
 
-#### **Option B: Use vercel.json (Already Configured)**
-The [`vercel.json`](../vercel.json) file is already configured with the correct paths:
-```json
-{
-  "buildCommand": "cd ui && pnpm install && pnpm build",
-  "outputDirectory": "ui/.next",
-  "installCommand": "cd ui && pnpm install",
-  "devCommand": "cd ui && pnpm dev",
-  "framework": "nextjs"
-}
-```
+#### **🐛 Why vercel.json Was Removed**
+The custom `buildCommand` in vercel.json was preventing API routes from being deployed properly:
+- **Problem**: `/api/webhook/documents` returned 404 in production
+- **Root Cause**: Custom build commands interfered with Next.js App Router API route deployment
+- **Solution**: Remove vercel.json entirely and use Vercel Dashboard configuration instead
 
-**Note**: If using Option A (Dashboard), Vercel will ignore the `vercel.json` build commands, but both approaches work correctly.
+**⚠️ After removing vercel.json, you MUST configure Root Directory in Vercel Dashboard or deployment will fail.**
 
 ---
 
@@ -180,38 +178,49 @@ docker logs -f ai-n8n
 
 ## 🐛 Troubleshooting Guide
 
-### Issue 0: "No Next.js version detected" Build Error
+### Issue 0: API Routes Return 404 Error (FIXED)
+
+**Symptoms:**
+- `/api/webhook/documents` returns `404 This page could not be found`
+- API routes exist in codebase but not deployed to Vercel
+- Health check fails with 404 error
+
+**Root Cause:**
+The custom `buildCommand` in `vercel.json` was interfering with Next.js App Router API route deployment. When Vercel uses custom build commands, it can skip proper API route compilation.
+
+**✅ SOLUTION IMPLEMENTED:**
+1. **Removed [`vercel.json`](../vercel.json) entirely**
+2. **Configure via Vercel Dashboard instead:**
+   - Go to: Vercel Dashboard → Your Project → Settings → General
+   - Set **Root Directory**: `ui/`
+   - Leave all other fields blank (auto-detect)
+   - Click **Save** and redeploy
+
+**Verification:**
+After fixing, API routes should work:
+```bash
+curl https://ui-theta-black.vercel.app/api/webhook/documents
+# Should return: {"status":"ok","configured":true,...}
+```
+
+---
+
+### Issue 1: "No Next.js version detected" Build Error
 
 **Symptoms:**
 - Vercel build fails with: `Error: No Next.js version detected`
-- Error mentions checking `package.json` for `next` dependency
 - Error mentions checking Root Directory setting
 
 **Root Cause:**
-The Next.js app is in the `ui/` subdirectory, not the repository root. Vercel is trying to build from the wrong directory.
+The Next.js app is in the `ui/` subdirectory, not the repository root.
 
 **Fix:**
-
-**Method 1: Vercel Dashboard (Recommended)**
 1. Go to: Vercel Dashboard → Your Project → Settings → General
-2. Scroll to **"Root Directory"**
-3. Click **Edit**
-4. Enter: `ui/`
-5. Click **Save**
-6. Trigger a new deployment (push to GitHub or click "Redeploy")
-
-**Method 2: Verify vercel.json**
-The [`vercel.json`](../vercel.json) should have these paths:
-```json
-{
-  "buildCommand": "cd ui && pnpm install && pnpm build",
-  "outputDirectory": "ui/.next",
-  "installCommand": "cd ui && pnpm install"
-}
-```
+2. Set **Root Directory**: `ui/`
+3. Click **Save** and redeploy
 
 **Verification:**
-After fixing, the build logs should show:
+Build logs should show:
 ```
 ✓ Detected Next.js version: 15.5.4
 ✓ Building in /vercel/path/ui directory
@@ -220,7 +229,7 @@ After fixing, the build logs should show:
 
 ---
 
-### Issue 1: "Webhook configuration error"
+### Issue 2: "Webhook configuration error"
 
 **Symptoms:**
 - Health check returns `"configured": false`
@@ -234,7 +243,7 @@ After fixing, the build logs should show:
 
 ---
 
-### Issue 2: Document upload fails with 500 error
+### Issue 3: Document upload fails with 500 error
 
 **Symptoms:**
 - Upload button shows error
@@ -257,7 +266,7 @@ After fixing, the build logs should show:
 
 ---
 
-### Issue 3: Request timeout
+### Issue 4: Request timeout
 
 **Symptoms:**
 - "Request timeout - n8n took too long to respond"
@@ -269,7 +278,7 @@ After fixing, the build logs should show:
 
 ---
 
-### Issue 4: CORS errors in browser
+### Issue 5: CORS errors in browser
 
 **Symptoms:**
 - Browser console: "CORS policy blocked"

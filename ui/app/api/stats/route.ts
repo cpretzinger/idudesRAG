@@ -1,7 +1,27 @@
 import { NextResponse } from 'next/server'
+import { Client, type ClientConfig, type QueryResult } from 'pg'
 
-// Railway PostgreSQL connection
-const DB_CONFIG = {
+// Type definition for database row counts
+interface CountResult {
+  count: string
+}
+
+// Type definition for average size calculation
+interface AvgSizeResult {
+  avg_size: number | null
+}
+
+// Type definition for API response
+interface StatsResponse {
+  total_documents: number
+  total_embeddings: number
+  total_queries: number
+  avg_document_size: number
+  last_updated: string
+}
+
+// Railway PostgreSQL connection configuration
+const DB_CONFIG: ClientConfig = {
   host: process.env.RAILWAY_PGVECTOR_HOST || 'yamabiko.proxy.rlwy.net',
   port: parseInt(process.env.RAILWAY_PGVECTOR_PORT || '15649'),
   user: process.env.RAILWAY_PGVECTOR_USER || 'postgres',
@@ -9,9 +29,8 @@ const DB_CONFIG = {
   database: process.env.RAILWAY_PGVECTOR_DB || 'railway'
 }
 
-export async function GET() {
+export async function GET(): Promise<NextResponse<StatsResponse | { error: string }>> {
   try {
-    const { Client } = require('pg')
     const client = new Client({
       ...DB_CONFIG,
       ssl: { rejectUnauthorized: false }
@@ -22,18 +41,18 @@ export async function GET() {
     // Get all stats in parallel
     const [documentsResult, embeddingsResult, queriesResult] = await Promise.all([
       // Total documents
-      client.query('SELECT COUNT(*) as count FROM core.documents'),
+      client.query<CountResult>('SELECT COUNT(*) as count FROM core.documents'),
 
       // Total embeddings (chunks)
-      client.query('SELECT COUNT(*) as count FROM core.document_embeddings'),
+      client.query<CountResult>('SELECT COUNT(*) as count FROM core.document_embeddings'),
 
       // Total queries (if you have a queries table, otherwise mock it)
       // Replace with actual query if you track chat queries
-      Promise.resolve({ rows: [{ count: 0 }] })
+      Promise.resolve({ rows: [{ count: '0' }] } as QueryResult<CountResult>)
     ])
 
     // Calculate average document size
-    const avgSizeResult = await client.query(`
+    const avgSizeResult = await client.query<AvgSizeResult>(`
       SELECT AVG(file_size) as avg_size
       FROM core.documents
       WHERE file_size > 0

@@ -1,11 +1,11 @@
 {
-  "buildCommand": "pnpm install && pnpm build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install -g pnpm",
-  "devCommand": "pnpm dev",
+  "buildCommand": "cd ui && pnpm install && pnpm build",
+  "outputDirectory": "ui/.next",
+  "installCommand": "cd ui && pnpm install",
+  "devCommand": "cd ui && pnpm dev",
   "framework": "nextjs",
   "functions": {
-    "app/api/upload/route.ts": {
+    "ui/app/api/upload/route.ts": {
       "maxDuration": 60,
       "memory": 1024
     }

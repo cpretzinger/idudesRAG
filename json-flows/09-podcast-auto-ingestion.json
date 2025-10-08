@@ -1,0 +1,253 @@
+{
+  "name": "09 - Podcast Auto-Ingestion (Insurance Dudes)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-podcast",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.buzzsprout.com/254746.rss"
+      },
+      "id": "rss-feed-read",
+      "name": "RSS Feed Read",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if episode already processed\nconst episodes = $input.all().map(item => item.json);\nconst { Client } = require('pg');\n\nconst client = new Client({\n  connectionString: 'postgres://postgres:d7ToQHAA7VecTKi2DxFgNxtlj~xN_HnD@yamabiko.proxy.rlwy.net:15649/railway'\n});\n\ntry {\n  await client.connect();\n\n  const newEpisodes = [];\n\n  for (const episode of episodes) {\n    const guid = episode.guid || episode.link;\n    const title = episode.title;\n\n    // Check if already exists in DB\n    const result = await client.query(\n      \"SELECT id FROM core.documents WHERE metadata->>'podcast_guid' = $1\",\n      [guid]\n    );\n\n    if (result.rows.length === 0) {\n      // New episode - add to processing queue\n      console.log(`New episode found: ${title}`);\n      newEpisodes.push(episode);\n    } else {\n      console.log(`Episode already processed: ${title}`);\n    }\n  }\n\n  return newEpisodes.map(ep => ({ json: ep }));\n\n} finally {\n  await client.end();\n}"
+      },
+      "id": "check-new-episodes",
+      "name": "Check for New Episodes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and format episode metadata\nconst episode = $input.first().json;\n\n// Extract episode number from title (e.g., \"Episode 123: Title\" → \"123\")\nconst episodeMatch = episode.title.match(/episode[\\s#]*(\\d+)/i);\nconst episodeNumber = episodeMatch ? episodeMatch[1] : null;\n\n// Get MP3 URL from enclosure\nconst audioUrl = episode.enclosure?.url || episode['media:content']?.url;\n\nif (!audioUrl) {\n  throw new Error(`No audio URL found for episode: ${episode.title}`);\n}\n\n// Format date\nconst pubDate = new Date(episode.pubDate || episode.published);\n\nreturn [{\n  json: {\n    title: episode.title,\n    description: episode.content || episode.description || '',\n    audioUrl: audioUrl,\n    episodeNumber: episodeNumber,\n    guid: episode.guid || episode.link,\n    publishedAt: pubDate.toISOString(),\n    showName: 'The Insurance Dudes',\n    showId: '2gVVPkZ2MWQ1orwdltdIAK'\n  }\n}];"
+      },
+      "id": "extract-episode-info",
+      "name": "Extract Episode Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.audioUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-audio",
+      "name": "Download Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transcribe audio with OpenAI Whisper API\nconst audioData = $input.first().binary.data;\nconst metadata = $('Extract Episode Info').first().json;\n\n// Create form data for Whisper API\nconst FormData = require('form-data');\nconst form = new FormData();\n\n// Convert binary data to buffer\nconst audioBuffer = Buffer.from(audioData.data, 'base64');\nform.append('file', audioBuffer, {\n  filename: `episode_${metadata.episodeNumber || 'unknown'}.mp3`,\n  contentType: 'audio/mpeg'\n});\nform.append('model', 'whisper-1');\nform.append('language', 'en');\nform.append('response_format', 'verbose_json');\nform.append('timestamp_granularities[]', 'segment');\n\n// Call Whisper API\nconst response = await fetch('https://api.openai.com/v1/audio/transcriptions', {\n  method: 'POST',\n  headers: {\n    'Authorization': `Bearer ${$credentials.openAiApi.apiKey}`,\n    ...form.getHeaders()\n  },\n  body: form\n});\n\nconst transcription = await response.json();\n\nif (!transcription.text) {\n  throw new Error('Transcription failed: ' + JSON.stringify(transcription));\n}\n\nreturn [{\n  json: {\n    transcript: transcription.text,\n    segments: transcription.segments || [],\n    duration: transcription.duration || 0,\n    language: transcription.language || 'en',\n    metadata: metadata\n  }\n}];"
+      },
+      "id": "transcribe-whisper",
+      "name": "Transcribe with Whisper",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
+          "name": "ZARAapiKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format transcript for /webhook/documents endpoint\nconst data = $input.first().json;\nconst metadata = data.metadata;\n\n// Create filename\nconst filename = metadata.episodeNumber\n  ? `Episode ${metadata.episodeNumber} - ${metadata.title}.txt`\n  : `${metadata.title}.txt`;\n\n// Format transcript with timestamps (if available)\nlet formattedContent = `# ${metadata.title}\\n\\n`;\nformattedContent += `**Show:** ${metadata.showName}\\n`;\nformattedContent += `**Episode:** ${metadata.episodeNumber || 'N/A'}\\n`;\nformattedContent += `**Published:** ${new Date(metadata.publishedAt).toLocaleDateString()}\\n`;\nformattedContent += `**Duration:** ${Math.floor(data.duration / 60)} minutes\\n\\n`;\nformattedContent += `## Description\\n\\n${metadata.description}\\n\\n`;\nformattedContent += `## Transcript\\n\\n${data.transcript}`;\n\n// Convert to base64\nconst base64Content = Buffer.from(formattedContent).toString('base64');\n\nreturn [{\n  json: {\n    filename: filename,\n    content: base64Content,\n    type: 'text/plain',\n    size: formattedContent.length,\n    source: 'podcast-automation',\n    podcast_metadata: {\n      show_name: metadata.showName,\n      show_id: metadata.showId,\n      episode_number: metadata.episodeNumber,\n      episode_title: metadata.title,\n      published_at: metadata.publishedAt,\n      duration_seconds: data.duration,\n      guid: metadata.guid,\n      audio_url: metadata.audioUrl || null,\n      language: data.language\n    }\n  }\n}];"
+      },
+      "id": "format-for-upload",
+      "name": "Format for Document Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ai.thirdeyediagnostics.com/webhook/documents",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "send-to-webhook",
+      "name": "Send to Document Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log successful processing\nconst response = $input.first().json;\nconst metadata = $('Format for Document Upload').first().json;\n\nconsole.log('✅ Podcast episode processed:', {\n  episode: metadata.podcast_metadata.episode_title,\n  episodeNumber: metadata.podcast_metadata.episode_number,\n  documentId: response.id || 'unknown',\n  timestamp: new Date().toISOString()\n});\n\nreturn [{\n  json: {\n    success: true,\n    episode: metadata.podcast_metadata.episode_title,\n    episodeNumber: metadata.podcast_metadata.episode_number,\n    filename: metadata.filename,\n    uploadResponse: response\n  }\n}];"
+      },
+      "id": "log-success",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed Read": {
+      "main": [
+        [
+          {
+            "node": "Check for New Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for New Episodes": {
+      "main": [
+        [
+          {
+            "node": "Extract Episode Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Episode Info": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribe with Whisper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe with Whisper": {
+      "main": [
+        [
+          {
+            "node": "Format for Document Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Document Upload": {
+      "main": [
+        [
+          {
+            "node": "Send to Document Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Document Webhook": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": {
+      "errorWorkflow": "",
+      "continueOnFail": false
+    }
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z",
+      "id": "podcast",
+      "name": "podcast"
+    },
+    {
+      "createdAt": "2025-10-08T00:00:00.000Z",
+      "updatedAt": "2025-10-08T00:00:00.000Z",
+      "id": "idudes",
+      "name": "idudes"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-08T00:00:00.000Z",
+  "versionId": "1",
+  "active": false,
+  "id": "podcast-auto-ingestion-idudes",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ai.thirdeyediagnostics.com"
+  }
+}

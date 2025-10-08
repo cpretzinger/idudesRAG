@@ -13,12 +13,18 @@ CREATE SCHEMA IF NOT EXISTS core;
 CREATE TABLE core.documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     filename VARCHAR(255) NOT NULL,                    -- Required by workflow
-    spaces_url TEXT NOT NULL,                          -- Required by workflow  
+    spaces_url TEXT NOT NULL,                          -- Required by workflow
     content TEXT NOT NULL,                             -- The actual document text
     file_size BIGINT,                                  -- File size in bytes
     file_type VARCHAR(50),                             -- MIME type or extension
     upload_date TIMESTAMP DEFAULT NOW(),
     metadata JSONB DEFAULT '{}'::jsonb,                -- Flexible metadata storage
+    
+    -- Transcript-specific fields (added 2025-10-08)
+    document_type VARCHAR(50) DEFAULT 'document' NOT NULL,  -- 'document' or 'transcript'
+    language VARCHAR(10) DEFAULT 'en' NOT NULL,             -- ISO 639-1 language code
+    episode_id VARCHAR(255),                                -- Links transcripts to podcast episodes
+    
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -60,6 +66,12 @@ CREATE INDEX idx_documents_filename ON core.documents(filename);
 CREATE INDEX idx_documents_file_type ON core.documents(file_type);
 CREATE INDEX idx_documents_upload_date ON core.documents(upload_date DESC);
 
+-- Transcript-specific indexes (added 2025-10-08)
+CREATE INDEX idx_documents_document_type ON core.documents(document_type);
+CREATE INDEX idx_documents_episode_id ON core.documents(episode_id) WHERE episode_id IS NOT NULL;
+CREATE INDEX idx_documents_type_episode ON core.documents(document_type, episode_id) WHERE document_type = 'transcript';
+CREATE INDEX idx_documents_language ON core.documents(language);
+
 -- 4. METADATA INDEXING for advanced filtering
 -- GIN index for JSONB metadata queries
 CREATE INDEX idx_documents_metadata_gin ON core.documents USING gin(metadata);
@@ -80,11 +92,13 @@ CREATE INDEX idx_documents_filename_trgm ON core.documents
 -- 6. CONSTRAINTS AND SECURITY
 
 -- Check constraints for data validation
-ALTER TABLE core.documents 
+ALTER TABLE core.documents
     ADD CONSTRAINT chk_filename_not_empty CHECK (filename != ''),
     ADD CONSTRAINT chk_spaces_url_not_empty CHECK (spaces_url != ''),
     ADD CONSTRAINT chk_content_not_empty CHECK (content != ''),
-    ADD CONSTRAINT chk_file_size_positive CHECK (file_size IS NULL OR file_size >= 0);
+    ADD CONSTRAINT chk_file_size_positive CHECK (file_size IS NULL OR file_size >= 0),
+    ADD CONSTRAINT chk_document_type CHECK (document_type IN ('document', 'transcript')),
+    ADD CONSTRAINT chk_language_format CHECK (language ~ '^[a-z]{2}$');
 
 ALTER TABLE core.document_embeddings 
     ADD CONSTRAINT chk_chunk_text_not_empty CHECK (chunk_text != ''),

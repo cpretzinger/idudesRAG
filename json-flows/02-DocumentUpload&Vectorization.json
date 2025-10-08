@@ -68,9 +68,10 @@
     },
     {
       "parameters": {
-        "chunkSize": 10000,
         "chunkOverlap": 200,
-        "options": {}
+        "options": {
+          "splitCode": "markdown"
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
@@ -126,29 +127,6 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO core.documents (filename, content, file_size, file_type, metadata, created_at, updated_at, is_cleaned, cleaned_at)\nSELECT\n  (j->'metadata'->>'filename')::text,\n  (j->>'cleanedContent')::text,\n  COALESCE(NULLIF(j->'metadata'->>'file_size','')::bigint, 0),\n  (j->'metadata'->>'file_type')::text,\n  COALESCE((j->'metadata')::jsonb, '{}'::jsonb),\n  NOW() AT TIME ZONE 'America/Phoenix',\n  NOW() AT TIME ZONE 'America/Phoenix',\n  true,\n  NOW() AT TIME ZONE 'America/Phoenix'\nFROM (SELECT $1::jsonb AS j) payload\nON CONFLICT (filename)\nDO UPDATE SET\n  content = EXCLUDED.content,\n  file_size = EXCLUDED.file_size,\n  file_type = EXCLUDED.file_type,\n  metadata = EXCLUDED.metadata,\n  updated_at = NOW() AT TIME ZONE 'America/Phoenix',\n  is_cleaned = true,\n  cleaned_at = NOW() AT TIME ZONE 'America/Phoenix'\nRETURNING id, filename, created_at, updated_at;",
-        "options": {
-          "queryReplacement": "={{ JSON.stringify($json) }}"
-        }
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        448,
-        -352
-      ],
-      "id": "3f1777d2-bb9f-4332-8dd6-32860584248f",
-      "name": "Execute a SQL query",
-      "credentials": {
-        "postgres": {
-          "id": "jd4YBgZXwugV4pZz",
-          "name": "RailwayPG-idudes"
-        }
-      }
-    },
-    {
-      "parameters": {
         "jsCode": "const input = $input.first();\nlet content = '';\nlet filename = 'unknown';\nlet file_type = 'text/plain';\nlet file_size = 0;\nlet source = 'idudesRAG-upload';\n\n// Extract metadata from webhook BODY\nif (input.json.body?.filename) filename = input.json.body.filename;\nif (input.json.body?.type) file_type = input.json.body.type;\nif (input.json.body?.size) file_size = parseInt(input.json.body.size);\nif (input.json.body?.source) source = input.json.body.source;\n\n// Extract and DECODE content from body\nif (input.json.body?.content) {\n  content = input.json.body.content;\n  // DECODE if base64 encoded\n  if (content && /^[A-Za-z0-9+/=]+$/.test(content) && content.length > 50) {\n    try {\n      content = Buffer.from(content, 'base64').toString('utf-8');\n    } catch (e) {\n      // Not base64, keep original\n    }\n  }\n}\n\nreturn [{\n  json: {\n    pageContent: content,\n    metadata: {\n      filename: filename,\n      file_type: file_type,\n      file_size: file_size || content.length,\n      source: source,\n      timestamp: new Date().toISOString(),\n      upload_source: 'webhook'\n    }\n  }\n}];\n"
       },
       "id": "324fe44a-33ed-4932-a4eb-f6d6391a11e1",
@@ -192,7 +170,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// n8n Code node: map/normalize doc → PGVector-ready\n\n// --- helpers ---\nconst toInt = (v) => {\n  if (v === null || v === undefined) return 0;\n  const n = parseInt(String(v), 10);\n  return Number.isNaN(n) ? 0 : n;\n};\n\nconst asIso = (v) => {\n  try {\n    if (!v) return new Date().toISOString();\n    const d = new Date(v);\n    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();\n  } catch {\n    return new Date().toISOString();\n  }\n};\n\nconst isUuid = (v) =>\n  typeof v === 'string' &&\n  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);\n\n// try to read DB id from the SQL node; safe if missing\nlet dbId;\ntry {\n  dbId = $('Execute a SQL query2').first().json?.id;\n} catch (_) {\n  dbId = undefined;\n}\n\n// accept current items or fall back to PrepDoc\nlet raw = $input.all().map(i => i.json);\nif (raw.length === 0) {\n  try {\n    const p = $('PrepDoc2').first().json;\n    if (p) raw = [p];\n  } catch (_) {}\n}\n\nconst out = [];\n\nfor (const doc of raw) {\n  const md = doc?.metadata ?? {};\n  const pageContent = String(doc?.pageContent ?? '');\n\n  // choose document_id priority: DB id → existing metadata\n  let document_id = dbId ?? md.document_id;\n  if (!isUuid(document_id)) document_id = undefined; // or throw if you want to hard-fail\n\n  const mapped = {\n    pageContent,\n    metadata: {\n      filename: md.filename ?? 'unknown',\n      file_type: md.file_type ?? 'text/plain',\n      file_size: toInt(md.file_size ?? pageContent.length),\n      source: md.source ?? 'idudesRAG-upload',\n      timestamp: asIso(md.timestamp),\n      upload_source: md.upload_source ?? 'webhook',\n      ...(document_id ? { document_id } : {})\n    }\n  };\n\n  out.push({ json: mapped });\n}\n\nconsole.log('Mapped docs →', JSON.stringify(out.map(i => i.json), null, 2));\nreturn out;"
+        "jsCode": "// n8n Code node: map/normalize doc → PGVector-ready\n\n// --- helpers ---\nconst toInt = (v) => {\n  if (v === null || v === undefined) return 0;\n  const n = parseInt(String(v), 10);\n  return Number.isNaN(n) ? 0 : n;\n};\n\nconst asIso = (v) => {\n  try {\n    if (!v) return new Date().toISOString();\n    const d = new Date(v);\n    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();\n  } catch {\n    return new Date().toISOString();\n  }\n};\n\nconst isUuid = (v) =>\n  typeof v === 'string' &&\n  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);\n\n// try to read DB id from the SQL node; safe if missing\nlet dbId;\ntry {\n  dbId = $('Execute a SQL query').first().json?.id;\n} catch (_) {\n  dbId = undefined;\n}\n\n// accept current items or fall back to PrepDoc\nlet raw = $input.all().map(i => i.json);\nif (raw.length === 0) {\n  try {\n    const p = $('PrepDoc2').first().json;\n    if (p) raw = [p];\n  } catch (_) {}\n}\n\nconst out = [];\n\nfor (const doc of raw) {\n  const md = doc?.metadata ?? {};\n  const pageContent = String(doc?.pageContent ?? '');\n\n  // choose document_id priority: DB id → existing metadata\n  let document_id = dbId ?? md.document_id;\n  if (!isUuid(document_id)) document_id = undefined; // or throw if you want to hard-fail\n\n  const mapped = {\n    pageContent,\n    metadata: {\n      filename: md.filename ?? 'unknown',\n      file_type: md.file_type ?? 'text/plain',\n      file_size: toInt(md.file_size ?? pageContent.length),\n      source: md.source ?? 'idudesRAG-upload',\n      timestamp: asIso(md.timestamp),\n      upload_source: md.upload_source ?? 'webhook',\n      ...(document_id ? { document_id } : {})\n    }\n  };\n\n  out.push({ json: mapped });\n}\n\nconsole.log('Mapped docs →', JSON.stringify(out.map(i => i.json), null, 2));\nreturn out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -239,6 +217,29 @@
       ],
       "id": "9e3658a1-6f58-445b-a589-9fde2e249d14",
       "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.documents (filename, content, file_size, file_type, metadata, created_at, updated_at, is_cleaned, cleaned_at)\nSELECT\n  (j->'metadata'->>'filename')::text,\n  (j->>'cleanedContent')::text,\n  COALESCE(NULLIF(j->'metadata'->>'file_size','')::bigint, 0),\n  (j->'metadata'->>'file_type')::text,\n  COALESCE((j->'metadata')::jsonb, '{}'::jsonb),\n  NOW() AT TIME ZONE 'America/Phoenix',\n  NOW() AT TIME ZONE 'America/Phoenix',\n  true,\n  NOW() AT TIME ZONE 'America/Phoenix'\nFROM (SELECT $1::jsonb AS j) payload\nON CONFLICT (filename)\nDO UPDATE SET\n  content = EXCLUDED.content,\n  file_size = EXCLUDED.file_size,\n  file_type = EXCLUDED.file_type,\n  metadata = EXCLUDED.metadata,\n  updated_at = NOW() AT TIME ZONE 'America/Phoenix',\n  is_cleaned = true,\n  cleaned_at = NOW() AT TIME ZONE 'America/Phoenix'\nRETURNING id, filename, created_at, updated_at;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        -352
+      ],
+      "id": "3f1777d2-bb9f-4332-8dd6-32860584248f",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
     }
   ],
   "connections": {
@@ -297,17 +298,6 @@
         ]
       ]
     },
-    "Execute a SQL query": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "PrepDoc": {
       "main": [
         [
@@ -357,6 +347,17 @@
         [
           {
             "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }

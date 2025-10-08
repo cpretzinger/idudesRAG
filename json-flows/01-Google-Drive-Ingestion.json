@@ -18,13 +18,13 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -32,
+        176,
         1616
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "agQVZargPko1jDSc",
-          "name": "craig@theidudes.com"
+          "id": "sNrkL8ur5PNmnZ37",
+          "name": "Google Drive account"
         }
       }
     },
@@ -35,7 +35,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -256,
+        -48,
         1616
       ],
       "id": "88abcbc7-57da-468b-aca7-42eeeb83d5fe",
@@ -48,7 +48,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1760,
+        1968,
         1568
       ],
       "id": "2f442375-a161-4b28-85e2-d85461899d9d",
@@ -97,7 +97,7 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1.1,
       "position": [
-        2048,
+        2256,
         1840
       ],
       "id": "d9c619bc-efad-46f0-8660-df21ad97f638",
@@ -105,7 +105,6 @@
     },
     {
       "parameters": {
-        "chunkSize": 10000,
         "chunkOverlap": 200,
         "options": {
           "splitCode": "markdown"
@@ -114,7 +113,7 @@
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
       "position": [
-        2128,
+        2336,
         2048
       ],
       "id": "68db66fa-5983-48b8-b963-5993a1a70a8c",
@@ -130,7 +129,7 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        1920,
+        2128,
         1840
       ],
       "id": "1a93cefb-4083-48ef-9050-259af7a631f2",
@@ -152,7 +151,7 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
       "typeVersion": 1.3,
       "position": [
-        1952,
+        2160,
         1616
       ],
       "id": "d4e23438-95f6-4376-bd17-266f860837c0",
@@ -171,7 +170,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2656,
+        2864,
         1712
       ],
       "id": "63e69b9e-b80a-4828-a6e1-d7cf09ee479e",
@@ -185,7 +184,7 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        192,
+        400,
         1616
       ],
       "id": "f94d141f-63a9-416d-a6cd-fa120af06b3c",
@@ -198,7 +197,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        416,
+        624,
         1616
       ],
       "id": "651c5e41-b292-4062-96a6-876d5930ee58",
@@ -215,7 +214,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        640,
+        848,
         1616
       ],
       "id": "1b752627-f94d-4d15-a2b0-9de39384dc9e",
@@ -255,7 +254,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1216,
+        1424,
         1600
       ],
       "id": "8c74a2d4-f1ff-4601-b175-8eee08b6f762",
@@ -270,7 +269,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1056,
+        1264,
         1616
       ],
       "id": "9a56cbf4-13f7-44f6-8c05-6067220345c4",
@@ -289,7 +288,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        848,
+        1056,
         1616
       ],
       "id": "3742b1cb-f348-4c0f-b8e3-64ffc9136b73",
@@ -304,7 +303,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1456,
+        1664,
         1456
       ],
       "id": "5130557e-7ec0-4d7e-9676-33139e471430",
@@ -325,7 +324,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1584,
+        1792,
         1328
       ],
       "id": "59a23e0f-6c9d-472f-a956-18fba88e2dc1",
@@ -380,10 +379,24 @@
       "name": "Search files and folders",
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "agQVZargPko1jDSc",
-          "name": "craig@theidudes.com"
+          "id": "dTgRp8bDoDKMZj7e",
+          "name": "idudesRag2"
         }
       }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -320,
+        1600
+      ],
+      "id": "e8a24cbe-ed08-4139-aae0-421c23b1221a",
+      "name": "Wait",
+      "webhookId": "9fc4e41c-c5c7-4646-9e10-34411e67b48b"
     }
   ],
   "connections": {
@@ -565,6 +578,17 @@
       ]
     },
     "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
       "main": [
         [
           {

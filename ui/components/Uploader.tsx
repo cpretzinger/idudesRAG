@@ -17,7 +17,7 @@ export default function Uploader() {
       const buffer = Buffer.from(bytes)
       const base64 = buffer.toString('base64')
 
-      const res = await fetch('/webhook/documents', {
+      const res = await fetch('/api/webhook/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

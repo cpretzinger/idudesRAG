@@ -3,6 +3,7 @@
 
 # Stage 1: Dependencies
 FROM node:22-alpine AS deps
+RUN npm install -g npm@11.6.1
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -15,6 +16,7 @@ RUN pnpm install --frozen-lockfile
 
 # Stage 2: Builder
 FROM node:22-alpine AS builder
+RUN npm install -g npm@11.6.1
 WORKDIR /app
 
 # Install pnpm
@@ -30,6 +32,7 @@ RUN pnpm run build
 
 # Stage 3: Runner
 FROM node:22-alpine AS runner
+RUN npm install -g npm@11.6.1
 WORKDIR /app
 
 ENV NODE_ENV production

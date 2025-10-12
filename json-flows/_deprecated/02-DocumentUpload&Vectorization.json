@@ -1,0 +1,289 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest",
+        "responseMode": "lastNode",
+        "options": {
+          "allowedOrigins": "*",
+          "ignoreBots": true,
+          "responseContentType": "application/json"
+        }
+      },
+      "id": "webhook-start",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-400, 0],
+      "webhookId": "universal-rag-ingest"
+    },
+    {
+      "parameters": {
+        "jsCode": "// DECODE & EXTRACT FILE CONTENT\nconst body = $input.first().json.body || {};\nconst headers = $input.first().json.headers || {};\n\n// Extract metadata\nconst filename = body.filename || body.name || 'unknown.txt';\nconst mimeType = body.type || body.mimeType || headers['content-type'] || 'text/plain';\nconst source = body.source || 'webhook-upload';\n\n// Handle content (base64 or raw)\nlet content = body.content || body.data || '';\n\n// Decode if base64\nif (content && /^[A-Za-z0-9+/=]+$/.test(content) && content.length > 50) {\n  try {\n    content = Buffer.from(content, 'base64').toString('utf-8');\n  } catch (e) {\n    // Keep original if decode fails\n  }\n}\n\nif (!content || content.trim().length === 0) {\n  throw new Error('❌ No content provided');\n}\n\nconsole.log(`✅ Decoded ${filename} (${content.length} chars)`);\n\nreturn [{\n  json: {\n    content: content,\n    filename: filename,\n    mimeType: mimeType,\n    fileSize: content.length,\n    source: source,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "decode-file",
+      "name": "DecodeFile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.documents (\n  filename, content, file_size, file_type, \n  metadata, document_type, language, \n  created_at, updated_at\n) VALUES (\n  $1::text,\n  $2::text,\n  $3::bigint,\n  $4::text,\n  $5::jsonb,\n  'document',\n  'en',\n  NOW(),\n  NOW()\n)\nON CONFLICT (filename) \nDO UPDATE SET\n  content = EXCLUDED.content,\n  file_size = EXCLUDED.file_size,\n  file_type = EXCLUDED.file_type,\n  metadata = EXCLUDED.metadata,\n  updated_at = NOW()\nRETURNING id, filename, created_at, updated_at;",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.filename,\n  $json.content,\n  $json.fileSize,\n  $json.mimeType,\n  JSON.stringify({\n    source: $json.source,\n    timestamp: $json.timestamp,\n    original_size: $json.fileSize\n  })\n] }}"
+        }
+      },
+      "id": "upsert-doc",
+      "name": "UpsertDoc",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [0, 0],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// CALCULATE CONTENT HASH\nconst crypto = require('crypto');\nconst docId = $('UpsertDoc').first().json.id;\nconst content = $('DecodeFile').first().json.content;\n\nif (!docId || !content) {\n  throw new Error('❌ Missing document ID or content');\n}\n\nconst hash = crypto\n  .createHash('sha256')\n  .update(content.normalize('NFC'), 'utf8')\n  .digest('hex');\n\nconsole.log(`✅ Hash: ${hash.substring(0, 12)}...`);\n\nreturn [{\n  json: {\n    document_id: docId,\n    content_hash: hash,\n    content: content\n  }\n}];"
+      },
+      "id": "calc-hash",
+      "name": "CalcHash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT metadata->>'content_hash' AS prev_hash FROM core.documents WHERE id = $1::uuid;",
+        "options": {
+          "queryReplacement": "={{ [$('CalcHash').first().json.document_id] }}"
+        }
+      },
+      "id": "get-prev-hash",
+      "name": "GetPrevHash",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [200, 150],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "changed",
+              "leftValue": "={{ $('CalcHash').first().json.content_hash !== ($('GetPrevHash').first().json.prev_hash || '') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-changed",
+      "name": "IfChanged",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM core.document_embeddings WHERE document_id = $1::uuid;",
+        "options": {
+          "queryReplacement": "={{ [$('CalcHash').first().json.document_id] }}"
+        }
+      },
+      "id": "delete-old",
+      "name": "DeleteOldEmbeddings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [600, -50],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.documents \nSET metadata = metadata || jsonb_build_object('content_hash', $2) \nWHERE id = $1::uuid;",
+        "options": {
+          "queryReplacement": "={{ [\n  $('CalcHash').first().json.document_id,\n  $('CalcHash').first().json.content_hash\n] }}"
+        }
+      },
+      "id": "update-hash",
+      "name": "UpdateHash",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [600, 50],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// SMART CHUNKING - Optimized for semantic coherence\nconst calc = $('CalcHash').first().json;\nconst docFile = $('DecodeFile').first().json;\nconst docDb = $('UpsertDoc').first().json;\n\nconst raw = String(calc.content)\n  .replace(/\\r\\n/g, '\\n')\n  .replace(/\\u0000/g, '')\n  .normalize('NFC');\n\nconst docId = calc.document_id;\n\n// Metadata base\nconst meta = {\n  filename: docFile.filename,\n  file_type: docFile.mimeType,\n  file_size: docFile.fileSize,\n  source: docFile.source,\n  timestamp: docFile.timestamp,\n  content_hash: calc.content_hash,\n  document_id: docId\n};\n\n// Chunk settings\nconst CHUNK_SIZE = 900;\nconst OVERLAP = 150;\n\nconst chunks = [];\nlet start = 0;\nlet idx = 0;\n\nwhile (start < raw.length) {\n  let end = Math.min(start + CHUNK_SIZE, raw.length);\n  \n  // Find natural break point\n  if (end < raw.length) {\n    const window = raw.slice(start, end);\n    const breaks = [\n      window.lastIndexOf('\\n\\n'),  // Paragraph\n      window.lastIndexOf('\\n'),    // Line\n      window.lastIndexOf('. '),    // Sentence\n      window.lastIndexOf('! '),\n      window.lastIndexOf('? ')\n    ];\n    \n    const bestBreak = Math.max(...breaks);\n    if (bestBreak > CHUNK_SIZE * 0.5) {\n      end = start + bestBreak + 1;\n    }\n  }\n  \n  const text = raw.slice(start, end).trim();\n  \n  if (text.length > 0) {\n    chunks.push({\n      json: {\n        text: text,\n        chunk_index: idx,\n        chunk_size: text.length,\n        metadata: { ...meta, chunk_index: idx }\n      }\n    });\n    idx++;\n  }\n  \n  if (end >= raw.length) break;\n  start = Math.max(0, end - OVERLAP);\n}\n\nconsole.log(`✅ Created ${chunks.length} chunks`);\nreturn chunks;"
+      },
+      "id": "chunk-content",
+      "name": "SmartChunk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "split-batch",
+      "name": "SplitBatch",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"model\": \"text-embedding-3-small\",\n  \"input\": $json.text,\n  \"dimensions\": 1536\n} }}",
+        "options": {}
+      },
+      "id": "embed",
+      "name": "GetEmbedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0],
+      "credentials": {
+        "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
+          "name": "ZARAapiKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// EXTRACT & FORMAT EMBEDDING\nconst resp = $input.first().json;\nconst chunk = $('SplitBatch').item.json;\n\nconst emb = resp?.data?.[0]?.embedding;\nif (!emb || !Array.isArray(emb) || emb.length !== 1536) {\n  throw new Error('❌ Invalid embedding response');\n}\n\nconsole.log(`✅ Embedded chunk ${chunk.chunk_index}`);\n\nreturn {\n  json: {\n    document_id: chunk.metadata.document_id,\n    chunk_index: chunk.chunk_index,\n    text: chunk.text,\n    chunk_size: chunk.chunk_size,\n    embedding: emb,\n    metadata: chunk.metadata\n  }\n};"
+      },
+      "id": "extract-emb",
+      "name": "ExtractEmbedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.document_embeddings (\n  document_id, chunk_index, text, \n  embedding, chunk_size, metadata\n) VALUES (\n  $1::uuid,\n  $2::integer,\n  $3::text,\n  $4::vector(1536),\n  $5::integer,\n  $6::jsonb\n);",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.document_id,\n  $json.chunk_index,\n  $json.text,\n  JSON.stringify($json.embedding),\n  $json.chunk_size,\n  JSON.stringify($json.metadata)\n] }}"
+        }
+      },
+      "id": "insert-emb",
+      "name": "InsertEmbedding",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1600, 0],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// LOOP CONTROL\nconsole.log(`✅ Chunk ${$json.chunk_index} inserted`);\nreturn $input.all();"
+      },
+      "id": "loop",
+      "name": "Loop",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"success\",\n  \"document_id\": $('CalcHash').first().json.document_id,\n  \"filename\": $('DecodeFile').first().json.filename,\n  \"chunks_created\": $('SmartChunk').all().length,\n  \"content_changed\": $('CalcHash').first().json.content_hash !== ($('GetPrevHash').first().json.prev_hash || ''),\n  \"processing_time_ms\": $workflow.duration\n} }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2000, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "DecodeFile", "type": "main", "index": 0}]]
+    },
+    "DecodeFile": {
+      "main": [[{"node": "UpsertDoc", "type": "main", "index": 0}]]
+    },
+    "UpsertDoc": {
+      "main": [[{"node": "CalcHash", "type": "main", "index": 0}]]
+    },
+    "CalcHash": {
+      "main": [[{"node": "GetPrevHash", "type": "main", "index": 0}]]
+    },
+    "GetPrevHash": {
+      "main": [[{"node": "IfChanged", "type": "main", "index": 0}]]
+    },
+    "IfChanged": {
+      "main": [[{"node": "DeleteOldEmbeddings", "type": "main", "index": 0}]]
+    },
+    "DeleteOldEmbeddings": {
+      "main": [[{"node": "UpdateHash", "type": "main", "index": 0}]]
+    },
+    "UpdateHash": {
+      "main": [[{"node": "SmartChunk", "type": "main", "index": 0}]]
+    },
+    "SmartChunk": {
+      "main": [[{"node": "SplitBatch", "type": "main", "index": 0}]]
+    },
+    "SplitBatch": {
+      "main": [[], [{"node": "GetEmbedding", "type": "main", "index": 0}]]
+    },
+    "GetEmbedding": {
+      "main": [[{"node": "ExtractEmbedding", "type": "main", "index": 0}]]
+    },
+    "ExtractEmbedding": {
+      "main": [[{"node": "InsertEmbedding", "type": "main", "index": 0}]]
+    },
+    "InsertEmbedding": {
+      "main": [[{"node": "Loop", "type": "main", "index": 0}]]
+    },
+    "Loop": {
+      "main": [[{"node": "SplitBatch", "type": "main", "index": 0}]]
+    },
+    "SplitBatch": {
+      "main": [[{"node": "Respond", "type": "main", "index": 0}]]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD='d7ToQHAA7VecTKi2DxFgNxtlj~xN_HnD' psql:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

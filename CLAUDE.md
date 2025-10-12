@@ -15,21 +15,11 @@
 ### Database & Infrastructure
 ```bash
 # Primary Database (PostgreSQL with pgvector)
-DATABASE_URL=postgresql://postgres:password@localhost:5432/idudesrag
+RAILWAY_PGVECTOR_URL=postgres://postgres:d7ToQHAA7VecTKi2DxFgNxtlj~xN_HnD@yamabiko.proxy.rlwy.net:15649/railway
 
-# Vector Database
-QDRANT_URL=http://localhost:6333
-
-# Digital Ocean Spaces (Document Storage)
-SPACES_ACCESS_KEY=[SPACES_ACCESS_KEY]
-SPACES_SECRET_KEY=[SPACES_SECRET_KEY]
-SPACES_BUCKET=[SPACES_BUCKET]
-SPACES_REGION=[SPACES_REGION]
-SPACES_ENDPOINT=[SPACES_ENDPOINT]
-SPACES_CDN_URL=[SPACES_CDN_URL]
 
 # AI Services
-OPENAI_API_KEY=[OPENAI_API_KEY]
+OPENAI_API_KEY=
 
 # n8n Integration
 NEXT_PUBLIC_N8N_URL=[N8N_URL]

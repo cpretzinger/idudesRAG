@@ -1,0 +1,808 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {
+          "binaryPropertyName": "data",
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "text/plain"
+            }
+          }
+        }
+      },
+      "id": "3fc75970-9b7d-47d8-a282-d2fb43a5da6a",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        112,
+        1568
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OtvrT7x8YG4Mrx7n",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// SET ARIZONA TIME - Place this Code node at the start of workflow\n// Sets current time in America/Phoenix timezone for consistent timestamps\n\nconst now = new Date();\n\n// Convert to Arizona/Phoenix time (MST - no DST)\nconst arizonaTime = new Date(now.toLocaleString('en-US', { \n  timeZone: 'America/Phoenix' \n}));\n\n// Format as ISO string for consistency\nconst arizonaISO = arizonaTime.toISOString();\n\n// Create formatted date/time strings\nconst formatted = {\n  iso: arizonaISO,\n  date: arizonaTime.toLocaleDateString('en-US', { timeZone: 'America/Phoenix' }),\n  time: arizonaTime.toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' }),\n  datetime: arizonaTime.toLocaleString('en-US', { timeZone: 'America/Phoenix' }),\n  year: arizonaTime.getFullYear(),\n  month: arizonaTime.getMonth() + 1,\n  day: arizonaTime.getDate(),\n  hour: arizonaTime.getHours(),\n  minute: arizonaTime.getMinutes(),\n  second: arizonaTime.getSeconds(),\n  timestamp: arizonaTime.getTime(),\n  timezone: 'America/Phoenix',\n  offset: 'MST (UTC-7)'\n};\n\n// Log for debugging\nconsole.log('Arizona Time Set:', formatted.datetime);\nconsole.log('ISO Format:', formatted.iso);\n\n// Pass through original input data with arizona_time added\nconst input = $input.first().json;\n\nreturn [{\n  json: {\n    ...input,\n    arizona_time: formatted\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        1568
+      ],
+      "id": "88abcbc7-57da-468b-aca7-42eeeb83d5fe",
+      "name": "setTime"
+    },
+    {
+      "parameters": {
+        "jsCode": "const extractData = $('extractText').first().json;\n  const sqlResult = $('upsertToDB').first().json;\n\n  // Get document_id from SQL insert\n  const dbId = sqlResult.id;\n\n  // Get all input items (multiple chunks from Text Splitter)\n  const raw = $input.all().map(i => i.json);\n\n  const out = [];\n\n  for (let idx = 0; idx < raw.length; idx++) {\n    const doc = raw[idx];\n\n    out.push({\n      json: {\n        pageContent: doc.pageContent || extractData.pageContent,\n        metadata: {\n          filename: extractData.metadata.filename,\n          file_type: extractData.metadata.file_type,\n          file_size: extractData.metadata.file_size,\n          source: extractData.metadata.source,\n          timestamp: extractData.metadata.timestamp,\n          upload_source: extractData.metadata.upload_source,\n          drive_file_id: extractData.metadata.drive_file_id,\n          document_id: dbId,\n          chunk_index: idx\n        }\n      }\n    });\n  }\n\n  return out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        1568
+      ],
+      "id": "2f442375-a161-4b28-85e2-d85461899d9d",
+      "name": "map1"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.pageContent || $json }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "filename",
+                "value": "={{ $('Calculate Hash').first().json.metadata.filename }}"
+              },
+              {
+                "name": "file_type",
+                "value": "={{ $('Calculate Hash').first().json.metadata.file_type }}"
+              },
+              {
+                "name": "file_size",
+                "value": "={{ $('Calculate Hash').first().json.metadata.file_size }}"
+              },
+              {
+                "name": "timestamp",
+                "value": "={{ $('Calculate Hash').first().json.metadata.timestamp }}"
+              },
+              {
+                "name": "document_id",
+                "value": "={{ $('Calculate Hash').first().json.document_id }}"
+              },
+              {
+                "name": "drive_file_id",
+                "value": "={{ $('Calculate Hash').first().json.metadata.drive_file_id }}"
+              },
+              {
+                "name": "document_type",
+                "value": "={{ $('Calculate Hash').first().json.metadata.document_type || \"document\" }}"
+              },
+              {
+                "name": "language",
+                "value": "={{ $('Calculate Hash').first().json.metadata.language || \"en\" }}"
+              },
+              {
+                "name": "episode_id",
+                "value": "={{ $('Calculate Hash').first().json.metadata.episode_id || 1001 }}"
+              },
+              {
+                "name": "source",
+                "value": "={{ $('Calculate Hash').first().json.metadata.source }}"
+              },
+              {
+                "name": "chunk_index",
+                "value": "={{ $itemIndex }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        3520,
+        1776
+      ],
+      "id": "d9c619bc-efad-46f0-8660-df21ad97f638",
+      "name": "DocLoader1"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 200,
+        "options": {
+          "splitCode": "markdown"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        1984
+      ],
+      "id": "68db66fa-5983-48b8-b963-5993a1a70a8c",
+      "name": "Text Splitter1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 1536,
+          "batchSize": 120
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3392,
+        1776
+      ],
+      "id": "1a93cefb-4083-48ef-9050-259af7a631f2",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
+          "name": "ZARAapiKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "core.document_embeddings",
+        "embeddingBatchSize": 120,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        3424,
+        1552
+      ],
+      "id": "d4e23438-95f6-4376-bd17-266f860837c0",
+      "name": "PGVector Store1",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// FINAL VERSION - CLOSE DB CONNECTIONS NODE FOR n8n\n// Copy this entire code into a Code node (JavaScript) at the end of your workflow\n// This version works without external modules\n\n// 1. Clean up any global connection objects\nconst globalCleanup = () => {\n  const targets = ['pgPool', 'pgClient', 'dbConn', 'redisClient'];\n  let cleaned = 0;\n\n  targets.forEach(name => {\n    if (global[name]) {\n      try {\n        delete global[name];\n        cleaned++;\n      } catch (e) {\n        // Silent fail\n      }\n    }\n  });\n\n  return cleaned;\n};\n\n// 2. Generate cleanup report\nconst generateReport = (cleaned) => {\n  return {\n    workflow: $workflow.name || 'Unknown',\n    workflowId: $workflow.id,\n    execution: $execution.id,\n    timestamp: new Date().toISOString(),\n    connectionsCleared: cleaned,\n    status: 'success'\n  };\n};\n\n// 3. Execute cleanup\nconst cleaned = globalCleanup();\nconst report = generateReport(cleaned);\n\n// 4. Log the results\nconsole.log('🧹 Cleanup Complete:', JSON.stringify(report, null, 2));\n\n// 5. Pass through the data with cleanup metadata\nreturn $input.all().map(item => ({\n  ...item,\n  json: {\n    ...item.json,\n    _cleanup: report\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3888,
+        1760
+      ],
+      "id": "63e69b9e-b80a-4828-a6e1-d7cf09ee479e",
+      "name": "Cleanup Connections1"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        336,
+        1568
+      ],
+      "id": "f94d141f-63a9-416d-a6cd-fa120af06b3c",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\n\n  // Extract text content from the Extract from File node\n  const content = item.json?.data || '';\n\n  // Get metadata from Download File node\n  const prevNode = $('Download File').first();\n\n  // Validate content\n  if (!content || content.trim().length === 0) {\n    throw new Error('No content extracted from file: ' + (prevNode.json?.name || 'unknown'));\n  }\n\n  const filename = prevNode.json?.name || 'unknown';\n  const file_type = prevNode.json?.mimeType || 'text/plain';\n  const file_size = prevNode.json?.size ? parseInt(prevNode.json.size) : content.length;\n  const drive_file_id = prevNode.json?.id || null;\n\n  return [{\n    json: {\n      pageContent: content,\n      metadata: {\n        filename: filename,\n        file_type: file_type,\n        file_size: file_size,\n        source: 'google_drive',\n        timestamp: new Date().toISOString(),\n        upload_source: 'google_drive',\n        drive_file_id: drive_file_id\n      }\n    }\n  }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        1568
+      ],
+      "id": "651c5e41-b292-4062-96a6-876d5930ee58",
+      "name": "extractText"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.documents (filename, content, file_size, file_type, metadata)\nSELECT\n  (j->'metadata'->>'filename')::text,\n  (j->>'pageContent')::text,\n  COALESCE(NULLIF(j->'metadata'->>'file_size','')::bigint, 0),\n  (j->'metadata'->>'file_type')::text,\n  COALESCE((j->'metadata')::jsonb, '{}'::jsonb)\nFROM (SELECT $1::jsonb AS j) payload\nON CONFLICT (filename)\nDO UPDATE SET\n  content = EXCLUDED.content,\n  file_size = EXCLUDED.file_size,\n  file_type = EXCLUDED.file_type,\n  metadata = EXCLUDED.metadata,\n  updated_at = NOW() AT TIME ZONE 'America/Phoenix'\nRETURNING id, filename, created_at, updated_at;\n",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        784,
+        1568
+      ],
+      "id": "1b752627-f94d-4d15-a2b0-9de39384dc9e",
+      "name": "upsertToDB",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "efb2e809-96e4-4608-bfc7-abc510c5b36a",
+              "leftValue": "={{ $json.hash }} === {{ $('Calculate Hash').item.json.content_hash }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1456,
+        1568
+      ],
+      "id": "8c74a2d4-f1ff-4601-b175-8eee08b6f762",
+      "name": "If:HasChange"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT metadata->>'content_hash' as hash\n  FROM core.documents\n  WHERE id = '{{ $json.document_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1232,
+        1568
+      ],
+      "id": "9a56cbf4-13f7-44f6-8c05-6067220345c4",
+      "name": "checkHash",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sqlResult = $input.first().json;\n  const extractData = $('extractText').first().json;\n\n  if (!extractData?.pageContent || extractData.pageContent.length === 0) {\n    throw new Error('Cannot vectorize empty document');\n  }\n\n  const crypto = require('crypto');\n  const normalizedContent = extractData.pageContent.normalize('NFC');\n  const contentHash = crypto.createHash('sha256')\n    .update(normalizedContent, 'utf8')\n    .digest('hex');\n\n  const wasUpdated = sqlResult.updated_at !== sqlResult.created_at;\n\n  return [{\n    json: {\n      document_id: sqlResult.id,\n      content_hash: contentHash,\n      was_updated: wasUpdated,\n      pageContent: extractData.pageContent,\n      metadata: extractData.metadata\n    }\n  }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        1568
+      ],
+      "id": "3742b1cb-f348-4c0f-b8e3-64ffc9136b73",
+      "name": "Calculate Hash"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM core.document_embeddings WHERE document_id = '{{ $('Calculate Hash').item.json.document_id \n  }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1680,
+        1568
+      ],
+      "id": "5130557e-7ec0-4d7e-9676-33139e471430",
+      "name": "deleteOldEmbedding",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": " UPDATE core.documents\n  SET metadata = metadata || jsonb_build_object('content_hash', '{{ $('Calculate Hash').item.json.content_hash }}')\n  WHERE id = '{{ $('Calculate Hash').item.json.document_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1904,
+        1568
+      ],
+      "id": "59a23e0f-6c9d-472f-a956-18fba88e2dc1",
+      "name": "UpdateHash",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -784,
+        1568
+      ],
+      "id": "931a947f-42df-4ac1-991b-0e22bfda25b5",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "0ADNv-WFOlNroUk9PVA",
+            "mode": "id"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -560,
+        1568
+      ],
+      "id": "c97a8026-9f31-484c-ab86-fd10ddf21bdc",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "agQVZargPko1jDSc",
+          "name": "craig@theidudes.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        4112,
+        1760
+      ],
+      "id": "ce8124dd-3c93-43ee-9bda-9333a938a243",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM core.document_embeddings\nWHERE document_id = $1;",
+        "options": {
+          "queryReplacement": "={{ [ $('Calculate Hash').first().json.document_id ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2576,
+        1568
+      ],
+      "id": "49b3061b-b7f4-4ff1-9404-2ed4c98b6a45",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten if json contains an array, then assign chunk_index = 0..N-1\n\nconst items = $input.all();\n\nfunction norm(raw) {\n  const j = (raw && typeof raw === 'object') ? raw : { pageContent: String(raw), metadata: {} };\n  const pageContent = (j.pageContent ?? j.text ?? j.content ?? '').toString();\n  const metadata = j.metadata ? { ...j.metadata } : {};\n  return { pageContent, metadata };\n}\n\nfunction explode(it) {\n  const j = it.json;\n  if (Array.isArray(j)) return j.map(norm);                 // case: json is array of chunks\n  if (j && Array.isArray(j.data)) return j.data.map(norm);  // case: json.data is array\n  if (j && Array.isArray(j.pageContent)) return j.pageContent.map(norm); // array of strings\n  return [norm(j)];                                         // single item\n}\n\n// 1) flatten to a plain list of chunks\nconst flat = items.flatMap(explode);\n\n// 2) assign 0..N-1\nlet i = 0;\nconst out = flat.map(ch => {\n  ch.metadata.chunk_index = i++;\n  return { json: ch };\n});\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        1568
+      ],
+      "id": "1fdcb7c7-08e3-41e6-8135-c10f6179fb7f",
+      "name": "forceChunk"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Send one dummy item to trigger PGVector once\nreturn [{ json: { ok: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        1568
+      ],
+      "id": "22fcc06d-700e-421c-8056-21147b29684c",
+      "name": "trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 1) Make sure the column exists\nALTER TABLE core.document_embeddings\n  ADD COLUMN IF NOT EXISTS chunk_index integer;\n\n-- 2) Trigger function: coerce/assign chunk_index BEFORE INSERT\nCREATE OR REPLACE FUNCTION core.coerce_chunk_index() RETURNS trigger AS $$\nDECLARE\n  from_line int;\n  meta_idx  int;\n  next_idx  int;\nBEGIN\n  -- Try to read splitter line number (DocLoader/TextSplitter puts this in metadata.loc.lines.from)\n  BEGIN\n    from_line := (NEW.metadata->'loc'->'lines'->>'from')::int;\n  EXCEPTION WHEN others THEN\n    from_line := NULL;\n  END;\n\n  -- Try to read any existing metadata.chunk_index\n  BEGIN\n    meta_idx := (NEW.metadata->>'chunk_index')::int;\n  EXCEPTION WHEN others THEN\n    meta_idx := NULL;\n  END;\n\n  -- If still null, compute the next index for this document_id\n  IF from_line IS NULL AND meta_idx IS NULL THEN\n    SELECT COALESCE(MAX(chunk_index) + 1, 0)\n      INTO next_idx\n      FROM core.document_embeddings\n     WHERE document_id = NEW.document_id;\n  END IF;\n\n  -- Final assignment: prefer loc.from-1, then metadata.chunk_index, then next_idx\n  NEW.chunk_index := COALESCE(from_line - 1, meta_idx, next_idx, 0);\n\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\n-- 3) Create the trigger\nDROP TRIGGER IF EXISTS trg_coerce_chunk_index ON core.document_embeddings;\nCREATE TRIGGER trg_coerce_chunk_index\nBEFORE INSERT ON core.document_embeddings\nFOR EACH ROW\nEXECUTE FUNCTION core.coerce_chunk_index();\n\n-- 4) Ensure uniqueness is on (document_id, chunk_index)\nDO $$\nBEGIN\n  IF NOT EXISTS (\n    SELECT 1 FROM pg_indexes\n     WHERE schemaname = 'core'\n       AND indexname  = 'uq_document_chunk_index'\n  ) THEN\n    CREATE UNIQUE INDEX uq_document_chunk_index\n      ON core.document_embeddings (document_id, chunk_index);\n  END IF;\nEND $$;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -784,
+        1792
+      ],
+      "id": "1f7beb01-8c4d-4d36-a2b0-19cffaf569ee",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Add chunk_index to each chunk's metadata\n  let i = 0;\n  const items = $input.all();\n\n  for (const item of items) {\n    // Add chunk_index to metadata\n    if (!item.json.metadata) {\n      item.json.metadata = {};\n    }\n    item.json.metadata.chunk_index = i;\n    i++;\n  }\n\n  console.log(`✅ Indexed ${i} chunks`);\n  return items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        1568
+      ],
+      "id": "72098874-8b59-43f1-8f1b-dd11f77f1a0a",
+      "name": "index"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "name": "Process One File At a Time",
+      "position": [
+        -336,
+        1568
+      ],
+      "id": "a7b3c4d5-e6f7-8901-2345-6789abcdef01"
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "name": "Rate Limit Protection",
+      "position": [
+        -112,
+        1792
+      ],
+      "id": "b8c4d5e6-f7a8-9012-3456-789abcdef012",
+      "webhookId": "c9d5e6f7-a8b9-0123-4567-89abcdef0123"
+    }
+  ],
+  "connections": {
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "setTime": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "map1": {
+      "main": [
+        [
+          {
+            "node": "forceChunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DocLoader1": {
+      "ai_document": [
+        [
+          {
+            "node": "PGVector Store1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Splitter1": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "DocLoader1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "PGVector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PGVector Store1": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Connections1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Connections1": {
+      "main": [
+        [
+          {
+            "node": "Process One File At a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "extractText",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extractText": {
+      "main": [
+        [
+          {
+            "node": "upsertToDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upsertToDB": {
+      "main": [
+        [
+          {
+            "node": "Calculate Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If:HasChange": {
+      "main": [
+        [],
+        [
+          {
+            "node": "deleteOldEmbedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkHash": {
+      "main": [
+        [
+          {
+            "node": "If:HasChange",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Hash": {
+      "main": [
+        [
+          {
+            "node": "checkHash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "deleteOldEmbedding": {
+      "main": [
+        [
+          {
+            "node": "UpdateHash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateHash": {
+      "main": [
+        [
+          {
+            "node": "map1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Process One File At a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One File At a Time": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rate Limit Protection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Protection": {
+      "main": [
+        [
+          {
+            "node": "setTime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "trigger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "forceChunk": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "trigger": {
+      "main": [
+        [
+          {
+            "node": "index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "index": {
+      "main": [
+        [
+          {
+            "node": "PGVector Store1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
+}

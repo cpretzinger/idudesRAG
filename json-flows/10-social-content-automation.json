@@ -1,0 +1,597 @@
+{
+  "name": "10 - Social Content Automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Get latest completed episode from file_status\nSELECT \n  fs.file_id,\n  fs.filename,\n  fs.created_at,\n  COUNT(e.id) as chunk_count\nFROM core.file_status fs\nLEFT JOIN core.embeddings e ON e.file_id = fs.file_id\nWHERE fs.status = 'completed'\n  AND fs.filename LIKE '%Episode%'\nGROUP BY fs.file_id, fs.filename, fs.created_at\nORDER BY fs.created_at DESC\nLIMIT 1;"
+      },
+      "name": "Get Latest Episode",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Get all episode content chunks for semantic search\nSELECT \n  id,\n  content,\n  metadata,\n  chunk_index\nFROM core.embeddings\nWHERE file_id = '{{ $json.file_id }}'\nORDER BY chunk_index ASC;"
+      },
+      "name": "Get Episode Chunks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all chunks into full episode content\nconst chunks = $input.all();\nconst episodeContent = chunks\n  .sort((a, b) => a.json.chunk_index - b.json.chunk_index)\n  .map(chunk => chunk.json.content)\n  .join('\\n\\n');\n\n// Extract episode metadata\nconst metadata = chunks[0].json.metadata || {};\nconst filename = $node[\"Get Latest Episode\"].json.filename;\n\n// Parse episode number from filename (e.g., \"Episode 754 - Title.txt\")\nconst episodeMatch = filename.match(/Episode\\s+(\\d+)/i);\nconst episodeNumber = episodeMatch ? episodeMatch[1] : 'Unknown';\n\nreturn {\n  episode_content: episodeContent,\n  episode_title: filename.replace('.txt', ''),\n  episode_number: episodeNumber,\n  file_id: $node[\"Get Latest Episode\"].json.file_id,\n  chunk_count: chunks.length\n};"
+      },
+      "name": "Combine Episode Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert content analyst for the Insurance Dudes podcast. Extract 15-20 distinct, actionable concepts from this episode.\n\nFor each concept, provide:\n1. **concept**: Brief 1-2 sentence description\n2. **category**: One of: sales_strategy, objection_handling, lead_gen, mindset, tech, case_study, industry_insight\n3. **actionability**: high, medium, or low\n4. **proof_type**: data, story, framework, or none\n5. **hook_potential**: Number 1-10 (how strong is the hook for social media)\n6. **platform_fit**: Best platform - instagram, facebook, linkedin, or all\n\nReturn ONLY valid JSON array with no markdown formatting."
+            },
+            {
+              "role": "user",
+              "content": "=Episode: {{ $json.episode_title }}\n\nContent:\n{{ $json.episode_content }}\n\nExtract 15-20 concepts as JSON array."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 2000
+        }
+      },
+      "name": "Extract Concepts (GPT-4o-mini)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response and score each concept\nconst response = $input.first().json.response;\nlet concepts = [];\n\ntry {\n  // Remove markdown code blocks if present\n  const cleanJson = response.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  concepts = JSON.parse(cleanJson);\n} catch (e) {\n  throw new Error('Failed to parse concepts JSON: ' + e.message);\n}\n\n// Scoring weights from rubric\nconst WEIGHTS = {\n  avatar_relevance: 0.35,\n  platform_fit: 0.25,\n  content_richness: 0.20,\n  virality_potential: 0.15,\n  craig_jason_energy: 0.05\n};\n\n// Score each concept\nconst scoredConcepts = concepts.map(concept => {\n  // Avatar relevance score (7-10 based on actionability + proof)\n  let avatarScore = 7;\n  if (concept.actionability === 'high') avatarScore += 2;\n  if (concept.proof_type !== 'none') avatarScore += 1;\n  \n  // Platform fit score (7-10 based on platform versatility)\n  let platformScore = concept.platform_fit === 'all' ? 10 : 8;\n  \n  // Content richness score (based on proof type)\n  let richnessScore = 7;\n  if (concept.proof_type === 'data' || concept.proof_type === 'story') richnessScore = 9;\n  if (concept.proof_type === 'framework') richnessScore = 8;\n  \n  // Virality potential (from hook_potential)\n  let viralityScore = concept.hook_potential || 7;\n  \n  // Craig/Jason energy (default medium)\n  let energyScore = 7;\n  \n  // Calculate weighted score\n  const weightedScore = (\n    avatarScore * WEIGHTS.avatar_relevance +\n    platformScore * WEIGHTS.platform_fit +\n    richnessScore * WEIGHTS.content_richness +\n    viralityScore * WEIGHTS.virality_potential +\n    energyScore * WEIGHTS.craig_jason_energy\n  );\n  \n  return {\n    ...concept,\n    scores: {\n      avatar_relevance: avatarScore,\n      platform_fit: platformScore,\n      content_richness: richnessScore,\n      virality_potential: viralityScore,\n      craig_jason_energy: energyScore,\n      weighted_total: Math.round(weightedScore * 100) / 100\n    }\n  };\n});\n\n// Sort by weighted score\nconst rankedConcepts = scoredConcepts.sort((a, b) => \n  b.scores.weighted_total - a.scores.weighted_total\n);\n\n// Take top 10 for 10-day campaign\nconst topConcepts = rankedConcepts.slice(0, 10);\n\nreturn topConcepts.map((concept, index) => ({\n  day_number: index + 1,\n  ...concept,\n  episode_title: $node[\"Combine Episode Content\"].json.episode_title,\n  episode_number: $node[\"Combine Episode Content\"].json.episode_number,\n  file_id: $node[\"Combine Episode Content\"].json.file_id\n}));"
+      },
+      "name": "Rank Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Through 10 Days",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate 3 semantic search queries for enrichment\nconst concept = $json.concept;\nconst category = $json.category;\n\n// Query strategies based on category\nconst queryTemplates = {\n  sales_strategy: [\n    `proven sales techniques for ${concept.substring(0, 50)}`,\n    `successful agent strategies similar to ${category}`,\n    `step-by-step framework for ${concept.substring(0, 40)}`\n  ],\n  lead_gen: [\n    `lead flow mechanics and ${concept.substring(0, 40)}`,\n    `Million Dollar Agency lead generation systems`,\n    `internet lead secrets and prospecting tactics`\n  ],\n  objection_handling: [\n    `overcoming objections in ${concept.substring(0, 40)}`,\n    `successful objection handling scripts`,\n    `client resistance and closing techniques`\n  ],\n  mindset: [\n    `agent mindset and ${concept.substring(0, 40)}`,\n    `mental toughness for insurance professionals`,\n    `motivation and persistence in sales`\n  ],\n  case_study: [\n    `agent success stories similar to ${concept.substring(0, 40)}`,\n    `real results and case studies`,\n    `proven strategies with measurable outcomes`\n  ],\n  default: [\n    concept.substring(0, 60),\n    `insurance agent tips for ${category}`,\n    `actionable advice for ${category}`\n  ]\n};\n\nconst queries = queryTemplates[category] || queryTemplates.default;\n\nreturn {\n  ...($json),\n  enrichment_queries: queries\n};"
+      },
+      "name": "Generate Enrichment Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Semantic search for enrichment content\n-- Query 1: General episode content\nWITH query_embedding AS (\n  SELECT embedding FROM core.embeddings WHERE content = '{{ $json.enrichment_queries[0] }}' LIMIT 1\n)\nSELECT \n  e.content,\n  e.metadata,\n  1 - (e.embedding <=> (SELECT embedding FROM query_embedding)) as similarity\nFROM core.embeddings e\nWHERE e.file_id != '{{ $json.file_id }}'\n  AND 1 - (e.embedding <=> (SELECT embedding FROM query_embedding)) > 0.35\nORDER BY similarity DESC\nLIMIT 3;"
+      },
+      "name": "Search Query 1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2000, 200],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      },
+      "notes": "Search all episodes for similar content"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Semantic search: Million Dollar Agency book\nWITH query_embedding AS (\n  SELECT embedding FROM core.embeddings WHERE content = '{{ $json.enrichment_queries[1] }}' LIMIT 1\n)\nSELECT \n  e.content,\n  e.metadata,\n  1 - (e.embedding <=> (SELECT embedding FROM query_embedding)) as similarity\nFROM core.embeddings e\nLEFT JOIN core.file_status fs ON e.file_id = fs.id\nWHERE fs.filename ILIKE '%Million%Dollar%Agency%'\n  AND 1 - (e.embedding <=> (SELECT embedding FROM query_embedding)) > 0.35\nORDER BY similarity DESC\nLIMIT 3;"
+      },
+      "name": "Search Query 2 (Books)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      },
+      "notes": "Search Million Dollar Agency + Internet Lead Secrets"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Semantic search: Blueprints and guides\nWITH query_embedding AS (\n  SELECT embedding FROM core.embeddings WHERE content = '{{ $json.enrichment_queries[2] }}' LIMIT 1\n)\nSELECT \n  e.content,\n  e.metadata,\n  1 - (e.embedding <=> (SELECT embedding FROM query_embedding)) as similarity\nFROM core.embeddings e\nLEFT JOIN core.file_status fs ON e.file_id = fs.id\nWHERE (fs.filename ILIKE '%blueprint%' OR fs.filename ILIKE '%guide%')\n  AND 1 - (e.embedding <=> (SELECT embedding FROM query_embedding)) > 0.35\nORDER BY similarity DESC\nLIMIT 3;"
+      },
+      "name": "Search Query 3 (Guides)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2000, 400],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      },
+      "notes": "Search blueprint and guide documents"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all enrichment search results\nconst topicData = $node[\"Generate Enrichment Queries\"].json;\nconst query1Results = $node[\"Search Query 1\"].json || [];\nconst query2Results = $node[\"Search Query 2 (Books)\"].json || [];\nconst query3Results = $node[\"Search Query 3 (Guides)\"].json || [];\n\n// Combine and deduplicate results\nconst allResults = [...query1Results, ...query2Results, ...query3Results];\nconst uniqueContent = new Set();\nconst enrichedChunks = [];\n\nfor (const result of allResults) {\n  if (!uniqueContent.has(result.content)) {\n    uniqueContent.add(result.content);\n    enrichedChunks.push({\n      content: result.content,\n      similarity: result.similarity,\n      metadata: result.metadata\n    });\n  }\n}\n\n// Sort by similarity and take top 9\nconst topEnrichment = enrichedChunks\n  .sort((a, b) => b.similarity - a.similarity)\n  .slice(0, 9)\n  .map(chunk => chunk.content)\n  .join('\\n\\n---\\n\\n');\n\n// Get day theme from rubric\nconst dayThemes = {\n  1: { theme: 'Pattern Interrupt Hook', goal: 'Stop scroll, spark curiosity, controversial truth', content_type: 'contrarian_insight', emotion: 'surprise', cta_type: 'engagement' },\n  2: { theme: 'Actionable Strategy #1', goal: 'Teach one implementable tactic immediately', content_type: 'how_to_tip', emotion: 'confidence', cta_type: 'save_share' },\n  3: { theme: 'Problem Agitation', goal: 'Call out pain point, make them FEEL it', content_type: 'problem_identification', emotion: 'frustration', cta_type: 'relate' },\n  4: { theme: 'Solution Reveal', goal: 'Solve day 3 problem with specific hack/system', content_type: 'solution_framework', emotion: 'relief', cta_type: 'episode_link' },\n  5: { theme: 'Case Study / Proof', goal: 'Real results, real agent, real numbers', content_type: 'success_story', emotion: 'inspiration', cta_type: 'tag_friend' },\n  6: { theme: 'Mindset / Motivation', goal: 'Push through the grind, reframe failure', content_type: 'motivational_truth', emotion: 'determination', cta_type: 'commitment' },\n  7: { theme: 'Advanced Technique #2', goal: 'Next-level strategy for scaling agents', content_type: 'advanced_tactic', emotion: 'empowerment', cta_type: 'dm_question' },\n  8: { theme: 'Industry Insight / Trend', goal: 'Position as thought leader, what\\'s coming', content_type: 'market_analysis', emotion: 'awareness', cta_type: 'opinion_poll' },\n  9: { theme: 'CTA Teaser', goal: 'Build anticipation for episode, tease best part', content_type: 'episode_preview', emotion: 'curiosity', cta_type: 'episode_link' },\n  10: { theme: 'Episode Recap + Strong CTA', goal: 'Summarize value, drive listens, call to action', content_type: 'episode_summary', emotion: 'urgency', cta_type: 'listen_subscribe' }\n};\n\nconst dayTheme = dayThemes[topicData.day_number] || dayThemes[1];\n\nreturn {\n  ...topicData,\n  day_theme: dayTheme.theme,\n  day_goal: dayTheme.goal,\n  content_type: dayTheme.content_type,\n  target_emotion: dayTheme.emotion,\n  cta_type: dayTheme.cta_type,\n  enriched_content_chunks: topEnrichment,\n  enrichment_chunk_count: enrichedChunks.length\n};"
+      },
+      "name": "Combine Enrichment Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "={{ $json.$node[\"prompts/content-generator.json\"].data.system_prompt }}"
+            },
+            {
+              "role": "user",
+              "content": "=Generate social media content for DAY {{ $json.day_number }}: {{ $json.day_theme }}\n\n## EPISODE CONTEXT\n**Episode:** {{ $json.episode_title }}\n**Episode Number:** {{ $json.episode_number }}\n\n## TOPIC FOR THIS DAY\n**Topic:** {{ $json.concept }}\n**Category:** {{ $json.category }}\n**Why it matters:** High-scoring topic ({{ $json.scores.weighted_total }}/10)\n\n## CONTENT FROM EPISODE (Primary Source)\n{{ $node[\"Combine Episode Content\"].json.episode_content.substring(0, 3000) }}\n\n## ENRICHMENT CONTENT (Additional Context from Knowledge Base)\n{{ $json.enriched_content_chunks }}\n\n## DAY THEME REQUIREMENTS\n**Goal:** {{ $json.day_goal }}\n**Content Type:** {{ $json.content_type }}\n**Target Emotion:** {{ $json.target_emotion }}\n**CTA Type:** {{ $json.cta_type }}\n\n## YOUR TASK\n\nCreate 3 social media posts (one for each platform) based on this topic and enriched content.\n\n### INSTAGRAM REEL\n\n**Requirements:**\n- Hook: Max 8 words, pattern interrupt, NO question marks in first 3 words\n- Script: 150 words max, 3 punchy sentences, one key insight, 15-30 seconds spoken\n- CTA: Max 15 words (options: Link in bio, Drop a comment, Tag someone, Save this)\n- Hashtags: 5-8 tags including #InsuranceDudes #InsuranceSales\n\n**Format your response as:**\n```\nHOOK: [Your hook here]\n\nSCRIPT:\n[Your script here - 3 sentences max]\n\nCTA: [Your CTA here]\n\nHASHTAGS: [Your hashtags here]\n```\n\n### FACEBOOK POST\n\n**Requirements:**\n- Post structure: Hook question/bold statement → 2-3 paragraph value delivery → Story/example → Question to drive engagement\n- Max 500 words\n- Use emojis strategically\n- End with engagement question\n- 5-10 hashtags at end\n\n**Format your response as:**\n```\n[Your Facebook post here with emojis and line breaks]\n\n[Hashtags here]\n```\n\n### LINKEDIN POST\n\n**Requirements:**\n- Professional hook with credibility → Insight/framework → Data/proof → Thought leadership takeaway\n- Max 400 words\n- NO emojis\n- NO bro language\n- 3-6 professional hashtags including #InsuranceSales #Insurance\n\n**Format your response as:**\n```\n[Your LinkedIn post here - professional tone]\n\n[Hashtags here]\n```\n\nGenerate the content now."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.8,
+          "maxTokens": 2000
+        }
+      },
+      "name": "Generate Content (GPT-4o-mini)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [2440, 300],
+      "notes": "Generate all 3 platform posts"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the generated content into structured format\nconst rawContent = $json.response;\n\n// Split into sections\nconst instagramMatch = rawContent.match(/### INSTAGRAM REEL[\\s\\S]*?(?=### FACEBOOK POST|$)/i);\nconst facebookMatch = rawContent.match(/### FACEBOOK POST[\\s\\S]*?(?=### LINKEDIN POST|$)/i);\nconst linkedinMatch = rawContent.match(/### LINKEDIN POST[\\s\\S]*$/i);\n\n// Extract Instagram components\nlet instagram = { hook: '', script: '', cta: '', hashtags: '' };\nif (instagramMatch) {\n  const igContent = instagramMatch[0];\n  const hookMatch = igContent.match(/HOOK:\\s*(.+?)\\n/i);\n  const scriptMatch = igContent.match(/SCRIPT:\\s*([\\s\\S]+?)(?=CTA:|$)/i);\n  const ctaMatch = igContent.match(/CTA:\\s*(.+?)\\n/i);\n  const hashtagsMatch = igContent.match(/HASHTAGS:\\s*(.+)/i);\n  \n  instagram.hook = hookMatch ? hookMatch[1].trim() : '';\n  instagram.script = scriptMatch ? scriptMatch[1].trim() : '';\n  instagram.cta = ctaMatch ? ctaMatch[1].trim() : '';\n  instagram.hashtags = hashtagsMatch ? hashtagsMatch[1].trim() : '';\n}\n\n// Extract Facebook post\nlet facebook = '';\nif (facebookMatch) {\n  facebook = facebookMatch[0].replace(/### FACEBOOK POST/i, '').trim();\n}\n\n// Extract LinkedIn post\nlet linkedin = '';\nif (linkedinMatch) {\n  linkedin = linkedinMatch[0].replace(/### LINKEDIN POST/i, '').trim();\n}\n\nconst dayData = $node[\"Combine Enrichment Data\"].json;\n\nreturn {\n  day_number: dayData.day_number,\n  day_theme: dayData.day_theme,\n  day_goal: dayData.day_goal,\n  target_emotion: dayData.target_emotion,\n  episode_title: dayData.episode_title,\n  topic_title: dayData.concept,\n  instagram_content: `HOOK: ${instagram.hook}\\n\\nSCRIPT:\\n${instagram.script}\\n\\nCTA: ${instagram.cta}\\n\\nHASHTAGS: ${instagram.hashtags}`,\n  facebook_content: facebook,\n  linkedin_content: linkedin,\n  raw_generation: rawContent\n};"
+      },
+      "name": "Parse Generated Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "={{ $json.$node[\"prompts/content-reviewer.json\"].data.system_prompt }}"
+            },
+            {
+              "role": "user",
+              "content": "=Review these 3 social media posts for Day {{ $json.day_number }}: {{ $json.day_theme }}\n\n## CONTEXT\n**Episode:** {{ $json.episode_title }}\n**Topic:** {{ $json.topic_title }}\n**Day Goal:** {{ $json.day_goal }}\n**Target Emotion:** {{ $json.target_emotion }}\n\n## CONTENT TO REVIEW\n\n### INSTAGRAM REEL\n{{ $json.instagram_content }}\n\n### FACEBOOK POST\n{{ $json.facebook_content }}\n\n### LINKEDIN POST\n{{ $json.linkedin_content }}\n\n## YOUR TASK\n\nEvaluate each post and provide your recommendation.\n\n**Output your review in this exact JSON format:**\n\n```json\n{\n  \"overall_recommendation\": \"APPROVE\" | \"APPROVE_WITH_EDITS\" | \"REJECT\",\n  \"summary\": \"Brief 1-2 sentence overview of your decision\",\n  \n  \"instagram_review\": {\n    \"scores\": {\n      \"voice_authenticity\": 8,\n      \"value_delivery\": 7,\n      \"engagement_potential\": 9,\n      \"brand_safety\": 10\n    },\n    \"weighted_score\": 8.15,\n    \"pass\": true,\n    \"strengths\": [\"Specific strength 1\", \"Specific strength 2\"],\n    \"issues\": [\"Specific issue 1\"],\n    \"required_fixes\": [\n      {\n        \"location\": \"hook\",\n        \"current\": \"[current text]\",\n        \"fix\": \"[exact replacement text]\",\n        \"reason\": \"Why this change is needed\"\n      }\n    ]\n  },\n  \n  \"facebook_review\": {\n    \"scores\": { \"voice_authenticity\": 7, \"value_delivery\": 8, \"engagement_potential\": 7, \"brand_safety\": 10 },\n    \"weighted_score\": 7.45,\n    \"pass\": true,\n    \"strengths\": [\"Specific strength 1\"],\n    \"issues\": [\"Specific issue 1\"],\n    \"required_fixes\": []\n  },\n  \n  \"linkedin_review\": {\n    \"scores\": { \"voice_authenticity\": 6, \"value_delivery\": 9, \"engagement_potential\": 7, \"brand_safety\": 10 },\n    \"weighted_score\": 7.25,\n    \"pass\": true,\n    \"strengths\": [\"Great data point\", \"Professional tone\"],\n    \"issues\": [\"Hook could be stronger\"],\n    \"required_fixes\": []\n  },\n  \n  \"action_items\": [\n    \"Apply all required_fixes before posting\",\n    \"Additional specific action if needed\"\n  ]\n}\n```\n\nProvide your review now in the exact JSON format above."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1500
+        }
+      },
+      "name": "Expert Review (GPT-4o)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [2880, 300],
+      "notes": "Strict content validation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response }}",
+              "rightValue": "APPROVE",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "leftValue": "={{ $json.response }}",
+              "rightValue": "APPROVE_WITH_EDITS",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combineOperation": "any"
+        }
+      },
+      "name": "Content Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Apply any required fixes from review\nconst reviewResponse = $node[\"Expert Review (GPT-4o)\"].json.response;\nconst contentData = $node[\"Parse Generated Content\"].json;\n\nlet review = {};\ntry {\n  const cleanJson = reviewResponse.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  review = JSON.parse(cleanJson);\n} catch (e) {\n  // If parsing fails, assume approval and use original content\n  review = { overall_recommendation: 'APPROVE' };\n}\n\n// Start with original content\nlet instagram = contentData.instagram_content;\nlet facebook = contentData.facebook_content;\nlet linkedin = contentData.linkedin_content;\n\n// Apply Instagram fixes if present\nif (review.instagram_review?.required_fixes) {\n  for (const fix of review.instagram_review.required_fixes) {\n    instagram = instagram.replace(fix.current, fix.fix);\n  }\n}\n\n// Apply Facebook fixes if present\nif (review.facebook_review?.required_fixes) {\n  for (const fix of review.facebook_review.required_fixes) {\n    facebook = facebook.replace(fix.current, fix.fix);\n  }\n}\n\n// Apply LinkedIn fixes if present\nif (review.linkedin_review?.required_fixes) {\n  for (const fix of review.linkedin_review.required_fixes) {\n    linkedin = linkedin.replace(fix.current, fix.fix);\n  }\n}\n\nreturn {\n  ...contentData,\n  instagram_content: instagram,\n  facebook_content: facebook,\n  linkedin_content: linkedin,\n  review_summary: review.summary || 'Content approved',\n  review_scores: {\n    instagram: review.instagram_review?.weighted_score || 0,\n    facebook: review.facebook_review?.weighted_score || 0,\n    linkedin: review.linkedin_review?.weighted_score || 0\n  }\n};"
+      },
+      "name": "Apply Review Fixes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3320, 200]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "={{ $json.$node[\"prompts/platform-optimizers.json\"].data.instagram_reel_optimizer.system_prompt }}"
+            },
+            {
+              "role": "user",
+              "content": "=Optimize this approved Instagram Reel content:\n\n**CURRENT VERSION:**\n{{ $json.instagram_content }}\n\n**OPTIMIZATION GOALS:**\n- Hook: Ensure it stops scroll in first 2 seconds\n- Script: Check pacing for 15-30 second read\n- CTA: Make it crystal clear and action-oriented\n- Hashtags: Balance reach and relevance\n\n**OUTPUT FORMAT:**\n```\nOPTIMIZED HOOK: [Enhanced hook - max 8 words]\n\nOPTIMIZED SCRIPT:\n[Enhanced script with line breaks for visual display]\n[3 sentences max, punchy delivery]\n[One key insight]\n\nOPTIMIZED CTA: [Clear, action-oriented CTA]\n\nOPTIMIZED HASHTAGS: [5-8 strategic hashtags]\n\nVISUAL SUGGESTIONS:\n- [Suggestion for B-roll or visual element]\n- [Text overlay recommendations]\n```\n\nProvide your optimizations now."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "name": "Optimize Instagram",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [3540, 100]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "={{ $json.$node[\"prompts/platform-optimizers.json\"].data.facebook_optimizer.system_prompt }}"
+            },
+            {
+              "role": "user",
+              "content": "=Optimize this approved Facebook post:\n\n**CURRENT VERSION:**\n{{ $json.facebook_content }}\n\n**OPTIMIZATION GOALS:**\n- Hook: Create immediate curiosity or emotional connection\n- Structure: Ensure easy readability with line breaks\n- Engagement: Add/enhance elements that drive comments\n- Community: Strengthen \"we're in this together\" feeling\n- Hashtags: Balance discovery and relevance\n\n**OUTPUT FORMAT:**\n```\nOPTIMIZED FACEBOOK POST:\n\n[Enhanced hook with emoji]\n\n[Value delivery - 2-3 short paragraphs with line breaks]\n\n[Story or example]\n\n[Engagement question]\n\n[5-10 hashtags]\n\nSUGGESTED COMMENT RESPONSES:\n- [Response template for positive comments]\n- [Response template for questions]\n- [Response template for objections]\n```\n\nProvide your optimizations now."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "name": "Optimize Facebook",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [3540, 200]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "={{ $json.$node[\"prompts/platform-optimizers.json\"].data.linkedin_optimizer.system_prompt }}"
+            },
+            {
+              "role": "user",
+              "content": "=Optimize this approved LinkedIn post:\n\n**CURRENT VERSION:**\n{{ $json.linkedin_content }}\n\n**OPTIMIZATION GOALS:**\n- Hook: Ensure credibility and curiosity in first 2-3 lines\n- Thought Leadership: Strengthen expert positioning\n- Data/Proof: Highlight concrete evidence\n- Professional Tone: Polish language while maintaining authenticity\n- Discussion: Create invitation for professional comments\n- Hashtags: Ensure professional relevance\n\n**OUTPUT FORMAT:**\n```\nOPTIMIZED LINKEDIN POST:\n\n[Professional hook - first 2-3 lines critical for preview]\n\n[Insight or framework]\n\n[Data or proof point]\n\n[Thought leadership takeaway]\n\n[Discussion prompt]\n\n[3-6 professional hashtags]\n\nENGAGEMENT STRATEGY NOTES:\n- [Why this hook works for LinkedIn]\n- [Discussion points to seed in comments]\n- [Connection opportunities (who to tag or mention)]\n```\n\nProvide your optimizations now."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "name": "Optimize LinkedIn",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [3540, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all optimized content\nconst dayData = $node[\"Apply Review Fixes\"].json;\nconst instagramOpt = $node[\"Optimize Instagram\"].json.response;\nconst facebookOpt = $node[\"Optimize Facebook\"].json.response;\nconst linkedinOpt = $node[\"Optimize LinkedIn\"].json.response;\n\nreturn {\n  day_number: dayData.day_number,\n  day_theme: dayData.day_theme,\n  episode_title: dayData.episode_title,\n  topic_title: dayData.topic_title,\n  \n  // Final optimized content\n  instagram_final: instagramOpt,\n  facebook_final: facebookOpt,\n  linkedin_final: linkedinOpt,\n  \n  // Review data\n  review_summary: dayData.review_summary,\n  review_scores: dayData.review_scores,\n  \n  // Ready for scheduling\n  ready_for_scheduling: true\n};"
+      },
+      "name": "Combine Optimized Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3760, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Get optimal posting times for this day\nSELECT \n  '{{ $json.day_number }}' as day_number,\n  CURRENT_DATE + INTERVAL '{{ $json.day_number }} days' as post_date,\n  TO_CHAR(CURRENT_DATE + INTERVAL '{{ $json.day_number }} days', 'Day') as day_of_week,\n  (\n    SELECT json_build_object(\n      'hour', optimal_hour,\n      'minute', optimal_minute,\n      'engagement_score', engagement_score\n    )\n    FROM core.social_scheduling\n    WHERE platform = 'instagram_reel'\n      AND day_of_week = LOWER(TRIM(TO_CHAR(CURRENT_DATE + INTERVAL '{{ $json.day_number }} days', 'Day')))\n      AND priority_rank = 1\n    ORDER BY engagement_score DESC\n    LIMIT 1\n  ) as instagram_schedule,\n  (\n    SELECT json_build_object(\n      'hour', optimal_hour,\n      'minute', optimal_minute,\n      'engagement_score', engagement_score\n    )\n    FROM core.social_scheduling\n    WHERE platform = 'facebook'\n      AND day_of_week = LOWER(TRIM(TO_CHAR(CURRENT_DATE + INTERVAL '{{ $json.day_number }} days', 'Day')))\n      AND priority_rank = 1\n    ORDER BY engagement_score DESC\n    LIMIT 1\n  ) as facebook_schedule,\n  (\n    SELECT json_build_object(\n      'hour', optimal_hour,\n      'minute', optimal_minute,\n      'engagement_score', engagement_score\n    )\n    FROM core.social_scheduling\n    WHERE platform = 'linkedin'\n      AND day_of_week = LOWER(TRIM(TO_CHAR(CURRENT_DATE + INTERVAL '{{ $json.day_number }} days', 'Day')))\n      AND priority_rank = 1\n    ORDER BY engagement_score DESC\n    LIMIT 1\n  ) as linkedin_schedule;"
+      },
+      "name": "Get Optimal Schedule",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [3980, 200],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine content with scheduling data\nconst contentData = $node[\"Combine Optimized Content\"].json;\nconst scheduleData = $json;\n\nreturn {\n  ...contentData,\n  schedule: {\n    post_date: scheduleData.post_date,\n    day_of_week: scheduleData.day_of_week?.trim(),\n    instagram: scheduleData.instagram_schedule,\n    facebook: scheduleData.facebook_schedule,\n    linkedin: scheduleData.linkedin_schedule\n  }\n};"
+      },
+      "name": "Add Schedule Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4200, 200]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "core",
+        "table": "social_content_generated",
+        "columns": {
+          "mappings": [
+            {
+              "column": "day_number",
+              "value": "={{ $json.day_number }}"
+            },
+            {
+              "column": "day_theme",
+              "value": "={{ $json.day_theme }}"
+            },
+            {
+              "column": "episode_title",
+              "value": "={{ $json.episode_title }}"
+            },
+            {
+              "column": "topic_title",
+              "value": "={{ $json.topic_title }}"
+            },
+            {
+              "column": "instagram_content",
+              "value": "={{ $json.instagram_final }}"
+            },
+            {
+              "column": "facebook_content",
+              "value": "={{ $json.facebook_final }}"
+            },
+            {
+              "column": "linkedin_content",
+              "value": "={{ $json.linkedin_final }}"
+            },
+            {
+              "column": "schedule_data",
+              "value": "={{ JSON.stringify($json.schedule) }}"
+            },
+            {
+              "column": "review_scores",
+              "value": "={{ JSON.stringify($json.review_scores) }}"
+            },
+            {
+              "column": "status",
+              "value": "pending_schedule"
+            }
+          ]
+        }
+      },
+      "name": "Save to Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [4420, 200],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      },
+      "notes": "Store generated content for GHL posting"
+    },
+    {
+      "parameters": {},
+      "name": "Loop Complete Check",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [4640, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Summary of all 10 days generated\nconst allDays = $node[\"Save to Database\"].all();\n\nreturn {\n  total_days_generated: allDays.length,\n  episode_title: allDays[0].json.episode_title,\n  generation_summary: allDays.map(day => ({\n    day_number: day.json.day_number,\n    theme: day.json.day_theme,\n    topic: day.json.topic_title,\n    review_scores: day.json.review_scores\n  })),\n  next_step: 'Ready for GHL MCP posting integration',\n  workflow_status: 'complete'\n};"
+      },
+      "name": "Generation Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4860, 200]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "core",
+        "table": "metrics",
+        "columns": {
+          "mappings": [
+            {
+              "column": "metric_name",
+              "value": "social_content_batch_completed"
+            },
+            {
+              "column": "metric_value",
+              "value": "={{ $json.total_days_generated }}"
+            },
+            {
+              "column": "tags",
+              "value": "={{ JSON.stringify({ episode: $json.episode_title, workflow: 'social_automation' }) }}"
+            }
+          ]
+        }
+      },
+      "name": "Track Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [5080, 200],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Railway PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Content rejected - log for review\nconst contentData = $node[\"Parse Generated Content\"].json;\nconst reviewResponse = $node[\"Expert Review (GPT-4o)\"].json.response;\n\nreturn {\n  status: 'rejected',\n  day_number: contentData.day_number,\n  episode_title: contentData.episode_title,\n  topic_title: contentData.topic_title,\n  review_response: reviewResponse,\n  action_required: 'Manual review and regeneration needed'\n};"
+      },
+      "name": "Log Rejection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3320, 400],
+      "notes": "Track rejected content for improvement"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Get Latest Episode", "type": "main", "index": 0 }]]
+    },
+    "Get Latest Episode": {
+      "main": [[{ "node": "Get Episode Chunks", "type": "main", "index": 0 }]]
+    },
+    "Get Episode Chunks": {
+      "main": [[{ "node": "Combine Episode Content", "type": "main", "index": 0 }]]
+    },
+    "Combine Episode Content": {
+      "main": [[{ "node": "Extract Concepts (GPT-4o-mini)", "type": "main", "index": 0 }]]
+    },
+    "Extract Concepts (GPT-4o-mini)": {
+      "main": [[{ "node": "Rank Topics", "type": "main", "index": 0 }]]
+    },
+    "Rank Topics": {
+      "main": [[{ "node": "Loop Through 10 Days", "type": "main", "index": 0 }]]
+    },
+    "Loop Through 10 Days": {
+      "main": [[{ "node": "Generate Enrichment Queries", "type": "main", "index": 0 }]]
+    },
+    "Generate Enrichment Queries": {
+      "main": [[
+        { "node": "Search Query 1", "type": "main", "index": 0 },
+        { "node": "Search Query 2 (Books)", "type": "main", "index": 0 },
+        { "node": "Search Query 3 (Guides)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Search Query 1": {
+      "main": [[{ "node": "Combine Enrichment Data", "type": "main", "index": 0 }]]
+    },
+    "Search Query 2 (Books)": {
+      "main": [[{ "node": "Combine Enrichment Data", "type": "main", "index": 0 }]]
+    },
+    "Search Query 3 (Guides)": {
+      "main": [[{ "node": "Combine Enrichment Data", "type": "main", "index": 0 }]]
+    },
+    "Combine Enrichment Data": {
+      "main": [[{ "node": "Generate Content (GPT-4o-mini)", "type": "main", "index": 0 }]]
+    },
+    "Generate Content (GPT-4o-mini)": {
+      "main": [[{ "node": "Parse Generated Content", "type": "main", "index": 0 }]]
+    },
+    "Parse Generated Content": {
+      "main": [[{ "node": "Expert Review (GPT-4o)", "type": "main", "index": 0 }]]
+    },
+    "Expert Review (GPT-4o)": {
+      "main": [[{ "node": "Content Approved?", "type": "main", "index": 0 }]]
+    },
+    "Content Approved?": {
+      "main": [
+        [{ "node": "Apply Review Fixes", "type": "main", "index": 0 }],
+        [{ "node": "Log Rejection", "type": "main", "index": 0 }]
+      ]
+    },
+    "Apply Review Fixes": {
+      "main": [[
+        { "node": "Optimize Instagram", "type": "main", "index": 0 },
+        { "node": "Optimize Facebook", "type": "main", "index": 0 },
+        { "node": "Optimize LinkedIn", "type": "main", "index": 0 }
+      ]]
+    },
+    "Optimize Instagram": {
+      "main": [[{ "node": "Combine Optimized Content", "type": "main", "index": 0 }]]
+    },
+    "Optimize Facebook": {
+      "main": [[{ "node": "Combine Optimized Content", "type": "main", "index": 0 }]]
+    },
+    "Optimize LinkedIn": {
+      "main": [[{ "node": "Combine Optimized Content", "type": "main", "index": 0 }]]
+    },
+    "Combine Optimized Content": {
+      "main": [[{ "node": "Get Optimal Schedule", "type": "main", "index": 0 }]]
+    },
+    "Get Optimal Schedule": {
+      "main": [[{ "node": "Add Schedule Data", "type": "main", "index": 0 }]]
+    },
+    "Add Schedule Data": {
+      "main": [[{ "node": "Save to Database", "type": "main", "index": 0 }]]
+    },
+    "Save to Database": {
+      "main": [[{ "node": "Loop Complete Check", "type": "main", "index": 0 }]]
+    },
+    "Loop Complete Check": {
+      "main": [
+        [{ "node": "Loop Through 10 Days", "type": "main", "index": 0 }],
+        [{ "node": "Generation Complete", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generation Complete": {
+      "main": [[{ "node": "Track Metrics", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-12T00:00:00.000Z",
+  "versionId": "1"
+}

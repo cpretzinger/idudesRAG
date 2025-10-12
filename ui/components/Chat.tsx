@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -8,9 +9,33 @@ interface Message {
 }
 
 export default function Chat() {
+  const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+
+  const trackQuery = async () => {
+    try {
+      await fetch('/api/metrics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metric_name: 'chat_queries',
+          metric_value: 1,
+          tags: {
+            user_id: user?.id || 'anonymous',
+            user_email: user?.email || 'anonymous',
+            session_id: sessionId,
+            timestamp: new Date().toISOString()
+          }
+        })
+      })
+    } catch (error) {
+      console.error('Failed to track query metric:', error)
+      // Don't fail the message if tracking fails
+    }
+  }
 
   const sendMessage = async () => {
     if (!input.trim()) return
@@ -20,13 +45,17 @@ export default function Chat() {
     setInput('')
     setLoading(true)
 
+    // Track the query (fire and forget)
+    trackQuery()
+
     try {
       const res = await fetch('https://ai.thirdeyediagnostics.com/webhook/chat-knowledge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, userMessage],
-          model: 'gpt-5-nano'
+          model: 'gpt-5-nano',
+          session_id: sessionId
         })
       })
 

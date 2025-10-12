@@ -39,32 +39,35 @@ export async function GET(): Promise<NextResponse<StatsResponse | { error: strin
     await client.connect()
 
     // Get all stats in parallel
-    const [documentsResult, embeddingsResult, queriesResult] = await Promise.all([
-      // Total documents
-      client.query<CountResult>('SELECT COUNT(*) as count FROM core.documents'),
+    const [filesResult, embeddingsResult, queriesResult] = await Promise.all([
+      // Total files (from file_status table)
+      client.query<CountResult>("SELECT COUNT(*)::text as count FROM core.file_status WHERE status = 'completed'"),
 
       // Total embeddings (chunks)
-      client.query<CountResult>('SELECT COUNT(*) as count FROM core.document_embeddings'),
+      client.query<CountResult>("SELECT COUNT(*)::text as count FROM core.embeddings"),
 
-      // Total queries (if you have a queries table, otherwise mock it)
-      // Replace with actual query if you track chat queries
-      Promise.resolve({ rows: [{ count: '0' }] } as QueryResult<CountResult>)
+      // Total queries from metrics table (return 0 if no metrics exist)
+      client.query<CountResult>(`
+        SELECT COALESCE(SUM(metric_value), 0)::text as count
+        FROM core.metrics
+        WHERE metric_name = 'chat_queries'
+      `)
     ])
 
-    // Calculate average document size
+    // Calculate average chunk size from embeddings
     const avgSizeResult = await client.query<AvgSizeResult>(`
-      SELECT AVG(file_size) as avg_size
-      FROM core.documents
-      WHERE file_size > 0
+      SELECT COALESCE(AVG(chunk_size), 0) as avg_size
+      FROM core.embeddings
+      WHERE chunk_size > 0
     `)
 
     await client.end()
 
     return NextResponse.json({
-      total_documents: parseInt(documentsResult.rows[0].count),
-      total_embeddings: parseInt(embeddingsResult.rows[0].count),
-      total_queries: parseInt(queriesResult.rows[0].count), // TODO: track actual queries
-      avg_document_size: Math.round(avgSizeResult.rows[0].avg_size || 0),
+      total_documents: parseInt(filesResult.rows[0]?.count || '0'),
+      total_embeddings: parseInt(embeddingsResult.rows[0]?.count || '0'),
+      total_queries: parseInt(queriesResult.rows[0]?.count || '0'),
+      avg_document_size: Math.round(avgSizeResult.rows[0]?.avg_size || 0),
       last_updated: new Date().toISOString()
     })
 

@@ -1,0 +1,202 @@
+{
+  "name": "02 - Upload Files to Pending Folder",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "documents",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*",
+          "ignoreBots": false,
+          "rawBody": false
+        }
+      },
+      "id": "webhook-upload-trigger",
+      "name": "Webhook - Upload Endpoint",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-600, 240],
+      "webhookId": "file-upload-to-pending"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract file from webhook request (JSON format with base64 content)\nconst input = $input.first().json;\n\n// Validate required fields\nif (!input.filename) {\n  throw new Error('Missing required field: filename');\n}\n\nif (!input.content) {\n  throw new Error('Missing required field: content (base64 encoded)');\n}\n\n// Sanitize filename\nconst filename = input.filename.replace(/[^a-zA-Z0-9._-]/g, '_');\nconst mimeType = input.type || 'application/octet-stream';\nconst fileSize = input.size || 0;\n\nconsole.log(`📤 Processing upload: ${filename} (${mimeType}, ${fileSize} bytes)`);\n\n// Convert base64 to binary\nconst binaryData = Buffer.from(input.content, 'base64');\n\n// Return with binary data for Google Drive upload\nreturn [{\n  json: {\n    filename: filename,\n    mimeType: mimeType,\n    fileSize: fileSize,\n    uploadedAt: new Date().toISOString(),\n    source: input.source || 'unknown'\n  },\n  binary: {\n    data: {\n      data: binaryData,\n      mimeType: mimeType,\n      fileName: filename,\n      fileSize: fileSize\n    }\n  }\n}];"
+      },
+      "id": "extract-file-data",
+      "name": "Extract File Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-380, 240]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "value": "0ADNv-WFOlNroUk9PVA",
+          "mode": "list",
+          "cachedResultName": "RAG-idudes-RAG-System",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/0ADNv-WFOlNroUk9PVA"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1P9vCe0flPbImHpcimMcNahQT7YN25M0_",
+          "mode": "list",
+          "cachedResultName": "RAG-Pending",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1P9vCe0flPbImHpcimMcNahQT7YN25M0_"
+        },
+        "binaryPropertyName": "data",
+        "options": {
+          "keepRevisionForever": false
+        }
+      },
+      "id": "upload-to-gdrive",
+      "name": "Upload to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-160, 240],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OtvrT7x8YG4Mrx7n",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format success response\nconst uploadResult = $input.first().json;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'File uploaded successfully to RAG-Pending folder',\n    data: {\n      fileId: uploadResult.id,\n      filename: uploadResult.name,\n      mimeType: uploadResult.mimeType,\n      webViewLink: uploadResult.webViewLink,\n      uploadedAt: new Date().toISOString(),\n      folder: 'RAG-Pending',\n      status: 'pending_processing'\n    }\n  }\n}];"
+      },
+      "id": "format-success-response",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [60, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-response-success",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [280, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle errors gracefully\nconst error = $input.first().json?.error || 'Unknown error occurred';\n\nconsole.error('❌ Upload failed:', error);\n\nreturn [{\n  json: {\n    success: false,\n    error: error,\n    message: 'Failed to upload file to Google Drive',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format-error-response",
+      "name": "Format Error Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [60, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 500,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-response-error",
+      "name": "Webhook Response Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [280, 420]
+    }
+  ],
+  "connections": {
+    "Webhook - Upload Endpoint": {
+      "main": [
+        [
+          {
+            "node": "Extract File Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract File Data": {
+      "main": [
+        [
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Response": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-12T00:00:00.000Z",
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
+}

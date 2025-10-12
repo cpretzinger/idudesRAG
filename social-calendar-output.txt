@@ -1,0 +1,30 @@
+```json
+{
+  "day1": {
+    "reel": { 
+      "hook": "Think internet leads are a waste? Think again!",
+      "script": "In today's episode of Internet Lead Secrets, we bust the myth that internet leads suck! Let's dive into how to turn those leads into gold. Stay tuned!",
+      "cta": "Follow for more lead generation tips!"
+    },
+    "facebook": { 
+      "post": "🚫 Myth Buster Alert! 🚫 Ever heard that internet leads suck? It's time to set the record straight! With the right strategies, you can turn these leads into loyal clients. Tune in to our latest episode for insights! #InternetLeads #LeadGeneration #InsuranceSuccess",
+      "hashtags": "#InternetLeads #LeadGeneration #InsuranceSuccess #MythBuster"
+    },
+    "linkedin": { 
+      "post": "In the insurance industry, the notion that 'internet leads suck' is a common misconception. In our latest podcast episode, we discuss actionable strategies for optimizing and activating internet leads. Learn how to transform potential clients into loyal customers. Let’s rethink our approach! #Insurance #LeadGeneration #TrustBuilding",
+      "hashtags": "#Insurance #LeadGeneration #TrustBuilding #ClientAcquisition"
+    }
+  },
+  "day2": {
+    "reel": { 
+      "hook": "Buying leads? Here’s what you need to know!",
+      "script": "Buying leads can be a game-changer, but are you choosing the right model? Today, we discuss CPL vs. CPS! Which one fits your business strategy best? Let’s find out!",
+      "cta": "Comment your preferred model below!"
+    },
+    "facebook": { 
+      "post": "💡 Buying leads? Make sure you're choosing the right model! Cost Per Lead (CPL) or Cost Per Sale (CPS)? Each has its pros and cons for your business. Dive into our podcast episode to learn more! #LeadAcquisition #Insurance",
+      "hashtags": "#LeadAcquisition #Insurance #CPL #CPS"
+    },
+    "linkedin": { 
+      "post": "Understanding the difference between CPL and CPS can significantly impact your lead generation strategy. In our latest podcast, we break down each model and provide insights on how to choose the best one for your insurance business. Tune in for valuable tips! #Insurance #LeadAcquisition",
+     

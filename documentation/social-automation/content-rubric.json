@@ -1,0 +1,389 @@
+{
+  "framework": {
+    "name": "Insurance Dudes 10-Day Social Content Framework",
+    "purpose": "RAG-powered content generation from podcast episodes with authentic voice",
+    "audience": "Insurance agents, agency owners, sales professionals",
+    "platforms": ["instagram_reel", "facebook", "linkedin"]
+  },
+
+  "content_extraction_queries": [
+    "actionable insurance sales tips and strategies",
+    "overcoming client objections and closing techniques",
+    "lead flow mechanics and prospecting tactics that work",
+    "building trust and credibility with insurance clients",
+    "time management and productivity hacks for agents",
+    "client success stories and case studies with results",
+    "insurance industry insights and market trends 2025",
+    "mindset and motivation for insurance professionals",
+    "referral and networking strategies that scale",
+    "technology tools and automation for insurance agencies"
+  ],
+
+  "day_themes": {
+    "day1": {
+      "theme": "Pattern Interrupt Hook",
+      "goal": "Stop scroll, spark curiosity, controversial truth",
+      "content_type": "contrarian_insight",
+      "emotion": "surprise",
+      "cta_type": "engagement",
+      "example": "Everyone says internet leads are dead. Here's why they're WRONG..."
+    },
+    "day2": {
+      "theme": "Actionable Strategy #1",
+      "goal": "Teach one implementable tactic immediately",
+      "content_type": "how_to_tip",
+      "emotion": "confidence",
+      "cta_type": "save_share",
+      "example": "The 3-touch follow-up sequence that 3x'd our contact rates"
+    },
+    "day3": {
+      "theme": "Problem Agitation",
+      "goal": "Call out pain point, make them FEEL it",
+      "content_type": "problem_identification",
+      "emotion": "frustration",
+      "cta_type": "relate",
+      "example": "You're spending 4 hours a day on admin work. Here's why..."
+    },
+    "day4": {
+      "theme": "Solution Reveal",
+      "goal": "Solve day 3 problem with specific hack/system",
+      "content_type": "solution_framework",
+      "emotion": "relief",
+      "cta_type": "episode_link",
+      "example": "The CRM automation that gave me 3 hours back every day"
+    },
+    "day5": {
+      "theme": "Case Study / Proof",
+      "goal": "Real results, real agent, real numbers",
+      "content_type": "success_story",
+      "emotion": "inspiration",
+      "cta_type": "tag_friend",
+      "example": "How Sarah went from $40K to $180K in 14 months (here's what she did)"
+    },
+    "day6": {
+      "theme": "Mindset / Motivation",
+      "goal": "Push through the grind, reframe failure",
+      "content_type": "motivational_truth",
+      "emotion": "determination",
+      "cta_type": "commitment",
+      "example": "The difference between agents who quit and agents who scale"
+    },
+    "day7": {
+      "theme": "Advanced Technique #2",
+      "goal": "Next-level strategy for scaling agents",
+      "content_type": "advanced_tactic",
+      "emotion": "empowerment",
+      "cta_type": "dm_question",
+      "example": "Once you hit $100K, THIS is what changes in your lead strategy"
+    },
+    "day8": {
+      "theme": "Industry Insight / Trend",
+      "goal": "Position as thought leader, what's coming",
+      "content_type": "market_analysis",
+      "emotion": "awareness",
+      "cta_type": "opinion_poll",
+      "example": "AI is about to change insurance sales. Here's what you need to know NOW"
+    },
+    "day9": {
+      "theme": "CTA Teaser",
+      "goal": "Build anticipation for episode, tease best part",
+      "content_type": "episode_preview",
+      "emotion": "curiosity",
+      "cta_type": "episode_link",
+      "example": "The ONE thing [guest name] said that made me rethink everything..."
+    },
+    "day10": {
+      "theme": "Episode Recap + Strong CTA",
+      "goal": "Summarize value, drive listens, call to action",
+      "content_type": "episode_summary",
+      "emotion": "urgency",
+      "cta_type": "listen_subscribe",
+      "example": "Here's EVERYTHING we covered in this episode + why you need to listen"
+    }
+  },
+
+  "platform_specifications": {
+    "instagram_reel": {
+      "format": {
+        "hook": {
+          "max_length": 8,
+          "type": "words",
+          "requirements": ["Pattern interrupt", "Visual text overlay friendly", "No question marks in first 3 words"]
+        },
+        "script": {
+          "max_length": 150,
+          "type": "words",
+          "structure": ["3 punchy sentences", "One key insight", "Clear transition to CTA"],
+          "pacing": "15-30 seconds spoken"
+        },
+        "cta": {
+          "max_length": 15,
+          "type": "words",
+          "options": ["Link in bio", "Drop a comment", "Tag someone", "Save this", "Follow for more"]
+        },
+        "hashtags": {
+          "count_range": [5, 8],
+          "required": ["#InsuranceDudes", "#InsuranceSales"],
+          "categories": ["industry", "strategy", "motivation", "audience"]
+        }
+      },
+      "voice_adjustments": {
+        "energy": "high",
+        "sentence_length": "short",
+        "use_emojis": "minimal",
+        "direct_address": "you"
+      }
+    },
+    "facebook": {
+      "format": {
+        "post_structure": ["Hook question or bold statement", "2-3 paragraph value delivery", "Story or example", "Question to drive engagement"],
+        "max_length": 500,
+        "type": "words",
+        "hashtags": {
+          "count_range": [5, 10],
+          "placement": "end of post"
+        }
+      },
+      "voice_adjustments": {
+        "energy": "conversational",
+        "sentence_length": "medium",
+        "use_emojis": "strategic",
+        "direct_address": "you guys",
+        "community_language": true
+      }
+    },
+    "linkedin": {
+      "format": {
+        "post_structure": ["Professional hook with credibility", "Insight or framework", "Data or proof point", "Thought leadership takeaway"],
+        "max_length": 400,
+        "type": "words",
+        "hashtags": {
+          "count_range": [3, 6],
+          "required": ["#InsuranceSales", "#Insurance"],
+          "type": "professional"
+        }
+      },
+      "voice_adjustments": {
+        "energy": "authoritative",
+        "sentence_length": "medium-long",
+        "use_emojis": "none",
+        "direct_address": "professionals",
+        "polish": "high",
+        "avoid": ["bro language", "casual slang"]
+      }
+    }
+  },
+
+  "cta_library": {
+    "engagement": [
+      "Drop a 🔥 if this hits",
+      "Comment your biggest takeaway",
+      "Tag an agent who needs to see this",
+      "Who else struggles with this? Be honest 👇"
+    ],
+    "episode_link": [
+      "Full episode breaks this down even more - link in bio",
+      "We dive DEEP on this in the full episode",
+      "Wanna know the rest? Check out episode {number}",
+      "This is just scratching the surface - listen to the full convo"
+    ],
+    "save_share": [
+      "Save this for later",
+      "Share this with your team",
+      "Send this to an agent friend",
+      "Screenshot this and send it to someone who needs it"
+    ],
+    "relate": [
+      "Raise your hand if you've been there 🙋",
+      "Sound familiar? You're not alone",
+      "Who can relate?",
+      "This was me 2 years ago. What about you?"
+    ],
+    "listen_subscribe": [
+      "Listen now - link in bio",
+      "New episode just dropped 🎙️",
+      "Subscribe so you don't miss the next one",
+      "Hit play and let us know what you think"
+    ]
+  },
+
+  "topic_extraction_pipeline": {
+    "step1_extract_concepts": {
+      "method": "ai_analysis",
+      "model": "gpt-4o-mini",
+      "prompt_goal": "Extract 15-20 distinct concepts, ideas, and actionable insights from episode",
+      "output_format": {
+        "concept": "Brief description",
+        "category": "sales_strategy|objection_handling|lead_gen|mindset|tech|case_study",
+        "actionability": "high|medium|low",
+        "proof_type": "data|story|framework|none"
+      },
+      "context_window": "full_episode_transcript"
+    },
+
+    "step2_rank_topics": {
+      "method": "scoring_algorithm",
+      "ranking_criteria": {
+        "avatar_relevance": {
+          "weight": 0.35,
+          "factors": [
+            "Directly solves insurance agent pain point",
+            "Applicable to avatar stage (struggling, scaling, established)",
+            "Matches current market conditions 2025"
+          ]
+        },
+        "platform_fit": {
+          "weight": 0.25,
+          "instagram_scores_high": ["Visual concepts", "Quick wins", "Shocking stats"],
+          "facebook_scores_high": ["Story-driven", "Community problems", "Relatable struggles"],
+          "linkedin_scores_high": ["Industry insights", "Data-driven", "Professional frameworks"]
+        },
+        "content_richness": {
+          "weight": 0.20,
+          "factors": [
+            "Has specific examples or proof",
+            "Contains actionable steps",
+            "Includes memorable quotes or soundbites"
+          ]
+        },
+        "virality_potential": {
+          "weight": 0.15,
+          "factors": [
+            "Contrarian or surprising",
+            "Emotionally charged",
+            "Strong hook potential"
+          ]
+        },
+        "craig_jason_energy": {
+          "weight": 0.05,
+          "factors": [
+            "They spent significant time on it",
+            "Passionate delivery",
+            "Repeated or emphasized"
+          ]
+        }
+      },
+      "output": "Ranked list of 10 topics (one per day) with scores per platform"
+    },
+
+    "step3_cross_episode_enrichment": {
+      "method": "semantic_search_expansion",
+      "knowledge_sources": [
+        {
+          "source": "core.embeddings",
+          "filter": "Episode transcripts (all episodes)",
+          "purpose": "Find similar discussions, additional examples, different angles"
+        },
+        {
+          "source": "core.embeddings",
+          "filter": "filename LIKE '%Million%Dollar%Agency%'",
+          "purpose": "Add book frameworks and strategies"
+        },
+        {
+          "source": "core.embeddings",
+          "filter": "filename LIKE '%Internet%Lead%Secrets%'",
+          "purpose": "Enrich lead generation content"
+        },
+        {
+          "source": "core.embeddings",
+          "filter": "filename LIKE '%blueprint%' OR filename LIKE '%guide%'",
+          "purpose": "Add structured frameworks and playbooks"
+        }
+      ],
+      "enrichment_process": {
+        "per_topic": {
+          "step1": "Generate 3 semantic search queries for topic",
+          "step2": "Search each knowledge source (similarity > 0.35)",
+          "step3": "Collect top 3 chunks per source (max 9 total)",
+          "step4": "Deduplicate and rank by relevance",
+          "step5": "Append to topic context (max 1200 words enrichment)"
+        }
+      },
+      "enrichment_guidelines": {
+        "prioritize": [
+          "Complementary examples from different episodes",
+          "Data/stats that support the claim",
+          "Framework details from books",
+          "Success story variations"
+        ],
+        "avoid_duplication": "Don't repeat exact same content from source episode",
+        "maintain_authenticity": "Enrichment should feel like natural Craig/Jason knowledge"
+      }
+    },
+
+    "step4_topic_to_day_mapping": {
+      "method": "strategic_assignment",
+      "rules": {
+        "day1": {
+          "select_topic_with": ["Highest virality_potential", "Contrarian angle", "Strong hook"],
+          "platform_priority": "instagram"
+        },
+        "day2": {
+          "select_topic_with": ["High actionability", "Clear steps", "Quick win"],
+          "platform_priority": "all"
+        },
+        "day3": {
+          "select_topic_with": ["Common pain point", "Relatable struggle", "Problem focus"],
+          "platform_priority": "facebook"
+        },
+        "day4": {
+          "select_topic_with": ["Solution to day3", "Framework or system", "Proof"],
+          "platform_priority": "all"
+        },
+        "day5": {
+          "select_topic_with": ["Has case_study", "Real numbers", "Success story"],
+          "platform_priority": "all"
+        },
+        "day6": {
+          "select_topic_with": ["Mindset shift", "Motivational", "Reframe"],
+          "platform_priority": "facebook"
+        },
+        "day7": {
+          "select_topic_with": ["Advanced tactic", "For scaling agents", "Next level"],
+          "platform_priority": "linkedin"
+        },
+        "day8": {
+          "select_topic_with": ["Industry insight", "Trend", "Thought leadership"],
+          "platform_priority": "linkedin"
+        },
+        "day9": {
+          "select_topic_with": ["Episode highlight", "Guest wisdom", "Aha moment"],
+          "platform_priority": "instagram"
+        },
+        "day10": {
+          "select_topic_with": ["Summarizes episode value", "Multiple takeaways", "Strong CTA"],
+          "platform_priority": "all"
+        }
+      },
+      "ensure_diversity": "No topic category repeats back-to-back days",
+      "output": "10 topics assigned to days with enriched context"
+    }
+  },
+
+  "semantic_search_strategy": {
+    "per_day_queries": 3,
+    "similarity_threshold": 0.35,
+    "chunks_per_query": 3,
+    "max_context_length": 1200,
+    "deduplicate_results": true,
+    "cross_reference": true
+  },
+
+  "quality_requirements": {
+    "voice_consistency": {
+      "craig_jason_phrases": ["here's the deal", "real talk", "look", "brother", "let me tell you"],
+      "avoid_generic": ["inspiring quote", "did you know", "fun fact", "game changer without context"],
+      "authenticity_check": "Sounds like an actual conversation, not a marketing copy"
+    },
+    "value_delivery": {
+      "must_include": "Specific actionable insight",
+      "cannot_be": "Vague motivational fluff",
+      "proof_requirement": "Either data, story, or concrete example"
+    },
+    "engagement_optimization": {
+      "hook_strength": "Must stop scroll in first 2 seconds",
+      "curiosity_gap": "Leave them wanting more without clickbait",
+      "cta_clarity": "One clear action, no confusion"
+    }
+  }
+}

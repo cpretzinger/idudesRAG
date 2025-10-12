@@ -76,7 +76,7 @@ services:
       - SPACES_REGION=${SPACES_REGION}
       - SPACES_ENDPOINT=${SPACES_ENDPOINT}
     working_dir: /app
-    command: npm start
+    command: sh -c "npm install -g npm@11.6.1 && npm start"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.idudes-processor.rule=Host(`docs.thirdeyediagnostics.com`)"

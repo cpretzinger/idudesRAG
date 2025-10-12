@@ -1,0 +1,625 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 17
+            }
+          ]
+        }
+      },
+      "id": "ab272bab-c038-4c9c-88a0-786f68f5585d",
+      "name": "Every17Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2240,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "limit": 1,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1P9vCe0flPbImHpcimMcNahQT7YN25M0_",
+            "mode": "list",
+            "cachedResultName": "RAG-Pending",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1P9vCe0flPbImHpcimMcNahQT7YN25M0_"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {}
+      },
+      "id": "774e8399-d3f5-42ae-911b-a550a9a9d28b",
+      "name": "GetPendingFile",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1792,
+        112
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "agQVZargPko1jDSc",
+          "name": "craig@theidudes.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const OPENAI_API_KEY = $env.OPENAI_API_KEY;\nconst item = $input.first();\nconst file = $('Download File').first().json || {};\n\nconst content = item.json?.data || '';\n\nif (!content || content.length < 50) {\n  throw new Error(`No content: got ${content.length} chars from ${file.name}`);\n}\n\nconst startTime = Date.now();\n\ntry {\n  const cleanedText = String(content)\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/\\u0000/g, '')\n    .normalize('NFC')\n    .replace(/\\t/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  const CHUNK_SIZE = 900;\n  const OVERLAP = 150;\n  const chunks = [];\n  let start = 0;\n  \n  while (start < cleanedText.length) {\n    let end = Math.min(start + CHUNK_SIZE, cleanedText.length);\n    \n    if (end < cleanedText.length) {\n      const window = cleanedText.slice(start, end);\n      const breaks = [\n        window.lastIndexOf('\\n\\n'),\n        window.lastIndexOf('\\n'),\n        window.lastIndexOf('. '),\n        window.lastIndexOf('! '),\n        window.lastIndexOf('? ')\n      ];\n      const bestBreak = Math.max(...breaks);\n      if (bestBreak > CHUNK_SIZE * 0.5) {\n        end = start + bestBreak + 1;\n      }\n    }\n    \n    const text = cleanedText.slice(start, end).trim();\n    if (text.length > 0) chunks.push(text);\n    if (end >= cleanedText.length) break;\n    start = Math.max(0, end - OVERLAP);\n  }\n  \n  const embeddingResponse = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.openai.com/v1/embeddings',\n    headers: {\n      'Authorization': `Bearer ${OPENAI_API_KEY}`,\n      'Content-Type': 'application/json'\n    },\n    body: { input: chunks, model: 'text-embedding-3-small' },\n    json: true,\n    timeout: 120000\n  });\n  \n  const chunksWithEmbeddings = chunks.map((text, idx) => ({\n    chunk_index: idx,\n    text: text,\n    chunk_size: text.length,\n    embedding: embeddingResponse.data[idx].embedding\n  }));\n  \n  return [{\n    json: {\n      filename: file.name || 'unknown',\n      file_id: file.id || 'unknown',\n      content: cleanedText,\n      file_size: cleanedText.length,\n      file_type: file.mimeType || 'text/plain',\n      chunks: chunksWithEmbeddings,\n      chunks_count: chunksWithEmbeddings.length,\n      duration: Math.floor((Date.now() - startTime) / 1000),\n      status: 'completed'\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      filename: file.name || 'unknown',\n      file_id: file.id || 'unknown',\n      status: 'failed',\n      error: error.message,\n      duration: Math.floor((Date.now() - startTime) / 1000),\n      file_size: 0,\n      chunks_count: 0,\n      content: '',\n      chunks: []\n    }\n  }];\n}"
+      },
+      "id": "9bbb625a-a064-4fbb-b7ca-71cb436989e9",
+      "name": "ProcessDocument",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": " WITH deleted AS (\n    DELETE FROM core.document_embeddings\n    WHERE document_id = $1::uuid\n    RETURNING id\n  ),\n  inserted AS (\n    INSERT INTO core.document_embeddings (\n      document_id, chunk_index, text, chunk_size, embedding, metadata\n    )\n    SELECT\n      $1::uuid,\n      (chunk->>'chunk_index')::int,\n      chunk->>'text',\n      (chunk->>'chunk_size')::int,\n      ('[' || array_to_string(ARRAY(SELECT jsonb_array_elements_text(chunk->'embedding')), ',') || ']')::vector(1536),\n      jsonb_build_object('filename', $2::text)\n    FROM jsonb_array_elements($3::jsonb) AS chunk\n    RETURNING id, chunk_index\n  )\n  SELECT\n    (SELECT COUNT(*) FROM deleted) as embeddings_deleted,\n    (SELECT COUNT(*) FROM inserted) as embeddings_created,\n    $1::text as document_id;",
+        "options": {
+          "queryReplacement": "=  {{ [\n      $json.document_id,\n      $('ProcessDocument').first().json.filename,\n      JSON.stringify($('ProcessDocument').first().json.chunks)\n  ] }}"
+        }
+      },
+      "id": "fb2405de-2ae9-428c-b2cb-36bcf3387a86",
+      "name": "UpsertDocumentAndEmbeddings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        144,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
+              "leftValue": "={{ $('ProcessDocument').first().json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a01d1d59-37f3-4766-93e1-8b8d2d1a751c",
+      "name": "RouteSuccessFail",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        368,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": "={{ $('GetPendingFile').first().json.id }}",
+        "driveId": {
+          "__rl": true,
+          "value": "={{ $('set parentDrive').item.json.parentDrive }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms",
+          "mode": "list",
+          "cachedResultName": "RAG-Completed",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms"
+        }
+      },
+      "id": "5af11eb4-102f-4a77-9ebf-f4bd397198a8",
+      "name": "MoveToCompleted",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        592,
+        16
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "agQVZargPko1jDSc",
+          "name": "craig@theidudes.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nklUnQSA49WWUPg6LVkw4THjj4O5eNMGguQ--eIxyZM",
+          "mode": "id",
+          "cachedResultName": "RAG-Logger"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 487287037,
+          "mode": "list",
+          "cachedResultName": "RAG Processing Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nklUnQSA49WWUPg6LVkw4THjj4O5eNMGguQ--eIxyZM/edit#gid=487287037"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Filename",
+              "displayName": "Filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chunks",
+              "displayName": "Chunks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "File_ID",
+              "displayName": "File_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Size_bytes",
+              "displayName": "Size_bytes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d455032e-ed35-4e13-be97-5b71e8400dd4",
+      "name": "LogToSheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        816,
+        16
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "V09NdNwlqhTpbBeP",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('GetPendingFile').first().json.id }}",
+          "mode": ""
+        },
+        "driveId": {
+          "__rl": true,
+          "value": "={{ $('set parentDrive').item.json.parentDrive }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1r5cg2HPGjmtQsUVrT5L43kJIctlNrkte",
+          "mode": "list",
+          "cachedResultName": "RAG-Failed",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1r5cg2HPGjmtQsUVrT5L43kJIctlNrkte"
+        }
+      },
+      "id": "7e1f94cf-db95-4137-835d-a1942810fb84",
+      "name": "MoveToFailed",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        592,
+        208
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "agQVZargPko1jDSc",
+          "name": "craig@theidudes.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nklUnQSA49WWUPg6LVkw4THjj4O5eNMGguQ--eIxyZM",
+          "mode": "id",
+          "cachedResultName": "RAG-Logger"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Filename": "={{ $('ProcessDocument').first().json.filename }}",
+            "Chunks": "0",
+            "Status": "failed",
+            "Duration": "={{ $('ProcessDocument').first().json.duration }}s",
+            "File_Size": "={{ $('ProcessDocument').first().json.file_size }}",
+            "Embeddings_Deleted": "0",
+            "Error": "={{ $('ProcessDocument').first().json.error }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "23a42607-2975-4fcc-b47e-2cb9b72fc2f9",
+      "name": "LogErrorToSheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        816,
+        208
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "V09NdNwlqhTpbBeP",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  COUNT(*) as total_documents\nFROM core.documents;\n\nSELECT \n  COUNT(*) as total_embeddings  \nFROM core.document_embeddings;\n\n-- DELETE ALL DOCUMENTS (and embeddings via CASCADE)\nDELETE FROM core.documents;\n\n-- Verify deletion\nSELECT COUNT(*) as documents FROM core.documents;\nSELECT COUNT(*) as embeddings FROM core.document_embeddings;",
+        "options": {}
+      },
+      "id": "b6b17d37-566c-4b30-97fc-db1f15b1d261",
+      "name": "DeleteAllEmbeddings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2240,
+        432
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0fe6b26-3753-4628-a079-9ebf4fe638a1",
+              "name": "parentDrive",
+              "value": "0AHQT6VYr8_hZUk9PVA",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2016,
+        112
+      ],
+      "id": "ae166109-199e-4cec-a508-6e2c5141e59a",
+      "name": "set parentDrive"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "data",
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "text/plain",
+              "slidesToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1568,
+        112
+      ],
+      "id": "bd92bc32-f599-4619-8a03-c22bb66ed6fc",
+      "name": "Download File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OtvrT7x8YG4Mrx7n",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -1344,
+        112
+      ],
+      "id": "043ffce8-9129-4561-a0b6-c0e4cc4cbcb4",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": " INSERT INTO core.documents (\n    filename, content, file_size, file_type, metadata\n  )\n  VALUES (\n    $1::text,\n    $2::text,\n    $3::bigint,\n    $4::text,\n    jsonb_build_object(\n      'source', 'google_drive',\n      'file_id', $5::text,\n      'chunks', $6::int,\n      'processed_at', NOW()::text\n    )\n  )\n  ON CONFLICT (filename)\n  DO UPDATE SET\n    content = EXCLUDED.content,\n    file_size = EXCLUDED.file_size,\n    file_type = EXCLUDED.file_type,\n    metadata = EXCLUDED.metadata,\n    updated_at = NOW()\n  RETURNING id::text AS document_id, filename,\n    CASE WHEN xmax = 0 THEN 'INSERT' ELSE 'UPDATE' END AS operation;\n",
+        "options": {
+          "queryReplacement": "={{ [     $json.filename,     $json.content,     $json.file_size,     $json.file_type,     $json.file_id,     $json.chunks_count   ] }}",
+          "replaceEmptyStrings": false
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -704,
+        112
+      ],
+      "id": "d162dfee-3220-4ac9-9d6e-a1eb9f7c1a9e",
+      "name": "InsertDocument",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": " // Debug: What are we actually sending?\n  const docId = $('InsertDocument').first().json.document_id;\n  const chunks = $('ProcessDocument').first().json.chunks;\n\n  console.log('=== DEBUG ===');\n  console.log('Document ID:', docId, 'Type:', typeof docId);\n  console.log('Document ID is null?', docId === null);\n  console.log('Chunks:', chunks ? chunks.length : 'NULL');\n  console.log('First chunk:', chunks && chunks[0] ? JSON.stringify(chunks[0]).substring(0, 200) : 'NO CHUNKS');\n\n  if (!docId) {\n    throw new Error('❌ DOCUMENT_ID IS NULL FROM Execute a SQL query NODE!');\n  }\n\n  if (!chunks || chunks.length === 0) {\n    throw new Error('❌ NO CHUNKS FROM ProcessDocument NODE!');\n  }\n\n  return $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        112
+      ],
+      "id": "b88c5e55-8efd-4489-ba31-a13b7d7b3445",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "Every17Min": {
+      "main": [
+        [
+          {
+            "node": "set parentDrive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetPendingFile": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ProcessDocument": {
+      "main": [
+        [
+          {
+            "node": "InsertDocument",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertDocumentAndEmbeddings": {
+      "main": [
+        [
+          {
+            "node": "RouteSuccessFail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RouteSuccessFail": {
+      "main": [
+        [
+          {
+            "node": "MoveToCompleted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MoveToFailed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MoveToCompleted": {
+      "main": [
+        [
+          {
+            "node": "LogToSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MoveToFailed": {
+      "main": [
+        [
+          {
+            "node": "LogErrorToSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set parentDrive": {
+      "main": [
+        [
+          {
+            "node": "GetPendingFile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "ProcessDocument",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InsertDocument": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "UpsertDocumentAndEmbeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
+}

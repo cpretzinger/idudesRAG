@@ -1,22 +1,19 @@
 {
-  "name": "Auth Login - idudesRAG",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "/auth/login",
         "responseMode": "responseNode",
-        "options": {
-          "noResponseBody": false
-        }
+        "options": {}
       },
-      "id": "a1b2c3d4-8c4e-11ef-9f7a-0242ac120010",
+      "id": "0745bc55-46d8-4b3e-972f-f429759767df",
       "name": "Webhook - Login",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
-        240,
-        300
+        -768,
+        64
       ],
       "webhookId": "idudesrag-auth-login"
     },
@@ -24,24 +21,22 @@
       "parameters": {
         "operation": "executeQuery",
         "query": "SELECT id, email, name, password_hash, role FROM core.users WHERE email = $1",
-        "additionalFields": {
-          "parameters": [
-            "={{ $json.body.email }}"
-          ]
+        "options": {
+          "queryReplacement": "={{ $json.body.email }}"
         }
       },
-      "id": "b2c3d4e5-8c4e-11ef-9f7a-0242ac120011",
+      "id": "a0553812-4d07-4c88-989e-49b59590fd37",
       "name": "Get User",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        460,
-        300
+        -560,
+        64
       ],
       "credentials": {
         "postgres": {
-          "id": "POSTGRES_CREDENTIAL_ID",
-          "name": "iDudes PGVector Railway"
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
         }
       }
     },
@@ -49,89 +44,77 @@
       "parameters": {
         "jsCode": "const bcrypt = require('bcrypt');\nconst crypto = require('crypto');\n\nconst input = $input.first().json;\nconst userPassword = $json.body.password;\n\n// Check if user exists\nif (!input || input.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'Invalid credentials',\n      status: 401\n    }\n  }];\n}\n\nconst userData = input[0] || input;\nconst storedHash = userData.password_hash;\n\n// Verify password\ntry {\n  const isValid = await bcrypt.compare(userPassword, storedHash);\n  \n  if (!isValid) {\n    return [{\n      json: {\n        success: false,\n        error: 'Invalid credentials',\n        status: 401\n      }\n    }];\n  }\n  \n  // Generate session token\n  const sessionToken = crypto.randomBytes(32).toString('hex');\n  const expiresAt = new Date();\n  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days\n  \n  return [{\n    json: {\n      success: true,\n      session_token: sessionToken,\n      expires_at: expiresAt.toISOString(),\n      user: {\n        id: userData.id,\n        email: userData.email,\n        name: userData.name,\n        role: userData.role\n      },\n      tenant: 'idudes'\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      error: 'Authentication failed',\n      status: 500,\n      debug: error.message\n    }\n  }];\n}"
       },
-      "id": "c3d4e5f6-8c4e-11ef-9f7a-0242ac120012",
+      "id": "d8c89f30-aba1-4433-95b7-72c5ef17d5f6",
       "name": "Verify Password & Generate Token",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        680,
-        300
+        -336,
+        64
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO core.user_sessions (token, user_id, expires_at, created_at) VALUES ($1, $2, $3, NOW() AT TIME ZONE 'America/Phoenix') ON CONFLICT (token) DO UPDATE SET expires_at = $3, created_at = NOW() AT TIME ZONE 'America/Phoenix'",
-        "additionalFields": {
-          "parameters": [
-            "={{ $json.session_token }}",
-            "={{ $json.user.id }}",
-            "={{ $json.expires_at }}"
-          ]
+        "query": "INSERT INTO core.user_sessions (token, user_id, expires_at, created_at, last_accessed) VALUES ($1, $2, $3, NOW() AT TIME ZONE 'America/Phoenix', NOW() AT TIME ZONE 'America/Phoenix') ON CONFLICT (token) DO UPDATE SET expires_at = $3, last_accessed = NOW() AT TIME ZONE 'America/Phoenix', created_at = NOW() AT TIME ZONE 'America/Phoenix'",
+        "options": {
+          "queryReplacement": "={{ $json.session_token }}\n{{ $json.user.id }}\n{{ $json.expires_at }}"
         }
       },
-      "id": "d4e5f6g7-8c4e-11ef-9f7a-0242ac120013",
+      "id": "170ba516-a04f-4a78-9e0e-b702795af52f",
       "name": "Store Session",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        900,
-        240
+        -112,
+        0
       ],
       "credentials": {
         "postgres": {
-          "id": "POSTGRES_CREDENTIAL_ID",
-          "name": "iDudes PGVector Railway"
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
         }
       }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": "={{ $json.status || 200 }}",
-        "responseBody": "={{ $json.success ? {\n  \"success\": true,\n  \"session_token\": $json.session_token,\n  \"user\": $json.user,\n  \"expires_at\": $json.expires_at,\n  \"tenant\": $json.tenant\n} : {\n  \"success\": false,\n  \"error\": $json.error\n} }}"
+        "responseBody": "={{ $json.success ? {\n  \"success\": true,\n  \"session_token\": $json.session_token,\n  \"user\": $json.user,\n  \"expires_at\": $json.expires_at,\n  \"tenant\": $json.tenant\n} : {\n  \"success\": false,\n  \"error\": $json.error\n} }}",
+        "options": {}
       },
-      "id": "e5f6g7h8-8c4e-11ef-9f7a-0242ac120014",
+      "id": "1c81e23c-6342-48d7-b6f5-c57ae3b97aeb",
       "name": "Respond with Auth Result",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1120,
-        300
+        112,
+        64
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO auth_logs (tenant, email, action, status, ip_address, user_agent, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
-        "additionalFields": {
-          "parameters": [
-            "idudes",
-            "={{ $('Webhook - Login').item.json.body.email }}",
-            "login",
-            "={{ $json.success ? 'success' : 'failed' }}",
-            "={{ $('Webhook - Login').item.json.headers['x-forwarded-for'] || $('Webhook - Login').item.json.headers['x-real-ip'] || 'unknown' }}",
-            "={{ $('Webhook - Login').item.json.headers['user-agent'] || 'unknown' }}"
-          ]
+        "query": " INSERT INTO core.auth_logs (tenant, email, action, status, ip_address, user_agent, created_at)\n  VALUES ($1, $2, $3, $4, $5, $6, NOW() AT TIME ZONE 'America/Phoenix')",
+        "options": {
+          "queryReplacement": "=idudes\n  {{ $('Webhook - Login').item.json.body.email }}\n  login\n  {{ $json.success ? 'success' : 'failed' }}\n  {{ $('Webhook - Login').item.json.headers['x-forwarded-for'] || $('Webhook - Login').item.json.headers['x-real-ip'] || 'unknown' }}\n  {{ $('Webhook - Login').item.json.headers['user-agent'] || 'unknown' }}"
         }
       },
-      "id": "f6g7h8i9-8c4e-11ef-9f7a-0242ac120015",
+      "id": "6c760a10-09ba-4205-bee3-8a647d662bde",
       "name": "Log Auth Attempt",
-      "type": "n8n-nodes-base.postgres", 
+      "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        900,
-        380
+        -112,
+        144
       ],
       "credentials": {
         "postgres": {
-          "id": "POSTGRES_CREDENTIAL_ID",
-          "name": "iDudes PGVector Railway"
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
         }
       }
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook - Login": {
       "main": [
@@ -183,34 +166,9 @@
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": {
-      "errorWorkflow": "",
-      "continueOnFail": false
-    }
-  },
-  "versionId": "1",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "ai.thirdeyediagnostics.com"
-  },
-  "id": "auth-login-idudes",
-  "tags": [
-    {
-      "createdAt": "2025-10-06T00:00:00.000Z",
-      "updatedAt": "2025-10-06T00:00:00.000Z",
-      "id": "auth",
-      "name": "auth"
-    },
-    {
-      "createdAt": "2025-10-06T00:00:00.000Z",
-      "updatedAt": "2025-10-06T00:00:00.000Z",
-      "id": "idudes",
-      "name": "idudes"
-    }
-  ]
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
 }

@@ -46,6 +46,20 @@ export async function validateSession(sessionToken: string): Promise<{ valid: bo
   return res.json()
 }
 
+export async function requestPasswordReset(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  const res = await fetch(`${N8N_AUTH_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  })
+
+  if (!res.ok) {
+    return { success: false, error: 'Reset request failed' }
+  }
+
+  return res.json()
+}
+
 export async function logout() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('session_token')

@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { login } from '@/lib/n8n-auth'
+import { login } from '@/lib/auth'
+
+// Handle GET requests - redirect to login page
+export async function GET(req: NextRequest) {
+  const returnTo = req.nextUrl.searchParams.get('returnTo') || '/dashboard'
+  const loginUrl = `/login?returnTo=${encodeURIComponent(returnTo)}`
+  return NextResponse.redirect(new URL(loginUrl, req.url))
+}
 
 export async function POST(req: NextRequest) {
   try {

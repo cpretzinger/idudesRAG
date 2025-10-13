@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { validateSession } from '@/lib/n8n-auth'
+import { validateSession } from '@/lib/auth'
 
-const N8N_BASE_URL = process.env.N8N_WEBHOOK_URL || 'https://ai.thirdeyediagnostics.com'
+const N8N_BASE_URL = process.env.NEXT_PUBLIC_N8N_URL || process.env.N8N_WEBHOOK_URL || 'https://ai.thirdeyediagnostics.com/webhook'
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,9 +14,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const user = await validateSession(token)
+    const result = await validateSession(token)
 
-    if (!user) {
+    if (!result.valid || !result.user) {
       return NextResponse.json(
         { error: 'Invalid session' },
         { status: 401 }
@@ -39,21 +39,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const response = await fetch(`${N8N_BASE_URL}/webhook/auth/change-password`, {
+    const response = await fetch(`${N8N_BASE_URL}/auth/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: user.id,
+        user_id: result.user.id,
         current_password: currentPassword,
         new_password: newPassword
       })
     })
 
-    const result = await response.json()
+    const changeResult = await response.json()
 
-    if (!response.ok || !result.success) {
+    if (!response.ok || !changeResult.success) {
       return NextResponse.json(
-        { error: result.error || 'Failed to change password' },
+        { error: changeResult.error || 'Failed to change password' },
         { status: response.ok ? 400 : response.status }
       )
     }

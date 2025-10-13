@@ -1,7 +1,18 @@
 {
-  "name": "11 - GHL Post Scheduler & Feedback Loop",
+  "name": "11 - GHL Post Scheduler & Feedback Loop (A+)",
+  "settings": {
+    "executionOrder": "v1"
+  },
   "nodes": [
     {
+      "id": "m1",
+      "name": "Schedule Trigger (Daily 6AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -10,287 +21,100 @@
             }
           ]
         }
-      },
-      "name": "Schedule Trigger (Daily 6AM)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1,
-      "position": [240, 300]
+      }
     },
     {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Get all pending posts that need to be scheduled today\nSELECT \n  scg.id,\n  scg.day_number,\n  scg.episode_title,\n  scg.topic_title,\n  scg.instagram_content,\n  scg.facebook_content,\n  scg.linkedin_content,\n  scg.schedule_data,\n  (scg.schedule_data->>'post_date')::date as post_date\nFROM core.social_content_generated scg\nWHERE scg.status = 'pending_schedule'\n  AND (scg.schedule_data->>'post_date')::date = CURRENT_DATE\nORDER BY scg.day_number ASC;"
-      },
+      "id": "m2",
       "name": "Get Today's Posts",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [460, 300],
+      "position": [
+        480,
+        300
+      ],
       "credentials": {
         "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
+          "name": "RailwayPG-idudes"
         }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, day_number, episode_title, topic_title, instagram_content, facebook_content, linkedin_content, schedule_data,\n (schedule_data->>'post_date')::date AS post_date\nFROM core.social_content_generated\nWHERE status='pending_schedule' AND (schedule_data->>'post_date')::date = CURRENT_DATE\nORDER BY day_number ASC;"
       }
     },
     {
-      "parameters": {
-        "batchSize": 1,
-        "options": {}
-      },
+      "id": "m3",
       "name": "Loop Through Posts",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [680, 300]
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1
+      }
     },
     {
-      "parameters": {
-        "jsCode": "// Parse schedule data and prepare for GHL\nconst scheduleData = JSON.parse($json.schedule_data);\nconst dayOfWeek = scheduleData.day_of_week;\n\n// Extract Instagram schedule\nconst instagram = scheduleData.instagram || {};\nconst instagramTime = new Date();\ninstagramTime.setHours(instagram.hour || 9, instagram.minute || 0, 0, 0);\n\n// Extract Facebook schedule\nconst facebook = scheduleData.facebook || {};\nconst facebookTime = new Date();\nfacebookTime.setHours(facebook.hour || 10, facebook.minute || 0, 0, 0);\n\n// Extract LinkedIn schedule\nconst linkedin = scheduleData.linkedin || {};\nconst linkedinTime = new Date();\nlinkedinTime.setHours(linkedin.hour || 11, linkedin.minute || 0, 0, 0);\n\nreturn {\n  content_id: $json.id,\n  day_number: $json.day_number,\n  episode_title: $json.episode_title,\n  \n  // Instagram data\n  instagram_content: $json.instagram_content,\n  instagram_schedule: instagramTime.toISOString(),\n  instagram_engagement_score: instagram.engagement_score,\n  \n  // Facebook data\n  facebook_content: $json.facebook_content,\n  facebook_schedule: facebookTime.toISOString(),\n  facebook_engagement_score: facebook.engagement_score,\n  \n  // LinkedIn data\n  linkedin_content: $json.linkedin_content,\n  linkedin_schedule: linkedinTime.toISOString(),\n  linkedin_engagement_score: linkedin.engagement_score\n};"
-      },
+      "id": "m4",
       "name": "Prepare Post Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 300]
+      "position": [
+        920,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const sc=$json.schedule_data? (typeof $json.schedule_data==='string'? JSON.parse($json.schedule_data):$json.schedule_data):{};\nconst ts=(o,defH)=>{const d=new Date(); d.setUTCHours((o?.hour??defH),(o?.minute??0),0,0); return d.toISOString();};\nreturn {\n content_id:$json.id,\n day_number:$json.day_number,\n episode_title:$json.episode_title,\n instagram_content:$json.instagram_content,\n instagram_schedule: ts(sc.instagram,9),\n facebook_content:$json.facebook_content,\n facebook_schedule: ts(sc.facebook,10),\n linkedin_content:$json.linkedin_content,\n linkedin_schedule: ts(sc.linkedin,11)\n};"
+      }
     },
     {
-      "parameters": {
-        "tool": "gohighlevel-mcp:create_social_post",
-        "parameters": {
-          "accountIds": ["={{$env.GHL_INSTAGRAM_ACCOUNT_ID}}"],
-          "summary": "={{ $json.instagram_content }}",
-          "type": "reel",
-          "status": "scheduled",
-          "scheduleDate": "={{ $json.instagram_schedule }}",
-          "userId": "={{$env.GHL_USER_ID}}"
-        }
-      },
-      "name": "Post to Instagram (GHL MCP)",
-      "type": "n8n-nodes-langchain.toolMcpClient",
-      "typeVersion": 1,
-      "position": [1120, 200],
-      "credentials": {
-        "mcpApi": {
-          "id": "1",
-          "name": "GHL MCP"
-        }
-      },
-      "notes": "Uses GHL MCP to schedule Instagram Reel"
-    },
-    {
-      "parameters": {
-        "tool": "gohighlevel-mcp:create_social_post",
-        "parameters": {
-          "accountIds": ["={{$env.GHL_FACEBOOK_ACCOUNT_ID}}"],
-          "summary": "={{ $json.facebook_content }}",
-          "type": "post",
-          "status": "scheduled",
-          "scheduleDate": "={{ $json.facebook_schedule }}",
-          "userId": "={{$env.GHL_USER_ID}}"
-        }
-      },
-      "name": "Post to Facebook (GHL MCP)",
-      "type": "n8n-nodes-langchain.toolMcpClient",
-      "typeVersion": 1,
-      "position": [1120, 300],
-      "credentials": {
-        "mcpApi": {
-          "id": "1",
-          "name": "GHL MCP"
-        }
-      },
-      "notes": "Uses GHL MCP to schedule Facebook post"
-    },
-    {
-      "parameters": {
-        "tool": "gohighlevel-mcp:create_social_post",
-        "parameters": {
-          "accountIds": ["={{$env.GHL_LINKEDIN_ACCOUNT_ID}}"],
-          "summary": "={{ $json.linkedin_content }}",
-          "type": "post",
-          "status": "scheduled",
-          "scheduleDate": "={{ $json.linkedin_schedule }}",
-          "userId": "={{$env.GHL_USER_ID}}"
-        }
-      },
-      "name": "Post to LinkedIn (GHL MCP)",
-      "type": "n8n-nodes-langchain.toolMcpClient",
-      "typeVersion": 1,
-      "position": [1120, 400],
-      "credentials": {
-        "mcpApi": {
-          "id": "1",
-          "name": "GHL MCP"
-        }
-      },
-      "notes": "Uses GHL MCP to schedule LinkedIn post"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Extract GHL post IDs from responses\nconst contentData = $node[\"Prepare Post Data\"].json;\nconst instagramResponse = $node[\"Post to Instagram (GHL MCP)\"].json;\nconst facebookResponse = $node[\"Post to Facebook (GHL MCP)\"].json;\nconst linkedinResponse = $node[\"Post to LinkedIn (GHL MCP)\"].json;\n\n// Parse responses (format may vary from GHL)\nlet instagramId = null;\nlet facebookId = null;\nlet linkedinId = null;\n\ntry {\n  instagramId = instagramResponse.id || instagramResponse.postId || null;\n} catch (e) {}\n\ntry {\n  facebookId = facebookResponse.id || facebookResponse.postId || null;\n} catch (e) {}\n\ntry {\n  linkedinId = linkedinResponse.id || linkedinResponse.postId || null;\n} catch (e) {}\n\nreturn {\n  content_id: contentData.content_id,\n  ghl_instagram_id: instagramId,\n  ghl_facebook_id: facebookId,\n  ghl_linkedin_id: linkedinId,\n  status: 'scheduled',\n  posted_at: new Date().toISOString()\n};"
-      },
-      "name": "Extract GHL Post IDs",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1340, 300]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Update content with GHL IDs and status\nUPDATE core.social_content_generated\nSET \n  ghl_instagram_id = '{{ $json.ghl_instagram_id }}',\n  ghl_facebook_id = '{{ $json.ghl_facebook_id }}',\n  ghl_linkedin_id = '{{ $json.ghl_linkedin_id }}',\n  status = '{{ $json.status }}',\n  posted_at = '{{ $json.posted_at }}',\n  updated_at = NOW()\nWHERE id = '{{ $json.content_id }}'::uuid\nRETURNING *;"
-      },
+      "id": "m5",
       "name": "Update Database Status",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1560, 300],
+      "position": [
+        1160,
+        300
+      ],
       "credentials": {
         "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
+          "name": "RailwayPG-idudes"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.social_content_generated\nSET status = 'scheduled', posted_at = NOW(), updated_at = NOW()\nWHERE id = $1::uuid\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [$json.content_id] }}"
         }
       }
     },
     {
-      "parameters": {},
+      "id": "m6",
       "name": "Loop Check",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [1780, 300]
+      "position": [
+        1380,
+        300
+      ],
+      "parameters": {}
     },
     {
-      "parameters": {
-        "operation": "insert",
-        "schema": "core",
-        "table": "metrics",
-        "columns": {
-          "mappings": [
-            {
-              "column": "metric_name",
-              "value": "social_posts_scheduled"
-            },
-            {
-              "column": "metric_value",
-              "value": "={{ $node[\"Update Database Status\"].all().length }}"
-            },
-            {
-              "column": "tags",
-              "value": "={{ JSON.stringify({ workflow: 'ghl_scheduler', date: new Date().toISOString().split('T')[0] }) }}"
-            }
-          ]
-        }
-      },
+      "id": "m7",
       "name": "Track Scheduling Metrics",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [2000, 200],
+      "position": [
+        1600,
+        260
+      ],
       "credentials": {
         "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "path": "ghl-performance-webhook",
-        "responseMode": "lastNode",
-        "options": {}
-      },
-      "name": "GHL Performance Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [240, 600],
-      "webhookId": "ghl-performance-metrics",
-      "notes": "Receives post performance metrics from GHL"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Parse GHL webhook payload\nconst body = $json.body || $json;\n\n// Expected format from GHL webhook:\n// {\n//   \"postId\": \"ghl_post_id_here\",\n//   \"platform\": \"instagram\" | \"facebook\" | \"linkedin\",\n//   \"metrics\": {\n//     \"likes\": 150,\n//     \"comments\": 23,\n//     \"shares\": 8,\n//     \"saves\": 45,\n//     \"reach\": 2500,\n//     \"impressions\": 3200,\n//     \"clicks\": 112\n//   },\n//   \"timestamp\": \"2025-10-15T18:30:00Z\"\n// }\n\nif (!body.postId || !body.platform || !body.metrics) {\n  throw new Error('Invalid webhook payload - missing required fields');\n}\n\nconst platform = body.platform.toLowerCase();\nconst metrics = body.metrics;\n\nreturn {\n  ghl_post_id: body.postId,\n  platform: platform === 'instagram' ? 'instagram_reel' : platform,\n  likes: metrics.likes || 0,\n  comments: metrics.comments || 0,\n  shares: metrics.shares || 0,\n  saves: metrics.saves || 0,\n  reach: metrics.reach || 0,\n  impressions: metrics.impressions || 0,\n  clicks: metrics.clicks || 0,\n  timestamp: body.timestamp || new Date().toISOString()\n};"
-      },
-      "name": "Parse Performance Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [460, 600]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Find content_id from GHL post ID\nSELECT id as content_id\nFROM core.social_content_generated\nWHERE \n  ('{{ $json.platform }}' = 'instagram_reel' AND ghl_instagram_id = '{{ $json.ghl_post_id }}')\n  OR ('{{ $json.platform }}' = 'facebook' AND ghl_facebook_id = '{{ $json.ghl_post_id }}')\n  OR ('{{ $json.platform }}' = 'linkedin' AND ghl_linkedin_id = '{{ $json.ghl_post_id }}')\nLIMIT 1;"
-      },
-      "name": "Find Content ID",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [680, 600],
-      "credentials": {
-        "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Use helper function to update performance\nSELECT * FROM update_post_performance(\n  '{{ $json.content_id }}'::uuid,\n  '{{ $node[\"Parse Performance Data\"].json.platform }}',\n  {{ $node[\"Parse Performance Data\"].json.likes }},\n  {{ $node[\"Parse Performance Data\"].json.comments }},\n  {{ $node[\"Parse Performance Data\"].json.shares }},\n  {{ $node[\"Parse Performance Data\"].json.saves }},\n  {{ $node[\"Parse Performance Data\"].json.reach }},\n  {{ $node[\"Parse Performance Data\"].json.impressions }},\n  {{ $node[\"Parse Performance Data\"].json.clicks }}\n);"
-      },
-      "name": "Update Performance Metrics",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [900, 600],
-      "credentials": {
-        "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
+          "name": "RailwayPG-idudes"
         }
       },
-      "notes": "Calls PostgreSQL function to calculate and store metrics"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {},
-          "conditions": [
-            {
-              "leftValue": "={{ $json.performance_tier }}",
-              "rightValue": "viral",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            },
-            {
-              "leftValue": "={{ $json.performance_tier }}",
-              "rightValue": "high",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combineOperation": "any"
-        }
-      },
-      "name": "High Performer?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1120, 600]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Trigger insight generation for high performers\nSELECT * FROM generate_feedback_insights();"
-      },
-      "name": "Generate Insights",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [1340, 500],
-      "credentials": {
-        "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
-        }
-      },
-      "notes": "ML pattern analysis from top posts"
-    },
-    {
       "parameters": {
         "operation": "insert",
         "schema": "core",
@@ -299,7 +123,7 @@
           "mappings": [
             {
               "column": "metric_name",
-              "value": "social_performance_tracked"
+              "value": "social_posts_marked_scheduled"
             },
             {
               "column": "metric_value",
@@ -307,33 +131,21 @@
             },
             {
               "column": "tags",
-              "value": "={{ JSON.stringify({ platform: $node['Parse Performance Data'].json.platform, performance_tier: $node['Update Performance Metrics'].json.performance_tier, engagement_rate: $node['Update Performance Metrics'].json.engagement_rate }) }}"
+              "value": "={{ JSON.stringify({ workflow:'ghl_scheduler', date: new Date().toISOString().split('T')[0] }) }}"
             }
           ]
-        }
-      },
-      "name": "Track Performance Metric",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [1340, 700],
-      "credentials": {
-        "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
         }
       }
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, engagement_rate: $node['Update Performance Metrics'].json.engagement_rate, performance_tier: $node['Update Performance Metrics'].json.performance_tier }) }}"
-      },
-      "name": "Webhook Response",
-      "type": "n8n-nodes-base.respondToWebhook",
+      "id": "w1",
+      "name": "Weekly Insights Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1,
-      "position": [1560, 600]
-    },
-    {
+      "position": [
+        240,
+        600
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -343,39 +155,54 @@
             }
           ]
         }
-      },
-      "name": "Weekly Insights Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1,
-      "position": [240, 900],
-      "notes": "Runs every Monday at 8AM"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "-- Get all feedback insights for review\nSELECT \n  pattern_type,\n  pattern_description,\n  avg_engagement_rate,\n  sample_size,\n  recommendation,\n  confidence_score,\n  platform,\n  topic_category\nFROM core.social_feedback_insights\nWHERE status = 'active'\n  AND confidence_score >= 7.0\nORDER BY avg_engagement_rate DESC, confidence_score DESC\nLIMIT 10;"
-      },
-      "name": "Get Top Insights",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [460, 900],
-      "credentials": {
-        "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
-        }
       }
     },
     {
-      "parameters": {
-        "jsCode": "// Format insights into readable report\nconst insights = $input.all();\n\nif (insights.length === 0) {\n  return { report: 'No high-confidence insights available yet. Need more data.' };\n}\n\nlet report = '# WEEKLY SOCIAL MEDIA PERFORMANCE INSIGHTS\\n\\n';\nreport += `Generated: ${new Date().toISOString().split('T')[0]}\\n\\n`;\n\nfor (const insight of insights) {\n  const engagementPct = (insight.json.avg_engagement_rate * 100).toFixed(2);\n  report += `## ${insight.json.pattern_type.replace(/_/g, ' ').toUpperCase()}\\n\\n`;\n  report += `**Pattern:** ${insight.json.pattern_description}\\n`;\n  report += `**Avg Engagement:** ${engagementPct}%\\n`;\n  report += `**Sample Size:** ${insight.json.sample_size} posts\\n`;\n  report += `**Confidence:** ${insight.json.confidence_score}/10\\n`;\n  if (insight.json.platform) report += `**Platform:** ${insight.json.platform}\\n`;\n  if (insight.json.topic_category) report += `**Category:** ${insight.json.topic_category}\\n`;\n  report += `\\n**Recommendation:** ${insight.json.recommendation}\\n\\n`;\n  report += '---\\n\\n';\n}\n\nreturn { \n  report,\n  insights_count: insights.length,\n  avg_engagement: insights.reduce((sum, i) => sum + i.json.avg_engagement_rate, 0) / insights.length\n};"
+      "id": "w2",
+      "name": "Get Top Insights",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        480,
+        600
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RailwayPG-idudes"
+        }
       },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pattern_type, pattern_description, avg_engagement_rate, sample_size, recommendation, confidence_score, platform, topic_category\nFROM core.social_feedback_insights\nWHERE status='active' AND confidence_score>=7.0\nORDER BY avg_engagement_rate DESC, confidence_score DESC\nLIMIT 10;"
+      }
+    },
+    {
+      "id": "w3",
       "name": "Format Insights Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 900]
+      "position": [
+        700,
+        600
+      ],
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json);\nif(!rows.length) return { report: 'No high-confidence insights available yet.', insights_count: 0, avg_engagement: 0 };\nlet r='# WEEKLY SOCIAL MEDIA PERFORMANCE INSIGHTS\\n\\n'; r+=`Generated: ${new Date().toISOString().split('T')[0]}\\n\\n`;\nlet sum=0; for(const x of rows){ sum += (x.avg_engagement_rate||0); const pct=((x.avg_engagement_rate||0)*100).toFixed(2);\n r+=`## ${(x.pattern_type||'pattern').toString().replace(/_/g,' ').toUpperCase()}\\n\\n`;\n r+=`Pattern: ${x.pattern_description}\\n`;\n r+=`Avg Engagement: ${pct}%\\n`;\n r+=`Sample Size: ${x.sample_size} posts\\n`;\n r+=`Confidence: ${x.confidence_score}/10\\n`;\n if (x.platform) r+=`Platform: ${x.platform}\\n`;\n if (x.topic_category) r+=`Category: ${x.topic_category}\\n`;\n r+='\\nRecommendation: '+(x.recommendation||'')+'\\n\\n---\\n\\n'; }\nreturn { report: r, insights_count: rows.length, avg_engagement: sum/rows.length };"
+      }
     },
     {
+      "id": "w4",
+      "name": "Track Insights Generation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        920,
+        600
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RailwayPG-idudes"
+        }
+      },
       "parameters": {
         "operation": "insert",
         "schema": "core",
@@ -396,100 +223,116 @@
             }
           ]
         }
-      },
-      "name": "Track Insights Generation",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [900, 900],
-      "credentials": {
-        "postgres": {
-          "id": "1",
-          "name": "Railway PostgreSQL"
-        }
       }
     }
   ],
   "connections": {
     "Schedule Trigger (Daily 6AM)": {
-      "main": [[{ "node": "Get Today's Posts", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Get Today's Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Get Today's Posts": {
-      "main": [[{ "node": "Loop Through Posts", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Loop Through Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Loop Through Posts": {
-      "main": [[{ "node": "Prepare Post Data", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Prepare Post Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare Post Data": {
-      "main": [[
-        { "node": "Post to Instagram (GHL MCP)", "type": "main", "index": 0 },
-        { "node": "Post to Facebook (GHL MCP)", "type": "main", "index": 0 },
-        { "node": "Post to LinkedIn (GHL MCP)", "type": "main", "index": 0 }
-      ]]
-    },
-    "Post to Instagram (GHL MCP)": {
-      "main": [[{ "node": "Extract GHL Post IDs", "type": "main", "index": 0 }]]
-    },
-    "Post to Facebook (GHL MCP)": {
-      "main": [[{ "node": "Extract GHL Post IDs", "type": "main", "index": 0 }]]
-    },
-    "Post to LinkedIn (GHL MCP)": {
-      "main": [[{ "node": "Extract GHL Post IDs", "type": "main", "index": 0 }]]
-    },
-    "Extract GHL Post IDs": {
-      "main": [[{ "node": "Update Database Status", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Update Database Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Update Database Status": {
-      "main": [[{ "node": "Loop Check", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Loop Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Loop Check": {
       "main": [
-        [{ "node": "Loop Through Posts", "type": "main", "index": 0 }],
-        [{ "node": "Track Scheduling Metrics", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Loop Through Posts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Track Scheduling Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
-    },
-    "GHL Performance Webhook": {
-      "main": [[{ "node": "Parse Performance Data", "type": "main", "index": 0 }]]
-    },
-    "Parse Performance Data": {
-      "main": [[{ "node": "Find Content ID", "type": "main", "index": 0 }]]
-    },
-    "Find Content ID": {
-      "main": [[{ "node": "Update Performance Metrics", "type": "main", "index": 0 }]]
-    },
-    "Update Performance Metrics": {
-      "main": [[
-        { "node": "High Performer?", "type": "main", "index": 0 },
-        { "node": "Track Performance Metric", "type": "main", "index": 0 }
-      ]]
-    },
-    "High Performer?": {
-      "main": [
-        [{ "node": "Generate Insights", "type": "main", "index": 0 }],
-        [{ "node": "Webhook Response", "type": "main", "index": 0 }]
-      ]
-    },
-    "Generate Insights": {
-      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
-    },
-    "Track Performance Metric": {
-      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
     },
     "Weekly Insights Trigger": {
-      "main": [[{ "node": "Get Top Insights", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Get Top Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Get Top Insights": {
-      "main": [[{ "node": "Format Insights Report", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Insights Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Insights Report": {
-      "main": [[{ "node": "Track Insights Generation", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Track Insights Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "staticData": null,
-  "tags": [],
-  "triggerCount": 0,
-  "updatedAt": "2025-10-12T00:00:00.000Z",
-  "versionId": "1"
+  "updatedAt": "2025-10-12T22:26:41.611641Z"
 }

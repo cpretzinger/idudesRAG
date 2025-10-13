@@ -122,8 +122,12 @@ Complete role-based authentication system with metallic gradient design integrat
 ```
 
 ### 3. `/auth/reset-password`
-**File**: `json-flows/06-auth-reset-password.json`
-**Status**: TODO
+**File**: `json-flows/03-auth-reset-password.json`
+**Status**: Implemented (in-memory token, email link)
+
+### 4. `/auth/reset-confirm`
+**File**: `json-flows/06-auth-reset-confirm.json`
+**Status**: Implemented (validate token, update password)
 
 ## Database Schema Required
 
@@ -235,7 +239,7 @@ NEXT_PUBLIC_N8N_URL=https://ai.thirdeyediagnostics.com/webhook
 
 ## Next Steps
 
-1. Implement password reset flow (`06-auth-reset-password.json`)
+1. Implement password reset confirm (`06-auth-reset-confirm.json`) in n8n and test end-to-end
 2. Add "Remember me" functionality
 3. Implement token refresh endpoint
 4. Add admin panel for user management (superadmin only)

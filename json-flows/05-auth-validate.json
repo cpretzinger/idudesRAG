@@ -1,47 +1,42 @@
 {
-  "name": "Auth Validate Session - idudesRAG",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "/auth/validate",
         "responseMode": "responseNode",
-        "options": {
-          "noResponseBody": false
-        }
+        "options": {}
       },
-      "id": "a1b2c3d4-8c4f-11ef-9f7a-0242ac120016",
+      "id": "3fef331a-76b1-4174-9c26-9e7e5be5bbf4",
       "name": "Webhook - Validate",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
       "position": [
-        240,
-        300
+        0,
+        0
       ],
       "webhookId": "idudesrag-auth-validate"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT u.id, u.email, u.name, u.role, s.expires_at FROM core.user_sessions s JOIN core.users u ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()",
-        "additionalFields": {
-          "parameters": [
-            "={{ $json.body.session_token }}"
-          ]
+        "query": " SELECT u.id, u.email, u.name, u.role, s.expires_at FROM core.user_sessions s JOIN core.users u\n  ON s.user_id = u.id WHERE s.token = $1 AND s.expires_at > NOW()",
+        "options": {
+          "queryReplacement": "={{ $json.body.session_token }}"
         }
       },
-      "id": "b2c3d4e5-8c4f-11ef-9f7a-0242ac120017",
+      "id": "ccf9a63b-ce10-4bf9-aa62-c9c3d6259adf",
       "name": "Check Session",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        460,
-        300
+        224,
+        0
       ],
       "credentials": {
         "postgres": {
-          "id": "POSTGRES_CREDENTIAL_ID",
-          "name": "iDudes PGVector Railway"
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
         }
       }
     },
@@ -49,87 +44,126 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nconst sessionToken = $json.body.session_token;\n\n// Check if session token was provided\nif (!sessionToken) {\n  return [{\n    json: {\n      valid: false,\n      error: 'Session token required',\n      status: 400\n    }\n  }];\n}\n\n// Check if session exists and is valid\nif (!input || input.length === 0) {\n  return [{\n    json: {\n      valid: false,\n      error: 'Invalid or expired session',\n      status: 401\n    }\n  }];\n}\n\nconst sessionData = input[0] || input;\n\n// Session is valid - return user data\nreturn [{\n  json: {\n    valid: true,\n    user: {\n      id: sessionData.id,\n      email: sessionData.email,\n      name: sessionData.name,\n      role: sessionData.role\n    },\n    expires_at: sessionData.expires_at,\n    tenant: 'idudes',\n    status: 200\n  }\n}];"
       },
-      "id": "c3d4e5f6-8c4f-11ef-9f7a-0242ac120018",
+      "id": "1397780d-ef23-4e5b-9502-f8b9ced4fa74",
       "name": "Validate Session",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        680,
-        300
+        448,
+        0
       ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": "={{ $json.status || 200 }}",
-        "responseBody": "={{ $json.valid ? {\n  \"valid\": true,\n  \"user\": $json.user,\n  \"expires_at\": $json.expires_at,\n  \"tenant\": $json.tenant\n} : {\n  \"valid\": false,\n  \"error\": $json.error\n} }}"
+        "responseBody": "={{ $json.valid ? {\n  \"valid\": true,\n  \"user\": $json.user,\n  \"expires_at\": $json.expires_at,\n  \"tenant\": $json.tenant\n} : {\n  \"valid\": false,\n  \"error\": $json.error\n} }}",
+        "options": {}
       },
-      "id": "d4e5f6g7-8c4f-11ef-9f7a-0242ac120019",
+      "id": "d3b95562-57f5-40b2-b025-c14c426e8a14",
       "name": "Respond with Validation",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        900,
-        300
+        672,
+        0
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE core.user_sessions SET last_accessed = NOW() AT TIME ZONE 'America/Phoenix' WHERE token = $1",
-        "additionalFields": {
-          "parameters": [
-            "={{ $('Webhook - Validate').item.json.body.session_token }}"
-          ]
+        "query": "UPDATE core.user_sessions SET last_accessed = NOW() AT TIME ZONE 'America/Phoenix' WHERE token\n  = $1",
+        "options": {
+          "queryReplacement": "={{ $('Webhook - Validate').first().json.body.session_token }}"
         }
       },
-      "id": "e5f6g7h8-8c4f-11ef-9f7a-0242ac12001a",
+      "id": "cb242fe5-873f-40e4-b812-f4c13fda6637",
       "name": "Update Last Accessed",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        680,
-        460
+        448,
+        160
       ],
       "credentials": {
         "postgres": {
-          "id": "POSTGRES_CREDENTIAL_ID",
-          "name": "iDudes PGVector Railway"
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pass through only if valid=true\nif ($json.valid) { return [{ json: $json }]; }\nreturn [];"
+      },
+      "id": "gate-valid-code",
+      "name": "Gate Valid",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pass through only if valid=false\nif (!$json.valid) { return [{ json: $json }]; }\nreturn [];"
+      },
+      "id": "gate-invalid-code",
+      "name": "Gate Invalid",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.auth_logs (tenant, email, action, status, ip_address, user_agent, created_at) SELECT $1, $2, 'validate', 'success', $3, $4, NOW() AT TIME ZONE 'America/Phoenix' WHERE NOT EXISTS ( SELECT 1 FROM core.auth_logs WHERE action = 'validate' AND status = 'success' AND email = $2 AND created_at > (NOW() AT TIME ZONE 'America/Phoenix') - INTERVAL '15 minutes' );",
+        "options": {
+          "queryReplacement": "=idudes\n{{ $json.user.email }}\n{{ $('Webhook - Validate').item.json.headers['x-forwarded-for'] || $('Webhook - Validate').item.json.headers['x-real-ip'] || 'unknown' }}\n{{ $('Webhook - Validate').item.json.headers['user-agent'] || 'unknown' }}"
+        }
+      },
+      "id": "log-validate-success",
+      "name": "Log Validate Success (throttled)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        672,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO auth_logs (tenant, email, action, status, ip_address, user_agent, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())",
-        "additionalFields": {
-          "parameters": [
-            "idudes",
-            "={{ $json.valid ? $json.user.email : 'unknown' }}",
-            "validate",
-            "={{ $json.valid ? 'success' : 'failed' }}",
-            "={{ $('Webhook - Validate').item.json.headers['x-forwarded-for'] || $('Webhook - Validate').item.json.headers['x-real-ip'] || 'unknown' }}",
-            "={{ $('Webhook - Validate').item.json.headers['user-agent'] || 'unknown' }}"
-          ]
+        "query": "INSERT INTO core.auth_logs (tenant, email, action, status, ip_address, user_agent, created_at) VALUES ($1, $2, 'validate', 'failed', $3, $4, NOW() AT TIME ZONE 'America/Phoenix')",
+        "options": {
+          "queryReplacement": "=idudes\nunknown\n{{ $('Webhook - Validate').item.json.headers['x-forwarded-for'] || $('Webhook - Validate').item.json.headers['x-real-ip'] || 'unknown' }}\n{{ $('Webhook - Validate').item.json.headers['user-agent'] || 'unknown' }}"
         }
       },
-      "id": "f6g7h8i9-8c4f-11ef-9f7a-0242ac12001b",
-      "name": "Log Validation Attempt",
+      "id": "log-validate-failure",
+      "name": "Log Validate Failure",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        900,
-        460
+        672,
+        280
       ],
       "credentials": {
         "postgres": {
-          "id": "POSTGRES_CREDENTIAL_ID", 
-          "name": "iDudes PGVector Railway"
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
         }
       }
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook - Validate": {
       "main": [
@@ -162,47 +196,37 @@
             "index": 0
           },
           {
-            "node": "Update Last Accessed",
+            "node": "Gate Valid",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Log Validation Attempt",
+            "node": "Gate Invalid",
             "type": "main",
             "index": 0
           }
         ]
       ]
+    },
+    "Gate Valid": {
+      "main": [
+        [
+          { "node": "Update Last Accessed", "type": "main", "index": 0 },
+          { "node": "Log Validate Success (throttled)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Gate Invalid": {
+      "main": [
+        [
+          { "node": "Log Validate Failure", "type": "main", "index": 0 }
+        ]
+      ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": {
-      "errorWorkflow": "",
-      "continueOnFail": false
-    }
-  },
-  "versionId": "1",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "ai.thirdeyediagnostics.com"
-  },
-  "id": "auth-validate-idudes",
-  "tags": [
-    {
-      "createdAt": "2025-10-06T00:00:00.000Z",
-      "updatedAt": "2025-10-06T00:00:00.000Z",
-      "id": "auth",
-      "name": "auth"
-    },
-    {
-      "createdAt": "2025-10-06T00:00:00.000Z",
-      "updatedAt": "2025-10-06T00:00:00.000Z",
-      "id": "idudes",
-      "name": "idudes"
-    }
-  ]
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
 }

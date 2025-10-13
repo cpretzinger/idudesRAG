@@ -61,7 +61,8 @@ idudesRAG/
 │   ├── 03-document-metadata-enrichment.json  # Metadata enrichment
 │   ├── 04-auth-login.json           # Authentication
 │   ├── 05-auth-validate.json        # Auth validation
-│   ├── 06-auth-reset-password.json  # Password reset
+│   ├── 03-auth-reset-password.json  # Password reset (request/email)
+│   ├── 06-auth-reset-confirm.json   # Password reset (confirm/update)
 │   ├── 07-chat-search.json          # OLD (broken - chat trigger)
 │   └── 08-chat-knowledge-webhook.json   # NEW (fixed chat + search)
 │

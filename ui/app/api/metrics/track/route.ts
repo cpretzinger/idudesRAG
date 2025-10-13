@@ -13,7 +13,7 @@ const DB_CONFIG: ClientConfig = {
 interface TrackMetricRequest {
   metric_name: string
   metric_value: number
-  tags?: Record<string, any>
+  tags?: Record<string, string | number | boolean>
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

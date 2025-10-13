@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { Client, type ClientConfig, type QueryResult } from 'pg'
+import { Client, type ClientConfig } from 'pg'
 
 // Type definition for database row counts
 interface CountResult {

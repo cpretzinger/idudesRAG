@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { validateSession } from '@/lib/n8n-auth'
+import { validateSession } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,9 +12,9 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const user = await validateSession(token)
+    const result = await validateSession(token)
 
-    if (!user) {
+    if (!result.valid || !result.user) {
       return NextResponse.json(
         { error: 'Invalid session' },
         { status: 401 }
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      user
+      user: result.user
     })
   } catch (error) {
     console.error('Get user error:', error)

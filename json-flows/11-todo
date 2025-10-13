@@ -1,0 +1,420 @@
+Alright, babe — here’s the clean, final hand-off.
+
+## ✅ Download (import-ready)
+
+* **Flow 10:** [10-social-content-automation.json](sandbox:/mnt/data/10-social-content-automation.json)
+* **Flow 11:** [11-ghl-post-scheduler.json](sandbox:/mnt/data/11-ghl-post-scheduler.json)
+
+## ✅ Model & creds (locked exactly as requested)
+
+* All LLM nodes → `"model": "gpt-5-nano", "options": { "reasoning": { "effort": "high" } }`
+* Embeddings → `text-embedding-3-small`
+* Postgres cred → `RailwayPG-idudes`
+* OpenAI cred → `ZARAapiKey`
+
+## 🔎 LLM prompts (outside the nodes, for your review)
+
+These are the exact **System/User** messages the nodes use:
+
+### Extract Concepts (GPT-5-Nano)
+
+* **System:**
+  You are an expert content analyst for the Insurance Dudes podcast. Return ONLY a valid JSON array (no prose, no markdown). For each concept: concept (1–2 sentences), category (sales_strategy | objection_handling | lead_gen | mindset | tech | case_study | industry_insight), actionability (high | medium | low), proof_type (data | story | framework | none), hook_potential (1–10), platform_fit (instagram | facebook | linkedin | all).
+* **User (templated):**
+  `=Episode: {{ $json.episode_title }}\n\nContent (truncated):\n{{ $json.episode_content.slice(0, 3500) }}\n\nExtract 15–20 concepts as JSON array.`
+
+### Generate Content (GPT-5-Nano)
+
+* **System:**
+  You are an elite social content generator for the Insurance Dudes. Generate platform-specific posts that are on-brand, high-signal, and conversion-minded. Output exactly as requested.
+* **User:**
+  `=Generate social media content for DAY {{ $json.day_number }}: {{ $json.day_theme }}\n\nEPISODE: {{ $json.episode_title }} ({{ $json.episode_number }})\nTOPIC: {{ $json.concept }} ({{ $json.category }})\nScore: {{ $json.scores.weighted_total }}/10\n\nPRIMARY SOURCE (truncated):\n{{ $node["Combine Episode Content"].json.episode_content.substring(0, 3000) }}\n\nENRICHMENT:\n{{ $json.enriched_content_chunks }}\n\nCreate 3 posts (Instagram Reel, Facebook, LinkedIn) exactly per the required formats.`
+
+### Expert Review (GPT-5-Nano)
+
+* **System:**
+  You are a strict content reviewer. Validate brand-safety, value delivery, platform fit, and engagement potential. Return ONLY JSON exactly in the schema provided.
+* **User:**
+  `=Review these 3 social posts for Day {{ $json.day_number }} ({{ $json.day_theme }}).\nEpisode: {{ $json.episode_title }}\nTopic: {{ $json.topic_title }}\nReturn JSON with overall_recommendation (APPROVE | APPROVE_WITH_EDITS | REJECT) and per-platform required_fixes arrays.`
+
+### Optimize Instagram (GPT-5-Nano)
+
+* **System:**
+  Optimize Instagram Reels for hook strength, clarity, and conversion. Output exactly in the requested format.
+* **User:**
+  `=Optimize this approved Instagram Reel:\n\nCURRENT:\n{{ $json.instagram_content }}\n\nGoals: stronger hook (≤8 words), 15–30s script (≤3 sentences), crystal CTA, 5–8 hashtags. Output as:\nOPTIMIZED HOOK:\n\nOPTIMIZED SCRIPT:\n\nOPTIMIZED CTA:\n\nOPTIMIZED HASHTAGS:\n\nVISUAL SUGGESTIONS:\n- ...\n- ...`
+
+### Optimize Facebook (GPT-5-Nano)
+
+* **System:**
+  Optimize Facebook posts for curiosity, readability, and community engagement. Output exactly in requested format.
+* **User:**
+  `=Optimize this Facebook post:\n\nCURRENT:\n{{ $json.facebook_content }}\n\nGoals: hook+emoji, value in 2–3 short paragraphs, story, engagement question, 5–10 hashtags. Output as:\nOPTIMIZED FACEBOOK POST:\n\n[post...]\n\n[hashtags]\n\nSUGGESTED COMMENT RESPONSES:\n- ...\n- ...\n- ...`
+
+### Optimize LinkedIn (GPT-5-Nano)
+
+* **System:**
+  Optimize LinkedIn for credibility, insight density, proof, and professional tone. Output exactly in requested format.
+* **User:**
+  `=Optimize LinkedIn post:\n\nCURRENT:\n{{ $json.linkedin_content }}\n\nGoals: crisp hook, insight/framework, data point, leadership takeaway, discussion prompt, 3–6 pro hashtags. Output as:\nOPTIMIZED LINKEDIN POST:\n\n[post...]\n\n[hashtags]\n\nENGAGEMENT STRATEGY NOTES:\n- ...\n- ...\n- ...`
+
+## 🧩 What’s inside (quick highlights)
+
+* SQL hardened (parameters), correct schema (`text`, not `content`), safe JSON parsing.
+* Embeddings generated once, then vector similarity in PG.
+* Review gate parses JSON (no substring “APPROVE” hacks).
+* Drive mirror node included but **disabled**; Weekly Insights included in Flow 11.
+* Metrics written to `core.metrics` for each batch/schedule/insight event.
+
+## 🚀 Import steps
+
+1. In n8n, **Workflows → Import from File**.
+2. Import both JSONs.
+3. In each workflow, assign credentials by **name**:
+
+   * Postgres → `RailwayPG-idudes`
+   * OpenAI → `ZARAapiKey`
+4. (Optional) Enable **Drive Mirror** in Flow 10 and set `DRIVE_CONTENT_MIRROR_FOLDER_ID` env.
+
+If you want any tweak (e.g., enable the Drive mirror with your folder ID, change batch size, or adjust similarity threshold), tell me and I’ll regenerate the files in-place.
+
+ Status
+
+  - Updated
+      - 03-auth-reset-password.json: in-memory token generation, auth_logs logging, dynamic reset URL, email
+  send.
+      - 04-auth-login.json: writes user_sessions with last_accessed; logs login attempts.
+      - 05-auth-validate.json: updates last_accessed; logs validate results; fixed parameter formatting.
+  - Added
+      - 06-auth-reset-confirm.json: validates token, bcrypt-hashes new password, updates core.users, deletes
+  existing sessions, logs reset_confirm, responds success.
+
+  UI integration
+
+  - Reset request wired to /auth/reset-password; “Forgot password?” on login page is live.
+  - Reset confirm wired via API route /api/auth/reset-confirm and page /reset-password.
+  - Login/validate already integrated; server API routes consolidated to use @/lib/auth.
+
+  What you still need to do in n8n
+
+  - Import these flows:
+      - json-flows/03-auth-reset-password.json
+      - json-flows/04-auth-login.json
+      - json-flows/05-auth-validate.json
+      - json-flows/06-auth-reset-confirm.json
+  - Assign credentials:
+      - Postgres: RailwayPG-idudes
+      - Gmail OAuth2: craig@theidudes.com (for reset email in 03)
+  - Verify webhook base matches env:
+      - UI expects NEXT_PUBLIC_N8N_URL pointing to the webhook base (e.g., https://ai.thirdeyediagnostics.com/
+  webhook).
+
+CRAIG TO CRAIG: THIS IS NOT DONE IF YOU DO NOT SEE THE NEW FLOW IN N8N -
+
+DELETE THIS TODO WHEN LAST STWP HANELDED
+
+Got you. Here are the **exact, final prompts** (System + User) for every GPT node that was off. They’re copy-paste ready for n8n **chatOpenAi** nodes using **`gpt-5-nano`** with
+`"options": { "reasoning": { "effort": "high" } }`.
+
+---
+
+## 1) Extract Concepts (GPT-5-Nano)
+
+**System**
+
+```
+You are an expert content analyst for The Insurance Dudes podcast.
+Return ONLY a valid JSON array (no prose, no markdown).
+For each concept object include EXACTLY:
+- "concept": 1–2 sentence description
+- "category": one of ["sales_strategy","objection_handling","lead_gen","mindset","tech","case_study","industry_insight"]
+- "actionability": "high" | "medium" | "low"
+- "proof_type": "data" | "story" | "framework" | "none"
+- "hook_potential": integer 1–10
+- "platform_fit": "instagram" | "facebook" | "linkedin" | "all"
+Array length: 15–20. Do not wrap in code fences. No trailing commas. No comments.
+```
+
+**User**
+
+```
+=Episode: {{ $json.episode_title }}
+
+Content (truncated):
+{{ $json.episode_content.slice(0, 3500) }}
+
+Task: Extract 15–20 concepts and return ONLY the JSON array as specified.
+```
+
+---
+
+## 2) Generate Content (GPT-5-Nano)
+
+**System**
+
+```
+You are an elite social content generator for The Insurance Dudes.
+Create platform-specific, high-signal, conversion-minded posts.
+Output EXACTLY the three platform sections in the formats below—no extra text.
+
+INSTAGRAM REEL FORMAT:
+HOOK: [≤8 words; pattern interrupt; no ? in first 3 words]
+SCRIPT:
+[3 punchy sentences; 15–30 sec spoken; one key insight]
+CTA: [≤15 words; action oriented]
+HASHTAGS: [5–8 targeted tags incl. #InsuranceDudes #InsuranceSales]
+
+FACEBOOK POST FORMAT:
+[Hook or bold statement with emoji]
+[2–3 short paragraphs with line breaks; value delivery]
+[Story/example]
+[Engagement question]
+[5–10 hashtags]
+
+LINKEDIN POST FORMAT:
+[Professional hook (first 2–3 lines drive expand)]
+[Insight or framework]
+[Data/proof point]
+[Thought-leadership takeaway]
+[Discussion prompt]
+[3–6 professional hashtags; no emojis]
+```
+
+**User**
+
+```
+=Generate social media content for DAY {{ $json.day_number }} — {{ $json.day_theme }}
+
+EPISODE: {{ $json.episode_title }} ({{ $json.episode_number }})
+TOPIC: {{ $json.concept }}  |  Category: {{ $json.category }}
+Score (priority): {{ $json.scores.weighted_total }}/10
+
+PRIMARY SOURCE (truncated):
+{{ $node["Combine Episode Content"].json.episode_content.substring(0, 3000) }}
+
+ENRICHMENT (related excerpts):
+{{ $json.enriched_content_chunks }}
+
+Produce the three sections EXACTLY in the formats specified (Instagram Reel, Facebook Post, LinkedIn Post). No extra commentary.
+```
+
+---
+
+## 3) Expert Review (GPT-5-Nano)
+
+**System**
+
+```
+You are a strict content reviewer for The Insurance Dudes.
+Assess brand safety, value delivery, platform fit, and engagement potential.
+Return ONLY JSON in the exact schema below (no markdown, no extra text):
+
+{
+  "overall_recommendation": "APPROVE" | "APPROVE_WITH_EDITS" | "REJECT",
+  "summary": "1–2 sentence rationale",
+  "instagram_review": {
+    "scores": { "voice_authenticity": 1-10, "value_delivery": 1-10, "engagement_potential": 1-10, "brand_safety": 1-10 },
+    "weighted_score": number,
+    "pass": true|false,
+    "strengths": [string],
+    "issues": [string],
+    "required_fixes": [
+      { "location": "hook|script|cta|hashtags",
+        "current": "string",
+        "fix": "string (exact replacement)",
+        "reason": "string" }
+    ]
+  },
+  "facebook_review": { "scores": {...}, "weighted_score": number, "pass": true|false, "strengths": [string], "issues": [string], "required_fixes": [] },
+  "linkedin_review":  { "scores": {...}, "weighted_score": number, "pass": true|false, "strengths": [string], "issues": [string], "required_fixes": [] },
+  "action_items": [string]
+}
+```
+
+**User**
+
+```
+=Review these 3 social posts for Day {{ $json.day_number }} — {{ $json.day_theme }}
+Episode: {{ $json.episode_title }}
+Topic: {{ $json.topic_title }}
+
+INSTAGRAM:
+{{ $json.instagram_content }}
+
+FACEBOOK:
+{{ $json.facebook_content }}
+
+LINKEDIN:
+{{ $json.linkedin_content }}
+
+Return ONLY the JSON in the exact schema above.
+```
+
+---
+
+## 4) Optimize Instagram (GPT-5-Nano)
+
+**System**
+
+```
+You are an Instagram Reels optimizer.
+Strengthen hook, clarity, pacing (15–30s), and conversion.
+Return EXACTLY in this format (no extras):
+
+OPTIMIZED HOOK: [≤8 words]
+
+OPTIMIZED SCRIPT:
+[3 punchy sentences max; line breaks ok]
+
+OPTIMIZED CTA: [≤15 words; action oriented]
+
+OPTIMIZED HASHTAGS: [5–8 targeted hashtags]
+
+VISUAL SUGGESTIONS:
+- [B-roll or visual idea]
+- [On-screen text overlay suggestions]
+```
+
+**User**
+
+```
+=Optimize this approved Instagram Reel:
+
+CURRENT:
+{{ $json.instagram_content }}
+
+Goals: stronger hook, tight 15–30s pacing, crystal CTA, 5–8 strategic hashtags.
+Return ONLY the formatted sections specified.
+```
+
+---
+
+## 5) Optimize Facebook (GPT-5-Nano)
+
+**System**
+
+```
+You are a Facebook post optimizer.
+Maximize curiosity, readability, community engagement.
+Return EXACTLY in this format:
+
+OPTIMIZED FACEBOOK POST:
+
+[Hook with emoji]
+[2–3 short paragraphs; line breaks]
+[Story/example]
+[Engagement question]
+[5–10 hashtags]
+
+SUGGESTED COMMENT RESPONSES:
+- [Positive reply template]
+- [Answer to common question]
+- [Objection response]
+```
+
+**User**
+
+```
+=Optimize this approved Facebook post:
+
+CURRENT:
+{{ $json.facebook_content }}
+
+Goals: stronger hook, easy reading, clear engagement question, 5–10 strategic hashtags.
+Return ONLY the formatted blocks specified.
+```
+
+---
+
+## 6) Optimize LinkedIn (GPT-5-Nano)
+
+**System**
+
+```
+You are a LinkedIn optimizer.
+Emphasize credibility, insight density, data/proof, professional tone. No emojis.
+Return EXACTLY in this format:
+
+OPTIMIZED LINKEDIN POST:
+
+[Professional hook — first 2–3 lines must drive “see more”]
+[Insight or framework]
+[Data/proof point]
+[Thought-leadership takeaway]
+[Discussion prompt]
+[3–6 professional hashtags]
+
+ENGAGEMENT STRATEGY NOTES:
+- [Why the hook works]
+- [Points to seed in comments]
+- [Who to tag or mention]
+```
+
+**User**
+
+```
+=Optimize this approved LinkedIn post:
+
+CURRENT:
+{{ $json.linkedin_content }}
+
+Goals: credible hook, clear framework/insight, concrete data, professional tone, discussion prompt, 3–6 pro hashtags.
+Return ONLY the formatted blocks specified.
+```
+
+---
+
+### Implementation notes (so they actually run)
+
+* **Node type:** `@n8n/n8n-nodes-langchain.chatOpenAi`
+* **Model:** `"gpt-5-nano"`
+* **Options:** `"reasoning": { "effort": "high" }` (plus `temperature`/`maxTokens` where needed)
+* **Reading outputs:** Use **`$json.text`** from these nodes (not `response`).
+* **Embeddings:** Use `text-embedding-3-small` (unchanged).
+
+If you want, I’ll patch your two JSON files with these exact prompts and the `.text` output handling, then reattach updated imports.
+ked through 01-GoogleDrive.json. Your flow already supports large text files from Drive.
+
+  What it currently does
+
+  - Google Drive “Download File”
+      - Operation: download, binaryPropertyName: data.
+      - Conversions: Google Docs → text/plain, Slides → PDF.
+  - ExtractFromFile (Code)
+      - Converts downloaded binary (base64) to UTF‑8 string.
+      - Cleans text and emits json.data (and content), plus file_id, filename, mime_type.
+  - ProcessDocument (Code)
+      - Cleans again, chunks text (CHUNK_SIZE=900, OVERLAP=150).
+      - Embeds chunks via OpenAI in batches of 100; 120s timeout per batch.
+      - Emits per‑chunk records with embeddings for downstream insert.
+  - Flow control
+      - “limit: 1” on the list step + schedule (“Every5Min”) → processes one file per run.
+      - IfExists → Download → Extract → Process → Insert → Move file to Completed; failures go to Move Failed.
+
+  Plan to validate a 200-page text in Drive (no changes)
+
+  1. File format: Use Google Doc or plain .txt; avoid PDFs (current flow doesn’t OCR PDF text).
+  2. Size sanity: 200 pages (~100–300k chars) → roughly 150–350 chunks; expect 2–4 embedding requests
+  (batch=100).
+  3. Env check: Ensure OPENAI_API_KEY is set in n8n.
+  4. Run once: Drop the file in the “RAG-Pending” folder. Let the scheduler pick it up (or run manually).
+  5. Monitor:
+      - n8n execution: confirm chunk count and no timeouts (each embedding batch has 120s timeout).
+      - DB: new embeddings inserted; file_status updated to completed.
+      - Drive: file moved to “RAG-Completed”.
+  6. If you see timeouts or rate limits:
+      - Reduce BATCH to 50 (fewer chunks per OpenAI request).
+      - Lower CHUNK_SIZE (e.g., 700) to even work per request.
+      - Process one file per execution (already true).
+
+  Optional future hardening (only if needed)
+
+  - Add a PDF text extraction path (for non-Google Docs PDFs).
+  - Add retry on embedding HTTP 429/5xx.
+  - Emit chunk count metrics to logs or DB for monitoring.
+
+▌ Implement {feature}                                                                                        
+ ⏎ send   Ctrl+J newline   Ctrl+T transcript   Ctrl+C quit   283688 tokens used   62% context left            
+
+
+

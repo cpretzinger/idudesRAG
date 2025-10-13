@@ -1,0 +1,154 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/auth/reset-confirm",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-reset-confirm-webhook",
+      "name": "Webhook - Reset Confirm",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -760,
+        0
+      ],
+      "webhookId": "idudesrag-auth-reset-confirm"
+    },
+    {
+      "parameters": {
+        "jsCode": "const bcrypt = require('bcrypt');\nconst crypto = require('crypto');\n\nconst body = $json.body || {};\nconst token = body.token;\nconst newPassword = body.new_password;\n\nif (!token || !newPassword) {\n  return [{ json: { success: false, error: 'Token and new_password are required', status: 400 } }];\n}\n\nif (String(newPassword).length < 8) {\n  return [{ json: { success: false, error: 'Password must be at least 8 characters', status: 400 } }];\n}\n\nconst tokenHash = crypto.createHash('sha256').update(token).digest('hex');\nconst staticData = this.getWorkflowStaticData('global');\nstaticData.resetTokens = staticData.resetTokens || {};\nconst rec = staticData.resetTokens[tokenHash];\n\nif (!rec) {\n  return [{ json: { success: false, error: 'Invalid or expired token', status: 400 } }];\n}\n\nif (new Date(rec.expires_at) < new Date()) {\n  delete staticData.resetTokens[tokenHash];\n  return [{ json: { success: false, error: 'Token expired', status: 400 } }];\n}\n\nconst passwordHash = await bcrypt.hash(newPassword, 10);\n\nreturn [{ json: { success: true, user_id: rec.user_id, email: rec.email, token_hash: tokenHash, password_hash: passwordHash } }];"
+      },
+      "id": "prep-token-reset-confirm",
+      "name": "Validate Token & Hash Password",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.users SET password_hash = $1, updated_at = NOW() AT TIME ZONE 'America/Phoenix' WHERE id = $2",
+        "options": {
+          "queryReplacement": "={{ $json.password_hash }}\n{{ $json.user_id }}"
+        }
+      },
+      "id": "update-user-password",
+      "name": "Update User Password",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -240,
+        -40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM core.user_sessions WHERE user_id = $1",
+        "options": {
+          "queryReplacement": "={{ $json.user_id }}"
+        }
+      },
+      "id": "delete-user-sessions",
+      "name": "Delete Existing Sessions",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -240,
+        40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cleanup token from static data after successful reset\nconst tokenHash = $json.token_hash;\nconst staticData = this.getWorkflowStaticData('global');\nif (staticData.resetTokens) { delete staticData.resetTokens[tokenHash]; }\nreturn [{ json: { success: true, email: $json.email } }];"
+      },
+      "id": "cleanup-token",
+      "name": "Cleanup Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.auth_logs (tenant, email, action, status, ip_address, user_agent, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW() AT TIME ZONE 'America/Phoenix')",
+        "options": {
+          "queryReplacement": "=idudes\n{{ $json.email || 'unknown' }}\nreset_confirm\nsuccess\n{{ $('Webhook - Reset Confirm').item.json.headers['x-forwarded-for'] || $('Webhook - Reset Confirm').item.json.headers['x-real-ip'] || 'unknown' }}\n{{ $('Webhook - Reset Confirm').item.json.headers['user-agent'] || 'unknown' }}"
+        }
+      },
+      "id": "log-reset-confirm",
+      "name": "Log Reset Confirm",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        0,
+        40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, message: 'Password reset successful' } }}",
+        "options": {}
+      },
+      "id": "respond-reset-confirm",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Reset Confirm": {
+      "main": [
+        [
+          { "node": "Validate Token & Hash Password", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Validate Token & Hash Password": {
+      "main": [
+        [
+          { "node": "Update User Password", "type": "main", "index": 0 },
+          { "node": "Delete Existing Sessions", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update User Password": { "main": [[{ "node": "Cleanup Token", "type": "main", "index": 0 }]] },
+    "Delete Existing Sessions": { "main": [[{ "node": "Log Reset Confirm", "type": "main", "index": 0 }]] },
+    "Cleanup Token": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] },
+    "Log Reset Confirm": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": true }
+}

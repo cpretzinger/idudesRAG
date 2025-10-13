@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { requestPasswordReset } from '@/lib/auth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
   const { login, user } = useAuth()
   const router = useRouter()
@@ -21,6 +23,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setInfo('')
     setLoading(true)
 
     const result = await login(email, password)
@@ -30,6 +33,23 @@ export default function LoginPage() {
     } else {
       setError(result.error || 'Login failed')
       setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    setError('')
+    setInfo('')
+    if (!email) {
+      setError('Enter your email above first')
+      return
+    }
+    setLoading(true)
+    const res = await requestPasswordReset(email)
+    setLoading(false)
+    if (res.success) {
+      setInfo('If an account exists, a reset link was sent.')
+    } else {
+      setError(res.error || 'Could not request password reset')
     }
   }
 
@@ -59,12 +79,20 @@ export default function LoginPage() {
               <p className="text-zinc-400 text-sm">Secure Authentication</p>
             </div>
 
-            {/* Error message */}
+            {/* Error/Info messages */}
             {error && (
               <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 backdrop-blur-sm">
                 <p className="text-red-400 text-sm flex items-center gap-2">
                   <span className="text-lg">⚠️</span>
                   {error}
+                </p>
+              </div>
+            )}
+            {info && !error && (
+              <div className="mb-6 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 backdrop-blur-sm">
+                <p className="text-emerald-400 text-sm flex items-center gap-2">
+                  <span className="text-lg">✅</span>
+                  {info}
                 </p>
               </div>
             )}
@@ -133,7 +161,7 @@ export default function LoginPage() {
 
             {/* Footer links */}
             <div className="mt-6 text-center">
-              <button className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors">
+              <button onClick={handleForgotPassword} className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors">
                 Forgot password?
               </button>
             </div>

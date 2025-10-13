@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null
   session: AuthSession | null
   loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (email: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>
   logout: () => Promise<void>
   checkSession: () => Promise<void>
 }
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(result.user)
         setSession(newSession)
 
-        return { success: true }
+        return { success: true, user: result.user }
       } else {
         return { success: false, error: result.error || 'Login failed' }
       }

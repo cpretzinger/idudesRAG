@@ -27,6 +27,9 @@ services:
       - N8N_CHAT_WEBHOOK_URL=${N8N_CHAT_WEBHOOK_URL}
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      - RAG_READ_KEY=${RAG_READ_KEY}
+      - RAG_WRITE_KEY=${RAG_WRITE_KEY}
+      
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.idudes-rag-ui.rule=Host(`idudes.thirdeyediagnostics.com`)"

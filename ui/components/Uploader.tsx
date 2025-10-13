@@ -15,28 +15,22 @@ export default function Uploader() {
     setStatus('Uploading...')
 
     try {
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      const base64 = buffer.toString('base64')
+      // Create FormData to send file as binary (required by n8n workflow)
+      const formData = new FormData()
+      formData.append('file', file, file.name)
 
-      const res = await fetch('/api/webhook/documents', {
+      // Send to n8n webhook directly - it expects binary upload
+      const n8nBaseUrl = process.env.NEXT_PUBLIC_N8N_URL || 'https://ai.thirdeyediagnostics.com/webhook'
+      const res = await fetch(`${n8nBaseUrl}/upload`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.session_token || ''}`
         },
-        body: JSON.stringify({
-          filename: file.name,
-          content: base64,
-          type: file.type,
-          size: file.size,
-          source: 'ui-upload',
-          user_id: session?.user?.id
-        })
+        body: formData
       })
 
       const data = await res.json()
-      setStatus(res.ok ? '✅ Document uploaded successfully!' : `❌ ${data.message || 'Upload failed'}`)
+      setStatus(res.ok ? '✅ Document uploaded successfully to RAG-Pending!' : `❌ ${data.message || data.error || 'Upload failed'}`)
 
       if (res.ok) {
         setFile(null)

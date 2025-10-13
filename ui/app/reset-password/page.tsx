@@ -50,7 +50,7 @@ function ResetPasswordForm() {
         setInfo('Password updated. Redirecting to login…')
         setTimeout(() => router.push('/login'), 1500)
       }
-    } catch (e) {
+    } catch {
       setError('Network error')
     } finally {
       setLoading(false)

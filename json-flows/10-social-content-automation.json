@@ -1,5 +1,4 @@
 {
-  "name": "10 - Social Content Automation (A+)",
   "nodes": [
     {
       "parameters": {
@@ -224,7 +223,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT file_id, filename, status, created_at                                                                \nFROM core.file_status                                                                                        \nWHERE status = 'completed'                                                                                   \nORDER BY created_at DESC",
+        "query": "SELECT\n  id,\n  file_id,\n  filename,\n  chunk_index,\n  text,\n  COUNT(*) OVER (PARTITION BY file_id) AS total_chunks\n  FROM core.embeddings\n  WHERE file_id = $1\n  ORDER BY chunk_index ASC;",
         "options": {
           "queryReplacement": "= [ { file_id, filename, status, created_at } ]"
         }
@@ -247,7 +246,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": " SELECT\n      id,\n      file_id,\n      filename,\n      chunk_index,\n      text,\n      chunk_size,\n      file_type,\n      file_size,\n      created_at,\n      COUNT(*) OVER (PARTITION BY file_id) AS total_chunks\n  FROM core.embeddings\n  WHERE file_id = $1\n  ORDER BY chunk_index ASC;",
+        "query": "SELECT\n  id,\n  file_id,\n  filename,\n  chunk_index,\n  text,\n  COUNT(*) OVER (PARTITION BY file_id) AS total_chunks\n  FROM core.embeddings\n  WHERE file_id = $1\n  ORDER BY chunk_index ASC;",
         "options": {
           "queryReplacement": "={{ [ $json.file_id ] }}"
         }
@@ -269,7 +268,7 @@
     },
     {
       "parameters": {
-        "jsCode": " const chunks = [];\n  for (let i = 0; i < $input.all().length; i++) {\n    chunks.push($input.all()[i].json);\n  }\n\n  const sorted = chunks.sort((a,b) => (a.chunk_index||0) - (b.chunk_index||0));\n  const content = sorted.map(c => c.text||'').join('\\n\\n');\n\n  return {\n    episode_content: content.slice(0,20000),\n    episode_title: 'Episode 754',\n    episode_number: '754',\n    file_id: 'manual',\n    chunk_count: chunks.length\n  };"
+        "jsCode": "function normalizeEpisodeTitle(candidateTitle, candidateFilename) {\n  function pick(s) { return (s || '').toString(); }\n  var t = pick(candidateTitle);\n  var f = pick(candidateFilename);\n  var rx = /(?:^|\\b)(?:ep(?:isode|isaode)?|episode)\\s*[:#-]\\s([0-9]{1,4})/i;\n  var m = t.match(rx);\n  if (m) return 'Episode ' + m[1];\n  m = f.match(rx);\n  if (m) return 'Episode ' + m[1];\n  return t || 'Episode';\n  }\n\n  var chunkItems = $items('Get Episode Chunks', 0, 0);\n  var rows = chunkItems.map(function(i){ return i.json; });\n  if (!rows.length) {\n  return [{ json: { error: 'no_chunks_found' } }];\n  }\n\n  // Sort and merge by chunk_index\n  rows.sort(function(a, b){ return (a.chunk_index || 0) - (b.chunk_index || 0); });\n  var content = rows.map(function(r){ return (r.text || '').toString(); }).join('\\n\\n');\n\n  // Prefer webhook payload → latest episode → chunks row\n  var fromWebhookItem = $items('Validate Episode Payload', 0, 0)[0] || { json: {} };\n  var fromLatestItem = $items('Get Latest Episode', 0, 0)[0] || { json: {} };\n  var fromWebhook = fromWebhookItem.json || {};\n  var fromLatest = fromLatestItem.json || {};\n  var first = rows[0] || {};\n\n  var file_id = fromWebhook.file_id || fromLatest.file_id || first.file_id || null;\n  var filename = fromWebhook.filename || fromLatest.filename || first.filename || '';\n  var episode_title = normalizeEpisodeTitle(fromWebhook.episode_title || fromLatest.filename || '', filename);\n  var numMatch = (episode_title.match(/Episode\\s+([0-9]{1,4})/i) || [])[1];\n  var episode_number = numMatch ? parseInt(numMatch, 10) : null;\n\n  return [{\n  json: {\n      episode_content: content.slice(0, 20000),\n      episode_title: episode_title,\n      episode_number: episode_number,\n      file_id: file_id,\n      filename: filename,\n      chunk_count: rows.length\n  }\n  }];"
       },
       "id": "ab87e3c6-802e-4911-ad2c-318821571a72",
       "name": "Combine Episode Content",
@@ -910,7 +909,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT file_id, filename, status, created_at\n  FROM core.file_status\n  WHERE status = 'completed'\n  ORDER BY created_at DESC",
+        "query": "-- A) Environment & extensions\nselect version(), current_database() as db, current_user as role;\nselect extname, extversion, extnamespace::regnamespace as schema\nfrom pg_extension order by extname;\nshow search_path;\n\n-- B) Inventory core schema (tables/views/materialized views + sizes)\nselect c.relkind as kind, c.relname as name,\n       pg_size_pretty(pg_total_relation_size(c.oid)) as total_size\nfrom pg_class c\njoin pg_namespace n on n.oid = c.relnamespace\nwhere n.nspname = 'core' and c.relkind in ('r','v','m')\norder by kind, total_size desc, name;\n\n-- Columns & defaults for each core relation\nselect c.relname as rel, a.attnum, a.attname as col,\n       format_type(a.atttypid, a.atttypmod) as data_type,\n       a.attnotnull as not_null,\n       coalesce(pg_get_expr(ad.adbin, ad.adrelid), '') as default_expr\nfrom pg_class c\njoin pg_namespace n on n.oid = c.relnamespace\njoin pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped\nleft join pg_attrdef ad on ad.adrelid = c.oid and ad.adnum = a.attnum\nwhere n.nspname = 'core' and c.relkind in ('r','v','m')\norder by c.relname, a.attnum;\n\n-- C) RAG-critical checks\n-- vector column on core.documents\nselect a.attname as column_name, format_type(a.atttypid, a.atttypmod) as formatted_type\nfrom pg_attribute a\njoin pg_class c on c.oid = a.attrelid\njoin pg_namespace n on n.oid = c.relnamespace\nwhere n.nspname = 'core' and c.relname = 'documents' and a.attname in ('embedding','vector','embedding_ada');\n\n-- size & quick samples\nselect count(*) as doc_rows,\n       pg_size_pretty(pg_total_relation_size('core.documents')) as doc_size\nfrom core.documents;\n\nselect id, left(content, 120) as content_snippet, metadata\nfrom core.documents\norder by id desc\nlimit 5;\n\n-- file_status freshness\nselect file_id, filename, status, created_at, updated_at\nfrom core.file_status\norder by updated_at desc\nlimit 20;\n\n-- existing function?\nselect p.proname as func_name,\n       pg_get_function_identity_arguments(p.oid) as args,\n       pg_get_functiondef(p.oid) as definition\nfrom pg_proc p\njoin pg_namespace n on n.oid = p.pronamespace\nwhere n.nspname = 'core' and p.proname in ('match_documents','match_chunks');\n\n-- D) Indexes & constraints\nselect c.relname as table_name, i.relname as index_name, am.amname as method,\n       pg_get_indexdef(ix.indexrelid) as index_def,\n       pg_size_pretty(pg_relation_size(i.oid)) as index_size\nfrom pg_index ix\njoin pg_class i on i.oid = ix.indexrelid\njoin pg_class c on c.oid = ix.indrelid\njoin pg_namespace n on n.oid = c.relnamespace\njoin pg_am am on am.oid = i.relam\nwhere n.nspname = 'core'\norder by c.relname, i.relname;\n\nselect conrelid::regclass as table_name, conname, contype,\n       pg_get_constraintdef(oid) as constraint_def\nfrom pg_constraint\nwhere connamespace = 'core'::regnamespace\norder by conrelid::regclass::text, contype desc, conname;\n",
         "options": {}
       },
       "id": "ad012334-5891-4d76-8c57-52ca935b1af9",
@@ -930,7 +929,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\n  function decodeHtmlEntities(str) {\n  if (!str) return '';\n  let out = String(str);\n  out = out.replace(/ /g, ' ');\n  out = out.replace(/&/g, '&');\n  out = out.replace(/</g, '<');\n  out = out.replace(/>/g, '>');\n  out = out.replace(/\"/g, '\"');\n  out = out.replace(/'/g, \"'\");\n  out = out.replace(/&#(\\d+);/g, function(match, dec) {\n      const code = parseInt(dec, 10);\n      return Number.isFinite(code) ? String.fromCharCode(code) : match;\n  });\n  out = out.replace(/&#x([0-9a-fA-F]+);/g, function(match, hex) {\n      const code = parseInt(hex, 16);\n      return Number.isFinite(code) ? String.fromCharCode(code) : match;\n  });\n  return out;\n  }\n\n  function stripHtml(html) {\n  if (!html) return '';\n  let s = String(html);\n  // Use RegExp constructors to avoid literal issues\n  const reScript = new RegExp('<script[\\s\\S]*?<\\/script>', 'gi');\n  const reStyle  = new RegExp('<style[\\s\\S]?<\\/style>', 'gi');\n  s = s.replace(reScript, '');\n  s = s.replace(reStyle, '');\n  // Remove remaining tags and stray fragments\n  s = s.replace(/<[^>]+>/g, ' ');\n  s = s.replace(//?[a-z]+>/gi, ' ');\n  return s;\n  }\n\n  function normalizeWhitespace(str) {\n  return String(str)\n      .replace(/[ \\t]+/g, ' ')\n      .replace(/\\s*\\n\\s*/g, '\\n')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .trim();\n  }\n\n  function removeNoisyLines(str) {\n  const lines = String(str).split(/\\r?\\n/).map(l => l.trim());\n  const out = [];\n  const seen = new Set();\n  for (let raw of lines) {\n      if (!raw) continue;\n      if (/^(-{3,}|={3,})/.test(raw)) continue;\n      if (/^(\\d{1,2}:\\d{2}(:\\d{2})?)$/.test(raw)) continue;\n      if (/^speaker\\s*\\d*[:.\\-]?\\s*$/i.test(raw)) continue;\n      if (/^[^\\w]+$/.test(raw)) continue;\n      if (/^(cite|time|p|te|\\/time)\\s*:?$/i.test(raw)) continue;\n\n      raw = raw.replace(/^\\s*speaker\\s*\\d*\\s*[:.\\-]\\s*/i, '');\n\n      const norm = raw.toLowerCase().replace(/[^a-z0-9\\s]/g, '').replace(/\\s+/g, ' ').trim();\n      if (norm.length < 4) continue;\n      if (seen.has(norm)) continue;\n      seen.add(norm);\n      out.push(raw);\n  }\n  return out.join('\\n');\n  }\n\n  function normalizeEpisodeTitle(title, content) {\n  const t = (title || '').toString().trim();\n  const firstLine = (content || '').toString().split(/\\r?\\n/).find(Boolean) || '';\n  const reEpisode = /(?:^|\\b)(?:ep(?:isode|isaode)?|episode)\\s*[:#-]\\s([0-9]{1,4})/i;\n\n  let m = t.match(reEpisode);\n  if (m) return Episode ${m[1]};\n\n  m = firstLine.match(reEpisode);\n  if (m) return Episode ${m[1]};\n\n  return t || 'Episode';\n  }\n\n  function excerpt(str, maxChars) {\n  const s = (str || '').toString();\n  return s.length <= maxChars ? s : s.slice(0, maxChars);\n  }\n\n  return items.map(item => {\n  const j = item.json || {};\n  const rawTitle = j.episode_title ?? j.title ?? '';\n  const rawContent = j.episode_content ?? j.content ?? '';\n\n  const decoded = decodeHtmlEntities(rawContent);\n  const noHtml = stripHtml(decoded);\n  const compact = normalizeWhitespace(noHtml);\n  const cleaned = removeNoisyLines(compact);\n\n  const titleClean = normalizeEpisodeTitle(rawTitle, cleaned);\n  const epNumMatch = titleClean.match(/Episode\\s+([0-9]{1,4})/i);\n  const episode_number = epNumMatch ? parseInt(epNumMatch[1], 10) : null;\n\n  item.json.episode_title_clean = titleClean;\n  item.json.episode_number = episode_number;\n  item.json.episode_content_clean = cleaned;\n  item.json.episode_text_excerpt = excerpt(cleaned, 5000);\n  item.json.episode_content_length = cleaned.length;\n\n  return item;\n  });"
+        "jsCode": "function decodeHtml(str) {\n  if (!str) return '';\n  var s = String(str);\n  s = s.replace(/ /g, ' ')\n         .replace(/&amp;/g, '&')\n         .replace(/&lt;/g, '<')\n         .replace(/&gt;/g, '>')\n         .replace(/&quot;/g, '\"')\n         .replace(/&apos;/g, '\\'')\n         .replace(/&#(\\d+);/g, function(_, d){ var n = parseInt(d,10); return isFinite(n)?\n  String.fromCharCode(n): _; })\n         .replace(/&#x([0-9a-fA-F]+);/g, function(_, h){ var n = parseInt(h,16); return isFinite(n)?\n  String.fromCharCode(n): _; });\n  return s;\n  }\n\n  function stripTags(str) {\n  if (!str) return '';\n  return String(str)\n      .replace(/<[^>]+>/g, ' ')\n      .replace(/[\\/]?[a-z]+>/gi, ' ');\n  }\n\n  function tighten(str) {\n  return String(str)\n      .replace(/[ \\t]+/g, ' ')\n      .replace(/\\s*\\n\\s*/g, '\\n')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .trim();\n  }\n\n  function denoise(str) {\n  var lines = String(str).split(/\\r?\\n/).map(function(l){ return l.trim(); });\n  var seen = new Set();\n  var out = [];\n  for (var i=0;i<lines.length;i++) {\n      var raw = lines[i];\n      if (!raw) continue;\n      if (/^[-=]{3,}/.test(raw)) continue;\n      if (/^\\d{1,2}:\\d{2}(:\\d{2})?$/.test(raw)) continue;\n      if (/^speaker\\s*\\d*[:.\\-]?\\s*$/i.test(raw)) continue;\n      if (/^[^\\w]+$/.test(raw)) continue;\n      if (/^(cite|time|p|te|\\/time)\\s*:?$/i.test(raw)) continue;\n      raw = raw.replace(/^\\s*speaker\\s*\\d*\\s*[:.\\-]\\s*/i, '');\n      var norm = raw.toLowerCase().replace(/[^a-z0-9\\s]/g, '').replace(/\\s+/g, ' ').trim();\n      if (norm.length < 4) continue;\n      if (seen.has(norm)) continue;\n  }\n  return out.join('\\n');\n  }\n\n  function cleanTitle(title, content) {\n  var t = (title || '').toString().trim();\n  var first = (content || '').toString().split(/\\r?\\n/).find(Boolean) || '';\n  var re = /(?:^|\\b)(?:ep(?:isode)?|episode)\\s*[:#-]\\s([0-9]{1,4})/i;\n  var m = t.match(re); if (m) return 'Episode ' + m[1];\n  m = first.match(re); if (m) return 'Episode ' + m[1];\n  return t || 'Episode';\n  }\n\n\n  var decoded = decodeHtml(rawContent);\n  var noTags = stripTags(decoded);\n  var compact = tighten(noTags);\n  var cleaned = denoise(compact);\n\n  var titleClean = cleanTitle(rawTitle, cleaned);\n  var numMatch = (titleClean.match(/Episode\\s+([0-9]{1,4})/i) || [])[1];\n  var episode_number = numMatch ? parseInt(numMatch, 10) : null;\n\n  $json.episode_title_clean = titleClean;\n  $json.episode_number = episode_number;\n  $json.episode_content_clean = cleaned;\n  $json.episode_text_excerpt = cleaned.length <= 5000 ? cleaned : cleaned.slice(0, 5000);\n  $json.episode_content_length = cleaned.length;\n\n  return $item;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -942,29 +941,12 @@
       "name": "cleanAndPrep"
     }
   ],
-  "pinData": {},
   "connections": {
     "Episode Ready Webhook": {
       "main": [
         [
           {
             "node": "Validate Episode Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Episode Payload": {
-      "main": [
-        [
-          {
-            "node": "Payload OK",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Payload Invalid",
             "type": "main",
             "index": 0
           }
@@ -987,6 +969,22 @@
         [
           {
             "node": "Respond Bad Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Episode Payload": {
+      "main": [
+        [
+          {
+            "node": "Payload OK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Payload Invalid",
             "type": "main",
             "index": 0
           }
@@ -1096,6 +1094,28 @@
         ]
       ]
     },
+    "Combine Episode Content": {
+      "main": [
+        [
+          {
+            "node": "cleanAndPrep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Concepts (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Concepts",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Rank Topics": {
       "main": [
         [
@@ -1163,6 +1183,50 @@
         ]
       ]
     },
+    "Combine Enrichment Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Content (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Content",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Generated Content": {
+      "main": [
+        [
+          {
+            "node": "Expert Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expert Review (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Expert Review",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Parse Review JSON": {
       "main": [
         [
@@ -1187,6 +1251,55 @@
           {
             "node": "Metrics: Batch Completed",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Review Fixes": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Instagram (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimize Instagram",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Facebook (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimize Facebook",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize LinkedIn (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimize LinkedIn",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1236,22 +1349,6 @@
         ]
       ]
     },
-    "Apply Review Fixes": {
-      "main": [
-        [
-          {
-            "node": "Switch",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Loop Days",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Switch": {
       "main": [
         [
@@ -1265,105 +1362,6 @@
           {
             "node": "Optimize Facebook",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Optimize LinkedIn (GPT-5-Nano)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Optimize LinkedIn",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Optimize Facebook (GPT-5-Nano)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Optimize Facebook",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Optimize Instagram (GPT-5-Nano)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Optimize Instagram",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Combine Enrichment Data": {
-      "main": [
-        [
-          {
-            "node": "Generate Content",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Generate Content (GPT-5-Nano)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Generate Content",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Generated Content": {
-      "main": [
-        [
-          {
-            "node": "Expert Review",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Expert Review (GPT-5-Nano)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Expert Review",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Combine Episode Content": {
-      "main": [
-        [
-          {
-            "node": "cleanAndPrep",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract Concepts (GPT-5-Nano)": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Extract Concepts",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1447,22 +1445,9 @@
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "ee671d76-8692-430c-83de-e44b80bd2e61",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
-  },
-  "id": "uLQsT8ImlCY4SWtu",
-  "tags": [
-    {
-      "createdAt": "2025-09-25T22:02:30.069Z",
-      "updatedAt": "2025-09-25T22:02:30.069Z",
-      "id": "r4We06wO7J43GTH4",
-      "name": "🤞"
-    }
-  ]
+  }
 }

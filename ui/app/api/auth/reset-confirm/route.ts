@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, message: 'Password reset successful' })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Reset failed' },
       { status: 500 }

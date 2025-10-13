@@ -6,6 +6,7 @@ export interface User {
   email: string
   name: string
   role: UserRole
+  must_reset_password?: boolean
 }
 
 export interface AuthSession {

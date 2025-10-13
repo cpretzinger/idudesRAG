@@ -20,7 +20,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, email, name, password_hash, role FROM core.users WHERE email = $1",
+        "query": "SELECT id, email, name, password_hash, role, must_reset_password FROM core.users WHERE email = $1",
         "options": {
           "queryReplacement": "={{ $json.body.email }}"
         }
@@ -42,7 +42,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const bcrypt = require('bcrypt');\nconst crypto = require('crypto');\n\nconst input = $input.first().json;\nconst userPassword = $json.body.password;\n\n// Check if user exists\nif (!input || input.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'Invalid credentials',\n      status: 401\n    }\n  }];\n}\n\nconst userData = input[0] || input;\nconst storedHash = userData.password_hash;\n\n// Verify password\ntry {\n  const isValid = await bcrypt.compare(userPassword, storedHash);\n  \n  if (!isValid) {\n    return [{\n      json: {\n        success: false,\n        error: 'Invalid credentials',\n        status: 401\n      }\n    }];\n  }\n  \n  // Generate session token\n  const sessionToken = crypto.randomBytes(32).toString('hex');\n  const expiresAt = new Date();\n  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days\n  \n  return [{\n    json: {\n      success: true,\n      session_token: sessionToken,\n      expires_at: expiresAt.toISOString(),\n      user: {\n        id: userData.id,\n        email: userData.email,\n        name: userData.name,\n        role: userData.role\n      },\n      tenant: 'idudes'\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      error: 'Authentication failed',\n      status: 500,\n      debug: error.message\n    }\n  }];\n}"
+        "jsCode": "const bcrypt = require('bcrypt');\nconst crypto = require('crypto');\n\nconst input = $input.first().json;\nconst userPassword = $json.body.password;\n\n// Check if user exists\nif (!input || input.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'Invalid credentials',\n      status: 401\n    }\n  }];\n}\n\nconst userData = input[0] || input;\nconst storedHash = userData.password_hash;\n\n// Verify password\ntry {\n  const isValid = await bcrypt.compare(userPassword, storedHash);\n  \n  if (!isValid) {\n    return [{\n      json: {\n        success: false,\n        error: 'Invalid credentials',\n        status: 401\n      }\n    }];\n  }\n  \n  // Generate session token\n  const sessionToken = crypto.randomBytes(32).toString('hex');\n  const expiresAt = new Date();\n  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days\n  \n  return [{\n    json: {\n      success: true,\n      session_token: sessionToken,\n      expires_at: expiresAt.toISOString(),\n      user: {\n        id: userData.id,\n        email: userData.email,\n        name: userData.name,\n        role: userData.role,\n        must_reset_password: userData.must_reset_password || false\n      },\n      tenant: 'idudes'\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      success: false,\n      error: 'Authentication failed',\n      status: 500,\n      debug: error.message\n    }\n  }];\n}"
       },
       "id": "d8c89f30-aba1-4433-95b7-72c5ef17d5f6",
       "name": "Verify Password & Generate Token",

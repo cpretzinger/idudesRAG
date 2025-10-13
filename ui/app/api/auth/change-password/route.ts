@@ -5,7 +5,9 @@ const N8N_BASE_URL = process.env.NEXT_PUBLIC_N8N_URL || process.env.N8N_WEBHOOK_
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get('session_token')?.value
+    // Get token from Authorization header or cookie
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '') || req.cookies.get('session_token')?.value
 
     if (!token) {
       return NextResponse.json(
@@ -23,11 +25,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { currentPassword, newPassword } = await req.json()
+    const { currentPassword, newPassword, force_reset } = await req.json()
 
-    if (!currentPassword || !newPassword) {
+    // If force_reset or user must reset password, skip current password check
+    const requireCurrentPassword = !force_reset && !result.user.must_reset_password
+
+    if (requireCurrentPassword && !currentPassword) {
       return NextResponse.json(
-        { error: 'Current password and new password are required' },
+        { error: 'Current password is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!newPassword) {
+      return NextResponse.json(
+        { error: 'New password is required' },
         { status: 400 }
       )
     }
@@ -44,8 +56,9 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: result.user.id,
-        current_password: currentPassword,
-        new_password: newPassword
+        current_password: currentPassword || null,
+        new_password: newPassword,
+        force_reset: !requireCurrentPassword
       })
     })
 

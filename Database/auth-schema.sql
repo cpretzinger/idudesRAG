@@ -1,8 +1,11 @@
 -- Users and Authentication Schema
 -- Add to existing PostgreSQL database
+-- IMPORTANT: All tables are in the 'core' schema
+
+SET search_path TO core;
 
 -- Create users table
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS core.users (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -15,18 +18,18 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Create sessions table for JWT alternative
-CREATE TABLE IF NOT EXISTS user_sessions (
+CREATE TABLE IF NOT EXISTS core.user_sessions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES core.users(id) ON DELETE CASCADE,
     session_token VARCHAR(255) UNIQUE NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Create password reset tokens table
-CREATE TABLE IF NOT EXISTS password_reset_tokens (
+CREATE TABLE IF NOT EXISTS core.password_reset_tokens (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES core.users(id) ON DELETE CASCADE,
     token VARCHAR(255) UNIQUE NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     used BOOLEAN DEFAULT false,
@@ -35,7 +38,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 
 -- Insert initial users with default password 'idudes2025'
 -- Password hash for 'idudes2025' using bcrypt
-INSERT INTO users (email, name, password_hash, role, must_reset_password) VALUES
+INSERT INTO core.users (email, name, password_hash, role, must_reset_password) VALUES
     ('craig@theidudes.com', 'Craig Pretzinger', '$2b$10$rQr0Vv8X9yGz7gQV2oKJ1ePcA8nS7lD8xF4tR9wE5kJ2mN6pL3qH7', 'superadmin', true),
     ('jwfeltman@gmail.com', 'Jason Feltman', '$2b$10$rQr0Vv8X9yGz7gQV2oKJ1ePcA8nS7lD8xF4tR9wE5kJ2mN6pL3qH7', 'superadmin', true),
     ('lannie@theidudes.com', 'Lannie', '$2b$10$rQr0Vv8X9yGz7gQV2oKJ1ePcA8nS7lD8xF4tR9wE5kJ2mN6pL3qH7', 'admin', true),
@@ -45,11 +48,11 @@ INSERT INTO users (email, name, password_hash, role, must_reset_password) VALUES
 ON CONFLICT (email) DO NOTHING;
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_users_email ON core.users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON core.users(role);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON core.user_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON core.user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON core.password_reset_tokens(token);
 
 -- Update function for updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -61,5 +64,5 @@ END;
 $$ language 'plpgsql';
 
 -- Add trigger for users table
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON core.users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

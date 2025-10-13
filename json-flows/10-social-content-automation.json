@@ -1,365 +1,351 @@
 {
   "name": "10 - Social Content Automation (A+)",
-  "settings": {
-    "executionOrder": "v1"
-  },
   "nodes": [
     {
-      "id": "wh-episode-ready",
-      "name": "Episode Ready Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [
-        240,
-        120
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "/events/episode-ready",
         "responseMode": "responseNode",
         "options": {}
-      }
+      },
+      "id": "0a9d36a8-d25e-4ace-8416-3230e47cf95e",
+      "name": "Episode Ready Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        192
+      ],
+      "webhookId": "0c8869b7-c940-4654-b4d9-480e20f87aca"
     },
     {
-      "id": "code-payload-ok",
+      "parameters": {
+        "jsCode": "if ($json.ok) { return [{ json: $json }]; } return [];"
+      },
+      "id": "d89a5848-f7de-4c6a-884b-e3e81c92c897",
       "name": "Payload OK",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        600,
-        80
-      ],
-      "parameters": {
-        "jsCode": "if ($json.ok) { return [{ json: $json }]; } return [];"
-      }
+        -528,
+        96
+      ]
     },
     {
-      "id": "code-payload-invalid",
+      "parameters": {
+        "jsCode": "if (!$json.ok) { return [{ json: $json }]; } return [];"
+      },
+      "id": "88aae1ec-8351-4121-bf32-78be5fd24448",
       "name": "Payload Invalid",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        600,
-        160
-      ],
-      "parameters": {
-        "jsCode": "if (!$json.ok) { return [{ json: $json }]; } return [];"
-      }
+        -528,
+        288
+      ]
     },
     {
-      "id": "respond-bad-request",
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'bad_request', error: $json.error || 'file_id and filename required' } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "2d5cbe1d-e66c-4b47-97ba-b855580519b8",
       "name": "Respond Bad Request",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        820,
-        200
-      ],
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { status: 'bad_request', error: $json.error || 'file_id and filename required' } }}",
-        "options": { "responseCode": 400 }
-      }
+        -304,
+        288
+      ]
     },
     {
-      "id": "code-validate-payload",
+      "parameters": {
+        "jsCode": "const b = $json.body || {};\nif (!b.file_id || !b.filename) {\n  return [{ json: { ok: false, status: 400, error: 'file_id and filename required' } }];\n}\nreturn [{ json: { ok: true, file_id: b.file_id, filename: b.filename } }];"
+      },
+      "id": "15beadb0-eada-4ca7-8283-f68c4feb1af8",
       "name": "Validate Episode Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
-        120
-      ],
-      "parameters": {
-        "jsCode": "const b = $json.body || {};\nif (!b.file_id || !b.filename) {\n  return [{ json: { ok: false, status: 400, error: 'file_id and filename required' } }];\n}\nreturn [{ json: { ok: true, file_id: b.file_id, filename: b.filename } }];"
-      }
+        -752,
+        192
+      ]
     },
     {
-      "id": "db-check-status",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT status FROM core.file_status WHERE file_id = $1",
+        "options": {
+          "queryReplacement": "={{ $json.file_id }}"
+        }
+      },
+      "id": "03545db2-1eef-4d10-ad0d-4ab2b235f689",
       "name": "Check File Status",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        720,
-        80
+        -304,
+        96
       ],
-      "credentials": { "postgres": { "name": "RailwayPG-idudes" } },
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT status FROM core.file_status WHERE file_id = $1",
-        "options": { "queryReplacement": "={{ $json.file_id }}" }
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
       }
     },
     {
-      "id": "db-check-emb-count",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*)::int AS count FROM core.embeddings WHERE file_id = $1",
+        "options": {
+          "queryReplacement": "={{ $json.file_id }}"
+        }
+      },
+      "id": "a31f3460-c7af-476f-a086-6de73b4b82c6",
       "name": "Check Embeddings Count",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        720,
-        160
+        -80,
+        96
       ],
-      "credentials": { "postgres": { "name": "RailwayPG-idudes" } },
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT COUNT(*)::int AS count FROM core.embeddings WHERE file_id = $1",
-        "options": { "queryReplacement": "={{ $json.file_id }}" }
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
       }
     },
     {
-      "id": "gate-ready",
+      "parameters": {
+        "jsCode": "const s = $items('Check File Status',0,0)[0]?.json?.status;\nconst c = Number($items('Check Embeddings Count',0,0)[0]?.json?.count || 0);\nif (s === 'completed' && c > 0) { return [{ json: { ...$json, ready: true } }]; }\nreturn [];"
+      },
+      "id": "965c8bda-b1f1-43e7-b22e-c2b0eb472c34",
       "name": "Gate Ready",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
-        120
-      ],
-      "parameters": {
-        "jsCode": "const s = $items('Check File Status',0,0)[0]?.json?.status;\nconst c = Number($items('Check Embeddings Count',0,0)[0]?.json?.count || 0);\nif (s === 'completed' && c > 0) { return [{ json: { ...$json, ready: true } }]; }\nreturn [];"
-      }
+        144,
+        0
+      ]
     },
     {
-      "id": "gate-idem-new",
+      "parameters": {
+        "jsCode": "const sd = this.getWorkflowStaticData('global'); sd.socialProcessed = sd.socialProcessed || {}; const fid = $json.file_id; if (!fid) return []; if (sd.socialProcessed[fid]) { return []; } sd.socialProcessed[fid] = { first_seen: new Date().toISOString() }; return [{ json: $json }];"
+      },
+      "id": "8fe5c9c6-c7e4-4f51-85a8-282bad98169a",
       "name": "Idempotency New",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1180,
-        120
-      ],
-      "parameters": {
-        "jsCode": "const sd = this.getWorkflowStaticData('global'); sd.socialProcessed = sd.socialProcessed || {}; const fid = $json.file_id; if (!fid) return []; if (sd.socialProcessed[fid]) { return []; } sd.socialProcessed[fid] = { first_seen: new Date().toISOString() }; return [{ json: $json }];"
-      }
+        368,
+        -96
+      ]
     },
     {
-      "id": "gate-idem-dup",
-      "name": "Idempotency Duplicate",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1180,
-        160
-      ],
       "parameters": {
-        "jsCode": "const sd = this.getWorkflowStaticData('global'); sd.socialProcessed = sd.socialProcessed || {}; const fid = $json.file_id; if (!fid) return []; if (sd.socialProcessed[fid]) { return [{ json: $json }]; } return [];"
-      }
-    },
-    {
-      "id": "respond-duplicate",
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'duplicate', file_id: $json.file_id } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "7d00f004-06d3-4eca-8722-6319a15b1c8c",
       "name": "Respond Duplicate",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1400,
-        160
-      ],
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { status: 'duplicate', file_id: $json.file_id } }}",
-        "options": { "responseCode": 200 }
-      }
+        592,
+        400
+      ]
     },
     {
-      "id": "gate-not-ready",
+      "parameters": {
+        "jsCode": "const s = $items('Check File Status',0,0)[0]?.json?.status;\nconst c = Number($items('Check Embeddings Count',0,0)[0]?.json?.count || 0);\nif (!(s === 'completed' && c > 0)) { return [{ json: { ...$json, ready: false } }]; }\nreturn [];"
+      },
+      "id": "62719d2c-ba34-4665-a4da-b395906fbb83",
       "name": "Gate Not Ready",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
-        200
-      ],
-      "parameters": {
-        "jsCode": "const s = $items('Check File Status',0,0)[0]?.json?.status;\nconst c = Number($items('Check Embeddings Count',0,0)[0]?.json?.count || 0);\nif (!(s === 'completed' && c > 0)) { return [{ json: { ...$json, ready: false } }]; }\nreturn [];"
-      }
+        144,
+        384
+      ]
     },
     {
-      "id": "respond-accepted",
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'accepted', file_id: $json.file_id } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "1220c0fc-af45-4e9b-822f-5a2b96aff8dd",
       "name": "Respond Accepted",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1180,
-        80
-      ],
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { status: 'accepted', file_id: $json.file_id } }}",
-        "options": { "responseCode": 200 }
-      }
+        592,
+        -144
+      ]
     },
     {
-      "id": "respond-not-ready",
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'not_ready', file_id: $json.file_id } }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "2ccfb356-ae21-4de7-b8ba-d75cd8e877d7",
       "name": "Respond Not Ready",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1180,
-        200
-      ],
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { status: 'not_ready', file_id: $json.file_id } }}",
-        "options": { "responseCode": 202 }
-      }
+        368,
+        384
+      ]
     },
     {
-      "id": "n1",
+      "parameters": {},
+      "id": "e29a5a01-fa16-4c5a-a762-5760544ba139",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        240,
-        300
-      ],
-      "parameters": {}
+        144,
+        576
+      ]
     },
     {
-      "id": "n2",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT file_id, filename, status, created_at                                                                \nFROM core.file_status                                                                                        \nWHERE status = 'completed'                                                                                   \nORDER BY created_at DESC",
+        "options": {
+          "queryReplacement": "= [ { file_id, filename, status, created_at } ]"
+        }
+      },
+      "id": "aca29fa3-2693-4b20-bb7e-0e9bb337fffa",
       "name": "Get Latest Episode",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        480,
-        300
+        368,
+        576
       ],
       "credentials": {
         "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
           "name": "RailwayPG-idudes"
         }
-      },
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT fs.file_id, fs.filename, fs.created_at, COUNT(e.id) AS chunk_count\nFROM core.file_status fs\nLEFT JOIN core.embeddings e ON e.file_id = fs.file_id\nWHERE fs.status = 'completed' AND fs.filename ILIKE '%Episode%'\nGROUP BY fs.file_id, fs.filename, fs.created_at\nORDER BY fs.created_at DESC\nLIMIT 1;"
       }
     },
     {
-      "id": "n3",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": " SELECT\n      id,\n      file_id,\n      filename,\n      chunk_index,\n      text,\n      chunk_size,\n      file_type,\n      file_size,\n      created_at,\n      COUNT(*) OVER (PARTITION BY file_id) AS total_chunks\n  FROM core.embeddings\n  WHERE file_id = $1\n  ORDER BY chunk_index ASC;",
+        "options": {
+          "queryReplacement": "={{ [ $json.file_id ] }}"
+        }
+      },
+      "id": "8fed1cfa-040d-4764-9883-5c6021878a3c",
       "name": "Get Episode Chunks",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        720,
-        300
+        736,
+        192
       ],
       "credentials": {
         "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
           "name": "RailwayPG-idudes"
-        }
-      },
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT id, text, chunk_index\nFROM core.embeddings\nWHERE file_id = $1\nORDER BY chunk_index ASC;",
-        "options": {
-          "queryReplacement": "={{ [ $json.file_id || ($items('Get Latest Episode',0,0)[0] && $items('Get Latest Episode',0,0)[0].json.file_id) ] }}"
         }
       }
     },
     {
-      "id": "n4",
+      "parameters": {
+        "jsCode": " const chunks = [];\n  for (let i = 0; i < $input.all().length; i++) {\n    chunks.push($input.all()[i].json);\n  }\n\n  const sorted = chunks.sort((a,b) => (a.chunk_index||0) - (b.chunk_index||0));\n  const content = sorted.map(c => c.text||'').join('\\n\\n');\n\n  return {\n    episode_content: content.slice(0,20000),\n    episode_title: 'Episode 754',\n    episode_number: '754',\n    file_id: 'manual',\n    chunk_count: chunks.length\n  };"
+      },
+      "id": "ab87e3c6-802e-4911-ad2c-318821571a72",
       "name": "Combine Episode Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
-        300
-      ],
-      "parameters": {
-        "jsCode": "// Get all chunks from Get Episode Chunks node\nconst chunks = $input.all().map(i => i.json);\n\n// Support both webhook path and manual trigger path\nlet ctx = null;\ntry {\n  // Try webhook path first\n  const validateItems = $('Validate Episode Payload').all();\n  if (validateItems && validateItems.length > 0) {\n    ctx = validateItems[0].json;\n  }\n} catch (e) {\n  // Webhook path not available, try manual path\n}\n\nif (!ctx) {\n  try {\n    // Try manual trigger path\n    const episodeItems = $('Get Latest Episode').all();\n    if (episodeItems && episodeItems.length > 0) {\n      ctx = episodeItems[0].json;\n    }\n  } catch (e) {\n    // Manual path also not available\n  }\n}\n\nif (!ctx) {\n  throw new Error('Episode context missing - could not find data from either Validate Episode Payload or Get Latest Episode');\n}\n\n// Sort chunks by index and combine text\nconst sortedChunks = chunks.sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0));\nconst episodeContent = sortedChunks.map(c => c.text || '').join('\\n\\n');\n\n// Extract episode number from filename\nconst filename = ctx.filename || '';\nconst match = filename.match(/Episode\\s+(\\d+)/i);\nconst episodeNumber = match ? match[1] : null;\n\n// Return combined data\nreturn [{\n  json: {\n    episode_content: episodeContent.slice(0, 20000),\n    episode_title: filename.replace(/\\.txt$/i, ''),\n    episode_number: episodeNumber,\n    file_id: ctx.file_id,\n    chunk_count: chunks.length\n  }\n}];"
-      }
+        784,
+        992
+      ]
     },
     {
-      "id": "n5",
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {}
+      },
+      "id": "3761d10e-e344-4eee-9c4b-e50b82a84606",
       "name": "Extract Concepts (GPT-5-Nano)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        1180,
-        300
+        1216,
+        432
       ],
       "credentials": {
         "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
           "name": "ZARAapiKey"
-        }
-      },
-      "parameters": {
-        "model": "gpt-5-nano",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "You are an expert content analyst for the Insurance Dudes podcast. Return ONLY a valid JSON array (no prose, no markdown). For each concept: concept (1–2 sentences), category (sales_strategy | objection_handling | lead_gen | mindset | tech | case_study | industry_insight), actionability (high | medium | low), proof_type (data | story | framework | none), hook_potential (1–10), platform_fit (instagram | facebook | linkedin | all)."
-            },
-            {
-              "role": "user",
-              "content": "=Episode: {{ $json.episode_title }}\n\nContent (truncated):\n{{ $json.episode_content.slice(0, 3500) }}\n\nExtract 15–20 concepts as JSON array."
-            }
-          ]
-        },
-        "options": {
-          "temperature": 0.2,
-          "maxTokens": 1100,
-          "reasoning": {
-            "effort": "high"
-          }
         }
       }
     },
     {
-      "id": "n6",
+      "parameters": {
+        "jsCode": "const raw=$input.first().json.text||'[]'; let concepts=[];\ntry{const clean=raw.replace(/```json|```/g,'').trim(); concepts=JSON.parse(clean);}catch(e){throw new Error('Concept JSON parse fail: '+e.message)}\nconst W={a:0.35,p:0.25,r:0.20,v:0.15,e:0.05};\nconst scored=concepts.map(c=>{let a=7+(c.actionability==='high'?2:0)+(c.proof_type!=='none'?1:0); let p=c.platform_fit==='all'?10:8; let r=['data','story'].includes(c.proof_type)?9:(c.proof_type==='framework'?8:7); let v=Number(c.hook_potential||7); let en=7; const wt=a*W.a+p*W.p+r*W.r+v*W.v+en*W.e; return {...c, scores:{weighted_total:Math.round(wt*100)/100}};});\nconst top=scored.sort((a,b)=>b.scores.weighted_total-a.scores.weighted_total).slice(0,10);\nconst ep=$items('Combine Episode Content',0,0)[0].json;\nreturn top.map((c,i)=>({day_number:i+1, ...c, episode_title:ep.episode_title, episode_number:ep.episode_number, file_id:ep.file_id}));"
+      },
+      "id": "d511b9a3-31de-4a8a-a7e9-e3b4036df0c2",
       "name": "Rank Topics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1400,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const raw=$input.first().json.response||'[]'; let concepts=[];\ntry{const clean=raw.replace(/```json|```/g,'').trim(); concepts=JSON.parse(clean);}catch(e){throw new Error('Concept JSON parse fail: '+e.message)}\nconst W={a:0.35,p:0.25,r:0.20,v:0.15,e:0.05};\nconst scored=concepts.map(c=>{let a=7+(c.actionability==='high'?2:0)+(c.proof_type!=='none'?1:0); let p=c.platform_fit==='all'?10:8; let r=['data','story'].includes(c.proof_type)?9:(c.proof_type==='framework'?8:7); let v=Number(c.hook_potential||7); let en=7; const wt=a*W.a+p*W.p+r*W.r+v*W.v+en*W.e; return {...c, scores:{weighted_total:Math.round(wt*100)/100}};});\nconst top=scored.sort((a,b)=>b.scores.weighted_total-a.scores.weighted_total).slice(0,10);\nconst ep=$items('Combine Episode Content',0,0)[0].json;\nreturn top.map((c,i)=>({day_number:i+1, ...c, episode_title:ep.episode_title, episode_number:ep.episode_number, file_id:ep.file_id}));"
-      }
+        1600,
+        208
+      ]
     },
     {
-      "id": "n7",
+      "parameters": {
+        "options": {}
+      },
+      "id": "bc923a10-ea8c-4a0b-9b83-f2662b3d6f7b",
       "name": "Loop Days",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        1600,
-        300
-      ],
-      "parameters": {
-        "batchSize": 1
-      }
+        1824,
+        208
+      ]
     },
     {
-      "id": "n8",
+      "parameters": {
+        "jsCode": "const c=$json.concept||''; const cat=$json.category||'default';\nconst T={\n sales_strategy:[`proven sales techniques for ${c.slice(0,50)}`,`successful agent strategies ${cat}`,`step-by-step framework for ${c.slice(0,40)}`],\n lead_gen:[`lead flow mechanics ${c.slice(0,40)}`,`Million Dollar Agency lead generation systems`,`internet lead secrets prospecting tactics`],\n objection_handling:[`overcoming objections in ${c.slice(0,40)}`,`objection handling scripts`,`client resistance closing techniques`],\n mindset:[`agent mindset ${c.slice(0,40)}`,`mental toughness for insurance pros`,`motivation and persistence`],\n case_study:[`agent success stories ${c.slice(0,40)}`,`real results case studies`,`proven strategies measurable outcomes`],\n default:[c.slice(0,60),`insurance agent tips for ${cat}`,`actionable advice for ${cat}`]\n};\nreturn { ...$json, enrichment_queries: (T[cat]||T.default) };"
+      },
+      "id": "2c38fef9-4fa4-42c0-917e-2002782e507c",
       "name": "Generate Enrichment Queries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1780,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const c=$json.concept||''; const cat=$json.category||'default';\nconst T={\n sales_strategy:[`proven sales techniques for ${c.slice(0,50)}`,`successful agent strategies ${cat}`,`step-by-step framework for ${c.slice(0,40)}`],\n lead_gen:[`lead flow mechanics ${c.slice(0,40)}`,`Million Dollar Agency lead generation systems`,`internet lead secrets prospecting tactics`],\n objection_handling:[`overcoming objections in ${c.slice(0,40)}`,`objection handling scripts`,`client resistance closing techniques`],\n mindset:[`agent mindset ${c.slice(0,40)}`,`mental toughness for insurance pros`,`motivation and persistence`],\n case_study:[`agent success stories ${c.slice(0,40)}`,`real results case studies`,`proven strategies measurable outcomes`],\n default:[c.slice(0,60),`insurance agent tips for ${cat}`,`actionable advice for ${cat}`]\n};\nreturn { ...$json, enrichment_queries: (T[cat]||T.default) };"
-      }
+        2048,
+        208
+      ]
     },
     {
-      "id": "n9",
-      "name": "Build Query Embeddings",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1960,
-        300
-      ],
       "parameters": {
-        "url": "https://api.openai.com/v1/embeddings",
         "method": "POST",
-        "authentication": "none",
+        "url": "https://api.openai.com/v1/embeddings",
         "sendHeaders": true,
-        "headerParametersUi": {
-          "parameter": [
+        "headerParameters": {
+          "parameters": [
             {
               "name": "Authorization",
               "value": "=Bearer {{$env.OPENAI_API_KEY}}"
@@ -370,168 +356,140 @@
             }
           ]
         },
-        "jsonParameters": true,
-        "options": {},
-        "bodyParametersJson": "={\"model\":\"text-embedding-3-small\",\"input\":[{{$json.enrichment_queries[0] | toString()}},{{$json.enrichment_queries[1] | toString()}},{{$json.enrichment_queries[2] | toString()}}]}"
-      }
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\\\"model\\\":\\\"text-embedding-3-small\\\",\\\"input\\\":[{{$json.enrichment_queries[0] | toString()}},{{$json.enrichment_queries[1] | toString()}},{{$json.enrichment_queries[2] | toString()}}]}\",\n",
+        "options": {}
+      },
+      "id": "7defc2f3-0726-4731-9970-003056af4d9d",
+      "name": "Build Query Embeddings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2272,
+        208
+      ]
     },
     {
-      "id": "n10",
+      "parameters": {
+        "jsCode": "const r=$input.first().json; if(!r?.data||r.data.length<3) throw new Error('Embeddings response invalid');\nreturn [{json:{q1:r.data[0].embedding,q2:r.data[1].embedding,q3:r.data[2].embedding}}];"
+      },
+      "id": "c98cf213-3567-4e6e-b078-914eb860aa18",
       "name": "Extract Embeddings",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2140,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const r=$input.first().json; if(!r?.data||r.data.length<3) throw new Error('Embeddings response invalid');\nreturn [{json:{q1:r.data[0].embedding,q2:r.data[1].embedding,q3:r.data[2].embedding}}];"
-      }
+        2496,
+        208
+      ]
     },
     {
-      "id": "n11",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT e.text,\n       e.filename,\n       1 - (e.embedding <=> $1::vector(1536)) AS similarity\nFROM   core.embeddings e\nWHERE  e.file_id <> $2\nORDER  BY similarity DESC\nLIMIT  5;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($items('Extract Embeddings',0,0)[0].json.q1), $json.file_id ] }}"
+        }
+      },
+      "id": "90c286bb-5b27-455a-b836-59ac1ce01abf",
       "name": "Search Similar (Q1)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        2320,
-        300
+        2720,
+        208
       ],
       "credentials": {
         "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
           "name": "RailwayPG-idudes"
-        }
-      },
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT e.text, e.filename, 1 - (e.embedding <=> $1::vector(1536)) AS similarity\nFROM core.embeddings e\nWHERE e.file_id <> $2\nORDER BY similarity DESC\nLIMIT 5;",
-        "options": {
-          "queryReplacement": "={{ [ JSON.stringify($items('Extract Embeddings',0,0)[0].json.q1), $json.file_id ] }}"
         }
       }
     },
     {
-      "id": "n12",
+      "parameters": {
+        "jsCode": "const topic=$items('Generate Enrichment Queries',0,0)[0].json;\nconst q1=$items('Search Similar (Q1)',0,0).map(i=>i.json);\nconst uniq=new Map(); for(const r of q1){const k=(r.text||'').slice(0,512); if(!uniq.has(k)) uniq.set(k,r);} \nconst top=[...uniq.values()].slice(0,9).map(r=>r.text).join('\\n\\n---\\n\\n');\nreturn { ...topic, enriched_content_chunks: top };"
+      },
+      "id": "bafd0217-2931-4653-8ab0-1b236ada9dc5",
       "name": "Combine Enrichment Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2520,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const topic=$items('Generate Enrichment Queries',0,0)[0].json;\nconst q1=$items('Search Similar (Q1)',0,0).map(i=>i.json);\nconst uniq=new Map(); for(const r of q1){const k=(r.text||'').slice(0,512); if(!uniq.has(k)) uniq.set(k,r);} \nconst top=[...uniq.values()].slice(0,9).map(r=>r.text).join('\\n\\n---\\n\\n');\nreturn { ...topic, enriched_content_chunks: top };"
-      }
+        2944,
+        208
+      ]
     },
     {
-      "id": "n13",
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {
+          "reasoningEffort": "high"
+        }
+      },
+      "id": "e3dcc61f-8a35-4706-b908-8f7e8f3005b7",
       "name": "Generate Content (GPT-5-Nano)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        2740,
-        300
+        3152,
+        416
       ],
       "credentials": {
         "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
           "name": "ZARAapiKey"
-        }
-      },
-      "parameters": {
-        "model": "gpt-5-nano",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "You are an elite social content generator for the Insurance Dudes. Generate platform-specific posts that are on-brand, high-signal, and conversion-minded. Output exactly as requested."
-            },
-            {
-              "role": "user",
-              "content": "=Generate social media content for DAY {{ $json.day_number }}: {{ $json.day_theme }}\n\nEPISODE: {{ $json.episode_title }} ({{ $json.episode_number }})\nTOPIC: {{ $json.concept }} ({{ $json.category }})\nScore: {{ $json.scores.weighted_total }}/10\n\nPRIMARY SOURCE (truncated):\n{{ $node[\"Combine Episode Content\"].json.episode_content.substring(0, 3000) }}\n\nENRICHMENT:\n{{ $json.enriched_content_chunks }}\n\nCreate 3 posts (Instagram Reel, Facebook, LinkedIn) exactly per the required formats."
-            }
-          ]
-        },
-        "options": {
-          "temperature": 0.7,
-          "maxTokens": 2000,
-          "reasoning": {
-            "effort": "high"
-          }
         }
       }
     },
     {
-      "id": "n14",
+      "parameters": {
+        "jsCode": "const raw=$json.text||'';\nconst ig=raw.match(/### INSTAGRAM REEL[\\s\\S]*?(?=### FACEBOOK POST|$)/i);\nconst fb=raw.match(/### FACEBOOK POST[\\s\\S]*?(?=### LINKEDIN POST|$)/i);\nconst li=raw.match(/### LINKEDIN POST[\\s\\S]*$/i);\nconst part=(m)=>m?m[0].replace(/### [A-Z ]+/i,'').trim():'';\nreturn {\n  day_number: $json.day_number,\n  day_theme: $json.day_theme,\n  episode_title: $json.episode_title,\n  topic_title: $json.concept,\n  instagram_content: part(ig),\n  facebook_content: part(fb),\n  linkedin_content: part(li)\n};"
+      },
+      "id": "0f288ac7-441c-4c10-974a-9210eded63a2",
       "name": "Parse Generated Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2960,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const raw=$json.response||'';\nconst ig=raw.match(/### INSTAGRAM REEL[\\s\\S]*?(?=### FACEBOOK POST|$)/i);\nconst fb=raw.match(/### FACEBOOK POST[\\s\\S]*?(?=### LINKEDIN POST|$)/i);\nconst li=raw.match(/### LINKEDIN POST[\\s\\S]*$/i);\nconst part=(m)=>m?m[0].replace(/### [A-Z ]+/i,'').trim():'';\nreturn {\n  day_number: $json.day_number,\n  day_theme: $json.day_theme,\n  episode_title: $json.episode_title,\n  topic_title: $json.concept,\n  instagram_content: part(ig),\n  facebook_content: part(fb),\n  linkedin_content: part(li)\n};"
-      }
+        3520,
+        208
+      ]
     },
     {
-      "id": "n15",
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {
+          "reasoningEffort": "high"
+        }
+      },
+      "id": "db8b5715-4060-4ee0-b0c2-588ce0c58b77",
       "name": "Expert Review (GPT-5-Nano)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        3180,
-        300
+        3760,
+        432
       ],
       "credentials": {
         "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
           "name": "ZARAapiKey"
-        }
-      },
-      "parameters": {
-        "model": "gpt-5-nano",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "You are a strict content reviewer. Validate brand-safety, value delivery, platform fit, and engagement potential. Return ONLY JSON exactly in the schema provided."
-            },
-            {
-              "role": "user",
-              "content": "=Review these 3 social posts for Day {{ $json.day_number }} ({{ $json.day_theme }}).\nEpisode: {{ $json.episode_title }}\nTopic: {{ $json.topic_title }}\nReturn JSON with overall_recommendation (APPROVE | APPROVE_WITH_EDITS | REJECT) and per-platform required_fixes arrays."
-            }
-          ]
-        },
-        "options": {
-          "temperature": 0.3,
-          "maxTokens": 1500,
-          "reasoning": {
-            "effort": "high"
-          }
         }
       }
     },
     {
-      "id": "n16",
+      "parameters": {
+        "jsCode": "const raw=$items('Expert Review (GPT-5-Nano)',0,0)[0].json.text||'';\nlet review; try{review=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch{review={overall_recommendation:'REJECT'}}\nreturn [{json:review}];"
+      },
+      "id": "77f40240-06a0-44ae-a9e1-d6201005bcbe",
       "name": "Parse Review JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3380,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const raw=$items('Expert Review (GPT-5-Nano)',0,0)[0].json.response||'';\nlet review; try{review=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch{review={overall_recommendation:'REJECT'}}\nreturn [{json:review}];"
-      }
+        4096,
+        208
+      ]
     },
     {
-      "id": "n17",
-      "name": "Content Approved?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        3580,
-        300
-      ],
       "parameters": {
         "conditions": {
           "options": {},
@@ -554,341 +512,555 @@
             }
           ],
           "combineOperation": "any"
-        }
-      }
+        },
+        "options": {}
+      },
+      "id": "92fda7f4-5b04-4bbf-82b3-b68737205db5",
+      "name": "Content Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4320,
+        208
+      ]
     },
     {
-      "id": "n18",
+      "parameters": {
+        "jsCode": "const review=$json; const content=$items('Parse Generated Content',0,0)[0].json;\nconst apply=(list,txt)=>{if(!list) return txt; for(const f of list){ if(f.current&&f.fix) txt=txt.replace(f.current,f.fix);} return txt;};\nreturn {\n  day_number: content.day_number,\n  day_theme: content.day_theme,\n  episode_title: content.episode_title,\n  topic_title: content.topic_title,\n  instagram_content: apply(review.instagram_review?.required_fixes, content.instagram_content),\n  facebook_content: apply(review.facebook_review?.required_fixes, content.facebook_content),\n  linkedin_content: apply(review.linkedin_review?.required_fixes, content.linkedin_content)\n};"
+      },
+      "id": "86ac3ef6-43de-41f4-94ea-917a05e792f9",
       "name": "Apply Review Fixes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3780,
-        220
-      ],
-      "parameters": {
-        "jsCode": "const review=$json; const content=$items('Parse Generated Content',0,0)[0].json;\nconst apply=(list,txt)=>{if(!list) return txt; for(const f of list){ if(f.current&&f.fix) txt=txt.replace(f.current,f.fix);} return txt;};\nreturn {\n  day_number: content.day_number,\n  day_theme: content.day_theme,\n  episode_title: content.episode_title,\n  topic_title: content.topic_title,\n  instagram_content: apply(review.instagram_review?.required_fixes, content.instagram_content),\n  facebook_content: apply(review.facebook_review?.required_fixes, content.facebook_content),\n  linkedin_content: apply(review.linkedin_review?.required_fixes, content.linkedin_content)\n};"
-      }
+        4544,
+        336
+      ]
     },
     {
-      "id": "n19",
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {
+          "reasoningEffort": "high"
+        }
+      },
+      "id": "b7ba7693-79ba-4fa5-b841-7394c24a1f15",
       "name": "Optimize Instagram (GPT-5-Nano)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        4000,
-        100
+        4736,
+        1216
       ],
       "credentials": {
         "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
           "name": "ZARAapiKey"
-        }
-      },
-      "parameters": {
-        "model": "gpt-5-nano",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "Optimize Instagram Reels for hook strength, clarity, and conversion. Output exactly in the requested format."
-            },
-            {
-              "role": "user",
-              "content": "=Optimize this approved Instagram Reel:\n\nCURRENT:\n{{ $json.instagram_content }}\n\nGoals: stronger hook (≤8 words), 15–30s script (≤3 sentences), crystal CTA, 5–8 hashtags. Output as:\nOPTIMIZED HOOK:\n\nOPTIMIZED SCRIPT:\n\nOPTIMIZED CTA:\n\nOPTIMIZED HASHTAGS:\n\nVISUAL SUGGESTIONS:\n- ...\n- ..."
-            }
-          ]
-        },
-        "options": {
-          "temperature": 0.7,
-          "reasoning": {
-            "effort": "high"
-          }
         }
       }
     },
     {
-      "id": "n20",
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {
+          "reasoningEffort": "high"
+        }
+      },
+      "id": "717e4ba8-13af-4023-b454-d7afc6e21ce2",
       "name": "Optimize Facebook (GPT-5-Nano)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        4000,
-        200
+        4944,
+        736
       ],
       "credentials": {
         "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
           "name": "ZARAapiKey"
-        }
-      },
-      "parameters": {
-        "model": "gpt-5-nano",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "Optimize Facebook posts for curiosity, readability, and community engagement. Output exactly in requested format."
-            },
-            {
-              "role": "user",
-              "content": "=Optimize this Facebook post:\n\nCURRENT:\n{{ $json.facebook_content }}\n\nGoals: hook+emoji, value in 2–3 short paragraphs, story, engagement question, 5–10 hashtags. Output as:\nOPTIMIZED FACEBOOK POST:\n\n[post...]\n\n[hashtags]\n\nSUGGESTED COMMENT RESPONSES:\n- ...\n- ...\n- ..."
-            }
-          ]
-        },
-        "options": {
-          "temperature": 0.7,
-          "reasoning": {
-            "effort": "high"
-          }
         }
       }
     },
     {
-      "id": "n21",
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {
+          "reasoningEffort": "high"
+        }
+      },
+      "id": "2e91c972-dfcb-4ef8-b144-6e3c943d0fdd",
       "name": "Optimize LinkedIn (GPT-5-Nano)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        4000,
-        300
+        4992,
+        320
       ],
       "credentials": {
         "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
           "name": "ZARAapiKey"
-        }
-      },
-      "parameters": {
-        "model": "gpt-5-nano",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "Optimize LinkedIn for credibility, insight density, proof, and professional tone. Output exactly in requested format."
-            },
-            {
-              "role": "user",
-              "content": "=Optimize LinkedIn post:\n\nCURRENT:\n{{ $json.linkedin_content }}\n\nGoals: crisp hook, insight/framework, data point, leadership takeaway, discussion prompt, 3–6 pro hashtags. Output as:\nOPTIMIZED LINKEDIN POST:\n\n[post...]\n\n[hashtags]\n\nENGAGEMENT STRATEGY NOTES:\n- ...\n- ...\n- ..."
-            }
-          ]
-        },
-        "options": {
-          "temperature": 0.7,
-          "reasoning": {
-            "effort": "high"
-          }
         }
       }
     },
     {
-      "id": "n22",
+      "parameters": {
+        "jsCode": "const base=$items('Apply Review Fixes',0,0)[0].json;\nconst ig=$items('Optimize Instagram (GPT-5-Nano)',0,0)[0].json.text||base.instagram_content;\nconst fb=$items('Optimize Facebook (GPT-5-Nano)',0,0)[0].json.text||base.facebook_content;\nconst li=$items('Optimize LinkedIn (GPT-5-Nano)',0,0)[0].json.text||base.linkedin_content;\nreturn { ...base, instagram_final: ig, facebook_final: fb, linkedin_final: li, ready_for_scheduling: true };"
+      },
+      "id": "b61dfdff-9b44-427d-b0ae-08d5696e4fae",
       "name": "Combine Optimized Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4220,
-        200
-      ],
-      "parameters": {
-        "jsCode": "const base=$items('Apply Review Fixes',0,0)[0].json;\nconst ig=$items('Optimize Instagram (GPT-5-Nano)',0,0)[0].json.response||base.instagram_content;\nconst fb=$items('Optimize Facebook (GPT-5-Nano)',0,0)[0].json.response||base.facebook_content;\nconst li=$items('Optimize LinkedIn (GPT-5-Nano)',0,0)[0].json.response||base.linkedin_content;\nreturn { ...base, instagram_final: ig, facebook_final: fb, linkedin_final: li, ready_for_scheduling: true };"
-      }
+        5344,
+        528
+      ]
     },
     {
-      "id": "n23",
+      "parameters": {
+        "jsCode": "const x=$input.first().json;\nreturn [{json:{\n day_number:x.day_number,\n day_theme:x.day_theme,\n episode_title:x.episode_title,\n topic_title:x.topic_title,\n instagram_content:x.instagram_final,\n facebook_content:x.facebook_final,\n linkedin_content:x.linkedin_final,\n schedule_data: JSON.stringify(x.schedule||{}),\n review_scores: JSON.stringify(x.review_scores||{}),\n status:'pending_schedule'\n}}];"
+      },
+      "id": "68591dc5-5dff-43c7-912c-47d2601da430",
       "name": "Prepare Insert Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4440,
-        200
-      ],
-      "parameters": {
-        "jsCode": "const x=$input.first().json;\nreturn [{json:{\n day_number:x.day_number,\n day_theme:x.day_theme,\n episode_title:x.episode_title,\n topic_title:x.topic_title,\n instagram_content:x.instagram_final,\n facebook_content:x.facebook_final,\n linkedin_content:x.linkedin_final,\n schedule_data: JSON.stringify(x.schedule||{}),\n review_scores: JSON.stringify(x.review_scores||{}),\n status:'pending_schedule'\n}}];"
-      }
+        5568,
+        528
+      ]
     },
     {
-      "id": "n24",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.social_content_generated (\n  day_number,\n  day_theme,\n  episode_title,\n  topic_title,\n  instagram_content,\n  facebook_content,\n  linkedin_content,\n  schedule_data,\n  review_scores,\n  status,\n  created_at,\n  updated_at\n)\nVALUES (\n  $1,  -- day_number\n  $2,  -- day_theme\n  $3,  -- episode_title\n  $4,  -- topic_title\n  $5,  -- instagram_content\n  $6,  -- facebook_content\n  $7,  -- linkedin_content\n  $8::jsonb,  -- schedule_data (JSON)\n  $9::jsonb,  -- review_scores (JSON)\n  'pending_schedule',\n  NOW(),\n  NOW()\n)\nRETURNING id, day_number, day_theme, episode_title, topic_title;",
+        "options": {
+          "queryReplacement": "={{ [ $json.day_number, $json.day_theme, $json.episode_title, $json.topic_title,  $json.instagram_final, $json.facebook_final, $json.linkedin_final, JSON.stringify($json.schedule || {}), JSON.stringify($json.review_scores || {})]}}"
+        }
+      },
+      "id": "1e00dfe6-1da7-4afa-9d87-554278434ea1",
       "name": "Save to Database",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        4660,
-        200
+        5792,
+        528
       ],
       "credentials": {
         "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
           "name": "RailwayPG-idudes"
-        }
-      },
-      "parameters": {
-        "operation": "insert",
-        "schema": "core",
-        "table": "social_content_generated",
-        "columns": {
-          "mappings": [
-            {
-              "column": "day_number",
-              "value": "={{ $json.day_number }}"
-            },
-            {
-              "column": "day_theme",
-              "value": "={{ $json.day_theme }}"
-            },
-            {
-              "column": "episode_title",
-              "value": "={{ $json.episode_title }}"
-            },
-            {
-              "column": "topic_title",
-              "value": "={{ $json.topic_title }}"
-            },
-            {
-              "column": "instagram_content",
-              "value": "={{ $json.instagram_content }}"
-            },
-            {
-              "column": "facebook_content",
-              "value": "={{ $json.facebook_content }}"
-            },
-            {
-              "column": "linkedin_content",
-              "value": "={{ $json.linkedin_content }}"
-            },
-            {
-              "column": "schedule_data",
-              "value": "={{ $json.schedule_data }}"
-            },
-            {
-              "column": "review_scores",
-              "value": "={{ $json.review_scores }}"
-            },
-            {
-              "column": "status",
-              "value": "pending_schedule"
-            }
-          ]
         }
       }
     },
     {
-      "id": "n25",
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.metrics (\n  metric_name,\n  metric_value,\n  tags,\n  created_at\n)\nVALUES (\n  'social_content_batch_completed',\n  1,\n  $1::jsonb,\n  NOW()\n)\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ workflow: 'social_automation',     episode: $items('Combine Episode Content',0,0)[0].json.episode_title }) ] }}"
+        }
+      },
+      "id": "5c00ae69-2011-44d9-ba99-37a030e2c7c9",
       "name": "Metrics: Batch Completed",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        4880,
-        200
+        6016,
+        208
       ],
       "credentials": {
         "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
           "name": "RailwayPG-idudes"
-        }
-      },
-      "parameters": {
-        "operation": "insert",
-        "schema": "core",
-        "table": "metrics",
-        "columns": {
-          "mappings": [
-            {
-              "column": "metric_name",
-              "value": "social_content_batch_completed"
-            },
-            {
-              "column": "metric_value",
-              "value": "1"
-            },
-            {
-              "column": "tags",
-              "value": "={{ JSON.stringify({ workflow:'social_automation', episode:$items('Combine Episode Content',0,0)[0].json.episode_title }) }}"
-            }
-          ]
         }
       }
     },
     {
-      "id": "n26",
+      "parameters": {
+        "name": "={{ $json.episode_title }} - Day {{ $json.day_number }}.md",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "id": "7f364ea1-8f91-4072-af00-ee1326df7b36",
       "name": "Drive Mirror (Disabled)",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        4660,
-        360
+        -976,
+        1344
       ],
-      "disabled": true,
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "name": "Google Drive account"
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const sd = this.getWorkflowStaticData('global'); sd.socialProcessed = sd.socialProcessed || {}; const fid = $json.file_id; if (!fid) return []; if (sd.socialProcessed[fid]) { return [{ json: $json }]; } return [];"
+      },
+      "id": "516d3218-59d4-47e7-b9e3-b03b8e4055c9",
+      "name": "Idempotency Duplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "linkedin",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3eb7138a-8122-44e6-8383-15c85b867b2d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "linkedIn"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "690bc24b-edae-467c-b266-b463434fd384",
+                    "leftValue": "facebook",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "facebook"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7d7e6d08-d4dd-4e9f-b7c9-417c5cb6de3e",
+                    "leftValue": "instagram",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "instagram"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        4768,
+        320
+      ],
+      "id": "35a27bb9-e777-46f9-8a04-04b497a448a4",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate social media content for DAY {{ $json.day_number }}: {{ $json.day_theme }}\n\nEPISODE: {{ $json.episode_title }} ({{ $json.episode_number }})\n\nTOPIC: {{ $json.concept }} ({{ $json.category }})\n\nScore: {{ $json.scores.weighted_total }}/10\n\nPRIMARY SOURCE (truncated): {{ $node[\"Combine Episode Content\"].json.episode_content.substring(0, 3000) }}\n\nENRICHMENT: {{ $json.enriched_content_chunks }}\n\nCreate 3 posts (Instagram Reel, Facebook, LinkedIn) exactly per the required formats.",
+        "options": {
+          "systemMessage": "Generate social content for DAY {{ $json.day_number }} — {{ $json.day_theme }}\n\nEPISODE: {{ $json.episode_title }} ({{ $json.episode_number }})\nTOPIC: {{ $json.concept }}  |  Category: {{ $json.category }}\nPriority Score: {{ $json.scores.weighted_total }} / 10\n\nPRIMARY SOURCE (truncated):\n{{ $node[\"Combine Episode Content\"].json.episode_content.substring(0, 3000) }}\n\nENRICHMENT CONTENT:\n{{ $json.enriched_content_chunks }}\n\nProduce the three sections EXACTLY as formatted above. No extra text."
         }
       },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        3168,
+        208
+      ],
+      "id": "29304aaf-1014-4fb8-8e38-6d385e34b764",
+      "name": "Generate Content"
+    },
+    {
       "parameters": {
-        "operation": "upload",
-        "name": "={{ $json.episode_title }} - Day {{ $json.day_number }}.md",
-        "binaryData": false,
-        "fileContent": "=# Episode: {{ $json.episode_title }}\\n\\n## Day {{ $json.day_number }} — {{ $json.day_theme }}\\n\\n### Instagram\\n{{ $json.instagram_content }}\\n\\n### Facebook\\n{{ $json.facebook_content }}\\n\\n### LinkedIn\\n{{ $json.linkedin_content }}",
-        "parents": "={{ [$env.DRIVE_CONTENT_MIRROR_FOLDER_ID] }}"
+        "promptType": "define",
+        "text": "=Review these 3 social posts for Day {{ $json.day_number }} ({{ $json.day_theme }}). Episode: {{ $json.episode_title }} \nTopic: {{ $json.topic_title }}\n\nReturn JSON with overall_recommendation (APPROVE | APPROVE_WITH_EDITS | REJECT) and per-platform required_fixes arrays.",
+        "options": {
+          "systemMessage": "You are a strict content-review editor for The Insurance Dudes.\nEvaluate each platform post for brand safety, clarity, and engagement.\nReturn ONLY the following JSON schema—no markdown, no prose:\n\n{\n \"overall_recommendation\": \"APPROVE\"|\"APPROVE_WITH_EDITS\"|\"REJECT\",\n \"summary\": \"1-2 sentence overview\",\n \"instagram_review\": {\n   \"scores\": {\"voice_authenticity\": 1-10,\"value_delivery\": 1-10,\"engagement_potential\": 1-10,\"brand_safety\": 1-10},\n   \"weighted_score\": number,\n   \"pass\": true|false,\n   \"strengths\": [string],\n   \"issues\": [string],\n   \"required_fixes\": [\n     {\"location\":\"hook|script|cta|hashtags\",\"current\":\"string\",\"fix\":\"string\",\"reason\":\"string\"}\n   ]\n },\n \"facebook_review\": { … same fields … },\n \"linkedin_review\": { … same fields … },\n \"action_items\": [string]\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        3744,
+        208
+      ],
+      "id": "3cca5996-caf5-4559-b4eb-75f4a5b240fd",
+      "name": "Expert Review"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Episode: {{ $json.episode_title }}\n\nContent (truncated): \n{{ $json.episode_content.slice(0, 3500) }}\nExtract 15–20 concepts as JSON array.",
+        "options": {
+          "systemMessage": "You are an expert content analyst for The Insurance Dudes podcast.\nReturn ONLY a valid JSON array (no prose, no markdown).\nEach element must contain:\n{\n \"concept\": \"1–2 sentence summary of the idea\",\n \"category\": \"sales_strategy|objection_handling|lead_gen|mindset|tech|case_study|industry_insight\",\n \"actionability\": \"high|medium|low\",\n \"proof_type\": \"data|story|framework|none\",\n \"hook_potential\": integer 1–10,\n \"platform_fit\": \"instagram|facebook|linkedin|all\"\n}\nProvide 15-20 items.  No comments, no trailing commas."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        208
+      ],
+      "id": "9e956b03-83c1-4098-8462-3659092e2941",
+      "name": "Extract Concepts"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Optimize this approved Instagram Reel:\n\nCURRENT:\n{{ $json.instagram_content }}\n\nGoals: Stronger hook, tight 15-30 s script, clear CTA, balanced hashtags.\nReturn ONLY the formatted sections specified.",
+        "options": {
+          "systemMessage": "You are an Instagram Reels optimizer.\nRefine hook, pacing (15-30 s), CTA clarity, and hashtags.\nReturn EXACTLY this format—no extras:\n\nOPTIMIZED HOOK: [≤ 8 words]\nOPTIMIZED SCRIPT:\n[3 sentences max with line breaks]\nOPTIMIZED CTA: [≤ 15 words]\nOPTIMIZED HASHTAGS: [5-8 targeted hashtags]\nVISUAL SUGGESTIONS:\n- [B-roll idea]\n- [Text overlay idea]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        4784,
+        1024
+      ],
+      "id": "3c27199c-930b-47e1-ab31-5705f11bec1e",
+      "name": "Optimize Instagram"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Optimize this approved LinkedIn post:\n\nCURRENT:\n{{ $json.linkedin_content }}\n\nGoals: Credible hook, concise framework, specific data, professional tone, discussion prompt, 3-6 pro hashtags.\nReturn ONLY the formatted blocks specified.",
+        "options": {
+          "systemMessage": "You are a LinkedIn post optimizer.\nEmphasize credibility, insight density, proof, and professional tone.\nNo emojis. Return EXACTLY this format:\n\nOPTIMIZED LINKEDIN POST:\n\n[Professional hook (2-3 lines for preview)]\n[Insight or framework]\n[Data/proof point]\n[Thought-leadership takeaway]\n[Discussion prompt]\n[3-6 professional hashtags]\n\nENGAGEMENT STRATEGY NOTES:\n- [Why the hook works]\n- [Discussion points to seed in comments]\n- [Who to tag or mention]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        4992,
+        112
+      ],
+      "id": "89dffacc-c2b2-4b86-a6b7-d39dd132272c",
+      "name": "Optimize LinkedIn"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Optimize this approved Facebook post:\n\nCURRENT:\n{{ $json.facebook_content }}\n\nGoals: Stronger hook with emoji, easy reading with line breaks, clear question, 5-10 strategic hashtags.\nReturn ONLY the formatted blocks specified.",
+        "options": {
+          "systemMessage": "You are a Facebook post optimizer.\nMake it visually scannable, emotionally engaging, and comment-friendly.\nReturn EXACTLY this format:\n\nOPTIMIZED FACEBOOK POST:\n\n[Hook with emoji]\n[2-3 short paragraphs]\n[Story or example]\n[Engagement question]\n[5-10 hashtags]\n\nSUGGESTED COMMENT RESPONSES:\n- [Positive reply template]\n- [Question answer template]\n- [Objection response template]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        4992,
+        512
+      ],
+      "id": "b5ca3554-b16c-4706-92ed-5348c34fb422",
+      "name": "Optimize Facebook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT file_id, filename, status, created_at\n  FROM core.file_status\n  WHERE status = 'completed'\n  ORDER BY created_at DESC",
+        "options": {}
+      },
+      "id": "ad012334-5891-4d76-8c57-52ca935b1af9",
+      "name": "Tools",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        1072
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n  function decodeHtmlEntities(str) {\n  if (!str) return '';\n  let out = String(str);\n  out = out.replace(/ /g, ' ');\n  out = out.replace(/&/g, '&');\n  out = out.replace(/</g, '<');\n  out = out.replace(/>/g, '>');\n  out = out.replace(/\"/g, '\"');\n  out = out.replace(/'/g, \"'\");\n  out = out.replace(/&#(\\d+);/g, function(match, dec) {\n      const code = parseInt(dec, 10);\n      return Number.isFinite(code) ? String.fromCharCode(code) : match;\n  });\n  out = out.replace(/&#x([0-9a-fA-F]+);/g, function(match, hex) {\n      const code = parseInt(hex, 16);\n      return Number.isFinite(code) ? String.fromCharCode(code) : match;\n  });\n  return out;\n  }\n\n  function stripHtml(html) {\n  if (!html) return '';\n  let s = String(html);\n  // Use RegExp constructors to avoid literal issues\n  const reScript = new RegExp('<script[\\s\\S]*?<\\/script>', 'gi');\n  const reStyle  = new RegExp('<style[\\s\\S]?<\\/style>', 'gi');\n  s = s.replace(reScript, '');\n  s = s.replace(reStyle, '');\n  // Remove remaining tags and stray fragments\n  s = s.replace(/<[^>]+>/g, ' ');\n  s = s.replace(//?[a-z]+>/gi, ' ');\n  return s;\n  }\n\n  function normalizeWhitespace(str) {\n  return String(str)\n      .replace(/[ \\t]+/g, ' ')\n      .replace(/\\s*\\n\\s*/g, '\\n')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .trim();\n  }\n\n  function removeNoisyLines(str) {\n  const lines = String(str).split(/\\r?\\n/).map(l => l.trim());\n  const out = [];\n  const seen = new Set();\n  for (let raw of lines) {\n      if (!raw) continue;\n      if (/^(-{3,}|={3,})/.test(raw)) continue;\n      if (/^(\\d{1,2}:\\d{2}(:\\d{2})?)$/.test(raw)) continue;\n      if (/^speaker\\s*\\d*[:.\\-]?\\s*$/i.test(raw)) continue;\n      if (/^[^\\w]+$/.test(raw)) continue;\n      if (/^(cite|time|p|te|\\/time)\\s*:?$/i.test(raw)) continue;\n\n      raw = raw.replace(/^\\s*speaker\\s*\\d*\\s*[:.\\-]\\s*/i, '');\n\n      const norm = raw.toLowerCase().replace(/[^a-z0-9\\s]/g, '').replace(/\\s+/g, ' ').trim();\n      if (norm.length < 4) continue;\n      if (seen.has(norm)) continue;\n      seen.add(norm);\n      out.push(raw);\n  }\n  return out.join('\\n');\n  }\n\n  function normalizeEpisodeTitle(title, content) {\n  const t = (title || '').toString().trim();\n  const firstLine = (content || '').toString().split(/\\r?\\n/).find(Boolean) || '';\n  const reEpisode = /(?:^|\\b)(?:ep(?:isode|isaode)?|episode)\\s*[:#-]\\s([0-9]{1,4})/i;\n\n  let m = t.match(reEpisode);\n  if (m) return Episode ${m[1]};\n\n  m = firstLine.match(reEpisode);\n  if (m) return Episode ${m[1]};\n\n  return t || 'Episode';\n  }\n\n  function excerpt(str, maxChars) {\n  const s = (str || '').toString();\n  return s.length <= maxChars ? s : s.slice(0, maxChars);\n  }\n\n  return items.map(item => {\n  const j = item.json || {};\n  const rawTitle = j.episode_title ?? j.title ?? '';\n  const rawContent = j.episode_content ?? j.content ?? '';\n\n  const decoded = decodeHtmlEntities(rawContent);\n  const noHtml = stripHtml(decoded);\n  const compact = normalizeWhitespace(noHtml);\n  const cleaned = removeNoisyLines(compact);\n\n  const titleClean = normalizeEpisodeTitle(rawTitle, cleaned);\n  const epNumMatch = titleClean.match(/Episode\\s+([0-9]{1,4})/i);\n  const episode_number = epNumMatch ? parseInt(epNumMatch[1], 10) : null;\n\n  item.json.episode_title_clean = titleClean;\n  item.json.episode_number = episode_number;\n  item.json.episode_content_clean = cleaned;\n  item.json.episode_text_excerpt = excerpt(cleaned, 5000);\n  item.json.episode_content_length = cleaned.length;\n\n  return item;\n  });"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        816
+      ],
+      "id": "82dacd86-21fe-4ed2-ae06-c5b81e1e29c1",
+      "name": "cleanAndPrep"
     }
   ],
+  "pinData": {},
   "connections": {
     "Episode Ready Webhook": {
       "main": [
-        [ { "node": "Validate Episode Payload", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Validate Episode Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Validate Episode Payload": {
       "main": [
         [
-          { "node": "Payload OK", "type": "main", "index": 0 },
-          { "node": "Payload Invalid", "type": "main", "index": 0 }
+          {
+            "node": "Payload OK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Payload Invalid",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Payload OK": {
       "main": [
-        [ { "node": "Check File Status", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Check File Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Payload Invalid": {
       "main": [
-        [ { "node": "Respond Bad Request", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Respond Bad Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check File Status": {
       "main": [
-        [ { "node": "Check Embeddings Count", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Check Embeddings Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check Embeddings Count": {
       "main": [
         [
-          { "node": "Gate Ready", "type": "main", "index": 0 },
-          { "node": "Gate Not Ready", "type": "main", "index": 0 }
+          {
+            "node": "Gate Ready",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gate Not Ready",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Gate Ready": {
       "main": [
         [
-          { "node": "Idempotency New", "type": "main", "index": 0 },
-          { "node": "Idempotency Duplicate", "type": "main", "index": 0 }
+          {
+            "node": "Idempotency New",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Idempotency Duplicate",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Idempotency New": {
       "main": [
         [
-          { "node": "Respond Accepted", "type": "main", "index": 0 },
-          { "node": "Get Episode Chunks", "type": "main", "index": 0 }
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Episode Chunks",
+            "type": "main",
+            "index": 0
+          }
         ]
-      ]
-    },
-    "Idempotency Duplicate": {
-      "main": [
-        [ { "node": "Respond Duplicate", "type": "main", "index": 0 } ]
       ]
     },
     "Gate Not Ready": {
       "main": [
-        [ { "node": "Respond Not Ready", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Respond Not Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Manual Trigger": {
@@ -924,28 +1096,6 @@
         ]
       ]
     },
-    "Combine Episode Content": {
-      "main": [
-        [
-          {
-            "node": "Extract Concepts (GPT-5-Nano)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract Concepts (GPT-5-Nano)": {
-      "main": [
-        [
-          {
-            "node": "Rank Topics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Rank Topics": {
       "main": [
         [
@@ -959,6 +1109,7 @@
     },
     "Loop Days": {
       "main": [
+        [],
         [
           {
             "node": "Generate Enrichment Queries",
@@ -1012,50 +1163,6 @@
         ]
       ]
     },
-    "Combine Enrichment Data": {
-      "main": [
-        [
-          {
-            "node": "Generate Content (GPT-5-Nano)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Generate Content (GPT-5-Nano)": {
-      "main": [
-        [
-          {
-            "node": "Parse Generated Content",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Generated Content": {
-      "main": [
-        [
-          {
-            "node": "Expert Review (GPT-5-Nano)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Expert Review (GPT-5-Nano)": {
-      "main": [
-        [
-          {
-            "node": "Parse Review JSON",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Parse Review JSON": {
       "main": [
         [
@@ -1079,64 +1186,6 @@
         [
           {
             "node": "Metrics: Batch Completed",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Apply Review Fixes": {
-      "main": [
-        [
-          {
-            "node": "Optimize Instagram (GPT-5-Nano)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Optimize Facebook (GPT-5-Nano)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Optimize LinkedIn (GPT-5-Nano)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Optimize Instagram (GPT-5-Nano)": {
-      "main": [
-        [
-          {
-            "node": "Combine Optimized Content",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Optimize Facebook (GPT-5-Nano)": {
-      "main": [
-        [
-          {
-            "node": "Combine Optimized Content",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Optimize LinkedIn (GPT-5-Nano)": {
-      "main": [
-        [
-          {
-            "node": "Combine Optimized Content",
             "type": "main",
             "index": 0
           }
@@ -1173,10 +1222,224 @@
             "type": "main",
             "index": 0
           }
+        ]
+      ]
+    },
+    "Idempotency Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Respond Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Review Fixes": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Optimize LinkedIn",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
           {
-            "node": "Drive Mirror (Disabled)",
+            "node": "Optimize Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize LinkedIn (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimize LinkedIn",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Facebook (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimize Facebook",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Instagram (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimize Instagram",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Enrichment Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Content (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Content",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Generated Content": {
+      "main": [
+        [
+          {
+            "node": "Expert Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expert Review (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Expert Review",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Episode Content": {
+      "main": [
+        [
+          {
+            "node": "cleanAndPrep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Concepts (GPT-5-Nano)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Concepts",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Content": {
+      "main": [
+        [
+          {
+            "node": "Parse Generated Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expert Review": {
+      "main": [
+        [
+          {
+            "node": "Parse Review JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Concepts": {
+      "main": [
+        [
+          {
+            "node": "Rank Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Instagram": {
+      "main": [
+        [
+          {
+            "node": "Combine Optimized Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Combine Optimized Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Facebook": {
+      "main": [
+        [
+          {
+            "node": "Combine Optimized Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cleanAndPrep": {
+      "main": [
+        [
+          {
+            "node": "Extract Concepts",
             "type": "main",
             "index": 0
           }
@@ -1184,5 +1447,22 @@
       ]
     }
   },
-  "updatedAt": "2025-10-12T22:26:41.611641Z"
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ee671d76-8692-430c-83de-e44b80bd2e61",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  },
+  "id": "uLQsT8ImlCY4SWtu",
+  "tags": [
+    {
+      "createdAt": "2025-09-25T22:02:30.069Z",
+      "updatedAt": "2025-09-25T22:02:30.069Z",
+      "id": "r4We06wO7J43GTH4",
+      "name": "🤞"
+    }
+  ]
 }

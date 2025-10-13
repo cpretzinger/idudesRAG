@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Uploader() {
+  const { session } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [status, setStatus] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -19,13 +21,17 @@ export default function Uploader() {
 
       const res = await fetch('/api/webhook/documents', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.session_token || ''}`
+        },
         body: JSON.stringify({
           filename: file.name,
           content: base64,
           type: file.type,
           size: file.size,
-          source: 'ui-upload'
+          source: 'ui-upload',
+          user_id: session?.user?.id
         })
       })
 

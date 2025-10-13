@@ -9,7 +9,7 @@ interface Message {
 }
 
 export default function Chat() {
-  const { user } = useAuth()
+  const { user, session } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -51,11 +51,15 @@ export default function Chat() {
     try {
       const res = await fetch('https://ai.thirdeyediagnostics.com/webhook/chat-knowledge', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.session_token || ''}`
+        },
         body: JSON.stringify({
           messages: [...messages, userMessage],
           model: 'gpt-5-nano',
-          session_id: sessionId
+          session_id: sessionId,
+          user_id: user?.id
         })
       })
 

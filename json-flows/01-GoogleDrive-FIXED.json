@@ -1,0 +1,843 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "limit": 1,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1P9vCe0flPbImHpcimMcNahQT7YN25M0_",
+            "mode": "list",
+            "cachedResultName": "RAG-Pending",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1P9vCe0flPbImHpcimMcNahQT7YN25M0_"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {}
+      },
+      "id": "eaac9648-2f2e-4349-9cf4-4ebcb6ba4d3a",
+      "name": "GetPendingFile",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-3584, 1824],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "agQVZargPko1jDSc",
+          "name": "craig@theidudes.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const OPENAI_API_KEY = $env.OPENAI_API_KEY;\n\n// Collect all inputs (MarkProcessing + ExtractAndPackage if wired)\nconst items = $input.all();\n\n// Try to find file metadata\nlet meta = items.find(i => i.json?.file_id && i.json?.filename)?.json;\n\n// If not in inputs, try reading from ExtractAndPackage by name\nif (!meta) {\n  const pkg = $items('ExtractAndPackage', 0, 0)?.[0]?.json;\n  if (pkg?.file_id && pkg?.filename) meta = pkg;\n}\nif (!meta) {\n  throw new Error('Missing file metadata (file_id, filename). Ensure ExtractAndPackage → ProcessDocument OR pass-through metadata.');\n}\n\nconst file_id = meta.file_id;\nconst filename = meta.filename;\nconst mime_type = meta.mime_type || 'text/plain';\n\n// 🆕 PRESERVE PODCAST METADATA IF PRESENT\nconst podcast_metadata = meta.podcast_metadata || null;\nconst episode_title = meta.episode_title || null;\nconst episode_number = meta.episode_number || null;\nconst episode_guid = meta.episode_guid || null;\nconst show_name = meta.show_name || null;\nconst published_at = meta.published_at || null;\n\n// Find text from any input\nlet content = '';\nfor (const it of items) {\n  if (typeof it.json?.data === 'string') { content = it.json.data; break; }\n  if (typeof it.json?.content === 'string') { content = it.json.content; break; }\n  if (typeof it.json === 'string') { content = it.json; break; }\n  if (it.binary && Object.keys(it.binary).length) {\n    const [binKey] = Object.keys(it.binary);\n    const b64 = it.binary[binKey]?.data;\n    if (b64) { content = Buffer.from(b64, 'base64').toString('utf-8'); break; }\n  }\n}\nif (!content || content.length < 50) {\n  throw new Error(`No content found in inputs for ${filename}.`);\n}\n\n// FINAL safety cleaning (idempotent)\nfunction finalClean(s) {\n  return String(s)\n    .replace(/\\r\\n?/g, '\\n')\n    .replace(/\\t/g, ' ')\n    .replace(/\\u0000/g, '')\n    .normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/\\u00A0/g, ' ')\n    .replace(/\\u2018|\\u2019|\\u201A|\\u2032/g, \"'\")\n    .replace(/\\u201C|\\u201D|\\u201E|\\u2033/g, '\"')\n    .replace(/\\u2014/g, ' — ')\n    .replace(/\\u2013/g, '-')\n    .replace(/\\u2026/g, '...')\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\nconst cleanedText = finalClean(content);\nif (cleanedText.length < 50) throw new Error('Cleaned text too short');\n\n// Chunk\nconst CHUNK_SIZE = 900;\nconst OVERLAP = 150;\nconst chunks = [];\nlet start = 0;\nwhile (start < cleanedText.length) {\n  let end = Math.min(start + CHUNK_SIZE, cleanedText.length);\n  if (end < cleanedText.length) {\n    const window = cleanedText.slice(start, end);\n    const breaks = [window.lastIndexOf('\\n\\n'), window.lastIndexOf('\\n'), window.lastIndexOf('. '), window.lastIndexOf('! '), window.lastIndexOf('? ')];\n    const best = Math.max(...breaks);\n    if (best > CHUNK_SIZE * 0.5) end = start + best + 1;\n  }\n  const txt = cleanedText.slice(start, end).trim();\n  if (txt) chunks.push(txt);\n  if (end >= cleanedText.length) break;\n  start = Math.max(0, end - OVERLAP);\n}\nif (!chunks.length) throw new Error('No chunks created');\n\nconst t0 = Date.now();\n\n// Batch embeddings (100 at a time)\nasync function embedBatch(batch) {\n  const res = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.openai.com/v1/embeddings',\n    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },\n    body: { input: batch, model: 'text-embedding-3-small' },\n    json: true,\n    timeout: 120000,\n  });\n  return res.data.map(d => d.embedding);\n}\nconst BATCH = 100;\nconst embs = [];\nfor (let i = 0; i < chunks.length; i += BATCH) {\n  const out = await embedBatch.call(this, chunks.slice(i, i + BATCH));\n  embs.push(...out);\n}\n\nconst duration = Math.floor((Date.now() - t0) / 1000);\n\n// 🆕 INCLUDE PODCAST METADATA IN EACH CHUNK\nreturn chunks.map((text, idx) => ({\n  json: {\n    file_id,\n    filename,\n    file_type: mime_type,\n    file_size: cleanedText.length,\n    chunk_index: idx,\n    text,\n    chunk_size: text.length,\n    embedding: embs[idx],\n    total_chunks: chunks.length,\n    duration,\n    status: 'completed',\n    // 🆕 Podcast-specific metadata\n    ...(podcast_metadata ? { podcast_metadata } : {}),\n    ...(episode_title ? { episode_title } : {}),\n    ...(episode_number ? { episode_number } : {}),\n    ...(episode_guid ? { episode_guid } : {}),\n    ...(show_name ? { show_name } : {}),\n    ...(published_at ? { published_at } : {})\n  }\n}));"
+      },
+      "id": "de2f4862-6b2e-404d-ac6f-a296e1cc7442",
+      "name": "ProcessDocument",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2256, 1824]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0fe6b26-3753-4628-a079-9ebf4fe638a1",
+              "name": "parentDrive",
+              "value": "0AHQT6VYr8_hZUk9PVA",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-3808, 1824],
+      "id": "f20342fe-63a7-448c-b582-8c9f717d7155",
+      "name": "set parentDrive"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "data",
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "text/plain",
+              "slidesToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-3120, 1888],
+      "id": "b81eec69-6429-4812-80d4-8dd2f8495449",
+      "name": "Download File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OtvrT7x8YG4Mrx7n",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.file_status (file_id, filename, status, created_at, updated_at)\nVALUES ($1, $2, 'processing', NOW(), NOW())\nON CONFLICT (file_id) \nDO UPDATE SET \n  status = 'processing',\n  updated_at = NOW(),\n  error_message = NULL\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [$json.file_id, $json.filename] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-2464, 1712],
+      "id": "792f07cd-ea75-4127-a417-859cf2ca2158",
+      "name": "MarkProcessing",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4f2be3db-8be2-4a15-8185-d1634123bd18",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-2032, 1824],
+      "id": "cb586c30-29c9-4615-afce-0701315aab97",
+      "name": "CheckSuccess"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM core.embeddings\nWHERE file_id = $1;",
+        "options": {
+          "queryReplacement": "={{ [$json.file_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-1600, 1552],
+      "id": "259ebda2-0491-4cc8-a4b7-14063a24188c",
+      "name": "DeleteOldChunks",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.embeddings (\n  file_id,\n  filename,\n  chunk_index,\n  text,\n  chunk_size,\n  embedding,\n  file_type,\n  file_size,\n  episode_title,\n  episode_number,\n  episode_guid,\n  show_name,\n  published_at,\n  created_at,\n  updated_at\n)\nVALUES (\n  $1,\n  $2,\n  $3,\n  $4,\n  $5,\n  $6::vector(1536),\n  $7,\n  $8,\n  $9,\n  $10,\n  $11,\n  $12,\n  $13,\n  NOW(),\n  NOW()\n)\nON CONFLICT (file_id, chunk_index) \nDO UPDATE SET\n  text = EXCLUDED.text,\n  embedding = EXCLUDED.embedding,\n  episode_title = EXCLUDED.episode_title,\n  episode_number = EXCLUDED.episode_number,\n  episode_guid = EXCLUDED.episode_guid,\n  show_name = EXCLUDED.show_name,\n  published_at = EXCLUDED.published_at,\n  updated_at = NOW()\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [$json.file_id, $json.filename, $json.chunk_index, $json.text, $json.chunk_size, JSON.stringify($json.embedding), $json.file_type, $json.file_size, $json.episode_title || null, $json.episode_number || null, $json.episode_guid || null, $json.show_name || null, $json.published_at || null] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-1376, 1728],
+      "id": "2b7c5c76-4018-4bb7-ade4-5ecf03174d06",
+      "name": "InsertEmbedding",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.file_status\nSET \n  status = 'completed',\n  chunks_count = $2,\n  updated_at = NOW()\nWHERE file_id = $1\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [$items('ExtractAndPackage',0,0)[0].json.file_id, $('ProcessDocument').first().json.total_chunks] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-1152, 1728],
+      "id": "7eb2d0cf-8afc-42bb-ba1d-0292297f5484",
+      "name": "UpdateStatus",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.file_status\nSET \n  status = 'failed',\n  error_message = $2,\n  updated_at = NOW()\nWHERE file_id = $1\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [$json.file_id, $json.error] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-1600, 1920],
+      "id": "d7726481-f014-47d7-ab6b-0820b4efa13f",
+      "name": "MarkFailed",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nklUnQSA49WWUPg6LVkw4THjj4O5eNMGguQ--eIxyZM",
+          "mode": "id",
+          "cachedResultName": "RAG-Logger"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 487287037,
+          "mode": "list",
+          "cachedResultName": "RAG Processing Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nklUnQSA49WWUPg6LVkw4THjj4O5eNMGguQ--eIxyZM/edit#gid=487287037"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Filename": "={{ $('ProcessDocument').first().json.filename }}",
+            "Chunks": "={{ $('ProcessDocument').first().json.total_chunks }}",
+            "Status": "failed",
+            "Duration": "={{ $('ProcessDocument').first().json.duration }}s",
+            "File_ID": "={{ $('ProcessDocument').first().json.file_id }}",
+            "Size_bytes": "=0",
+            "Error": "={{ $json.error }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Filename",
+              "displayName": "Filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chunks",
+              "displayName": "Chunks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "File_ID",
+              "displayName": "File_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Size_bytes",
+              "displayName": "Size_bytes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d9891522-9e8c-4d7e-9def-db38ea02290f",
+      "name": "FAILED: LogToSheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-1152, 1920],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "V09NdNwlqhTpbBeP",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nklUnQSA49WWUPg6LVkw4THjj4O5eNMGguQ--eIxyZM",
+          "mode": "id",
+          "cachedResultName": "RAG-Logger"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 487287037,
+          "mode": "list",
+          "cachedResultName": "RAG Processing Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nklUnQSA49WWUPg6LVkw4THjj4O5eNMGguQ--eIxyZM/edit#gid=487287037"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Filename": "={{ $('ProcessDocument').first().json.filename }}",
+            "Chunks": "={{ $('ProcessDocument').first().json.total_chunks }}",
+            "Status": "completed",
+            "Duration": "={{ $('ProcessDocument').first().json.duration }}s",
+            "File_ID": "={{ $('ProcessDocument').first().json.file_id }}",
+            "Size_bytes": "={{ $('ProcessDocument').first().json.file_size }}",
+            "Error": "\"\""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Filename",
+              "displayName": "Filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chunks",
+              "displayName": "Chunks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "File_ID",
+              "displayName": "File_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Size_bytes",
+              "displayName": "Size_bytes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c36b04c4-a681-4ed5-8cf9-80822dd9e6e9",
+      "name": "Comleted: LogToSheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-496, 1728],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "V09NdNwlqhTpbBeP",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [-2896, 1536],
+      "id": "cc12e1bb-838d-431d-9214-6ac7f98b34e6",
+      "name": "ExtractFromFile"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SAFELY READ GOOGLE DRIVE FILE JSON =====\nconst fromList = $items('GetPendingFile', 0, 0);\nif (!fromList || !fromList[0] || !fromList[0].json) {\n  throw new Error('GetPendingFile output not available in this branch. Ensure ExtractFromFile → ExtractAndPackage AND GetPendingFile runs this execution.');\n}\nconst driveFile = fromList[0].json; // { id, name, mimeType, ... }\n\nif (!driveFile?.id) {\n  throw new Error('Missing driveFile.id from GetPendingFile');\n}\n\n// ===== GET EXTRACTED TEXT FROM INPUT =====\nconst extracted = $input.first();\nif (!extracted?.json) {\n  throw new Error('ExtractFromFile did not pass JSON to ExtractAndPackage. Check connection Download File → ExtractFromFile → ExtractAndPackage.');\n}\n\nlet raw = '';\nif (typeof extracted.json?.data === 'string') {\n  raw = extracted.json.data;\n} else if (typeof extracted.json === 'string') {\n  raw = extracted.json;\n} else {\n  // If ExtractFromFile ever emits binary\n  if (extracted.binary && Object.keys(extracted.binary).length) {\n    const [binKey] = Object.keys(extracted.binary);\n    const b64 = extracted.binary[binKey]?.data;\n    if (!b64) throw new Error(`Binary key \"${binKey}\" missing .data`);\n    raw = Buffer.from(b64, 'base64').toString('utf-8');\n  } else {\n    const keys = Object.keys(extracted.json);\n    throw new Error(`Unrecognized ExtractFromFile output. Keys: [${keys.join(', ')}]`);\n  }\n}\n\n// ===== TEXT CLEANING (normalize + fix cp1252 junk + dashes + whitespace) =====\nfunction cleanForEmbedding(input) {\n  let s = String(input);\n\n  // normalize newlines/tabs\n  s = s.replace(/\\r\\n?/g, '\\n').replace(/\\t/g, ' ');\n\n  // common Windows-1252 / OCR artifacts\n  const map = new Map([\n    [/\\u2018|\\u2019|\\u201A|\\u2032/g, \"'\"], // smart single quotes/prime\n    [/\\u201C|\\u201D|\\u201E|\\u2033/g, '\"'], // smart double quotes\n    [/\\u2014/g, ' — '],                    // em dash\n    [/\\u2013/g, '-'],                      // en dash\n    [/\\u2026/g, '...'],                    // ellipsis\n    [/\\u00A0/g, ' '],                      // nbsp\n  ]);\n  for (const [re, rep] of map) s = s.replace(re, rep);\n\n  // Some PDFs produce odd high-ASCII like Ò Ó Ð etc. Strip diacritics then collapse.\n  s = s.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '');\n\n  // Kill nulls, control chars except newline\n  s = s.replace(/[\\u0000-\\u001F\\u007F]/g, c => (c === '\\n' ? '\\n' : ' '));\n\n  // collapse spaces and multi-blank lines\n  s = s.replace(/[ \\t]+/g, ' ')\n       .replace(/\\n{3,}/g, '\\n\\n')\n       .trim();\n\n  return s;\n}\n\nconst text = cleanForEmbedding(raw);\nif (!text || text.length < 50) {\n  throw new Error(`Extracted text too short after cleaning: ${text?.length || 0} chars`);\n}\n\n// mime after conversion\nlet actualMime = driveFile.mimeType || 'text/plain';\nconst conversionMap = {\n  'application/vnd.google-apps.document': 'text/plain',\n  'application/vnd.google-apps.spreadsheet': 'text/csv',\n  'application/vnd.google-apps.presentation': 'application/pdf',\n};\nif (conversionMap[driveFile.mimeType]) actualMime = conversionMap[driveFile.mimeType];\n\n// sanitize filename\nconst MAX_FILENAME = 255;\nconst safeName = (driveFile.name || 'file.txt')\n  .replace(/[^a-zA-Z0-9._-]/g, '_')\n  .slice(0, MAX_FILENAME);\n\n// 🆕 EXTRACT PODCAST METADATA FROM FILENAME\n// Expected format: [GUID] Episode 123 - Title.txt\nlet podcast_metadata = null;\nlet episode_title = null;\nlet episode_number = null;\nlet episode_guid = null;\nlet show_name = null;\nlet published_at = null;\n\nconst podcastPattern = /^\\[([^\\]]+)\\]\\s*(?:Episode\\s*(\\d+)\\s*-\\s*)?(.+?)(?:\\.txt)?$/i;\nconst match = driveFile.name.match(podcastPattern);\n\nif (match) {\n  episode_guid = match[1] || null;\n  episode_number = match[2] || null;\n  episode_title = match[3] ? match[3].trim() : null;\n  \n  // Try to extract from embedded markdown if available\n  const showMatch = text.match(/\\*\\*Show:\\*\\*\\s*(.+?)$/m);\n  const publishMatch = text.match(/\\*\\*Published:\\*\\*\\s*(.+?)$/m);\n  \n  if (showMatch) show_name = showMatch[1].trim();\n  if (publishMatch) published_at = publishMatch[1].trim();\n  \n  podcast_metadata = {\n    episode_guid,\n    episode_number,\n    episode_title,\n    show_name,\n    published_at,\n    source: 'podcast-automation'\n  };\n}\n\n// Emit BOTH: `data` (for downstream), keep `content` for humans/compat\nreturn [{\n  json: {\n    file_id: driveFile.id,\n    filename: safeName,\n    mime_type: actualMime,\n    original_mime_type: driveFile.mimeType || 'unknown',\n\n    data: text,                // ✅ standard for downstream\n    content: text,             // alias; optional\n    content_length: text.length,\n\n    // 🆕 Podcast metadata passthrough\n    ...(podcast_metadata ? { podcast_metadata } : {}),\n    ...(episode_title ? { episode_title } : {}),\n    ...(episode_number ? { episode_number } : {}),\n    ...(episode_guid ? { episode_guid } : {}),\n    ...(show_name ? { show_name } : {}),\n    ...(published_at ? { published_at } : {}),\n\n    extracted_at: new Date().toISOString(),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2704, 1824],
+      "id": "d9d56898-a306-4157-8066-25d9549d10a8",
+      "name": "ExtractAndPackage"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Emit exactly ONE item carrying the full spine from CheckSuccess (true branch)\nconst okItems = $items('CheckSuccess', 0, 0);\nif (!okItems?.length) throw new Error('CheckSuccess produced no true-branch items');\n\nconst spine = okItems[0].json;\nif (!spine?.file_id) throw new Error('Spine missing file_id from CheckSuccess');\n\nreturn [{ json: spine }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1824, 1728],
+      "id": "13a3fd37-8cd0-48b8-88da-f4d3b835b5da",
+      "name": "EmitOnce"
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.file_id }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "value": "0ADNv-WFOlNroUk9PVA",
+          "mode": "list",
+          "cachedResultName": "RAG-idudes-RAG-System",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/0ADNv-WFOlNroUk9PVA"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms",
+          "mode": "list",
+          "cachedResultName": "RAG-Completed",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-944, 1728],
+      "id": "3a785ea0-2f56-4cf2-816f-373a2439f7aa",
+      "name": "Move file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "agQVZargPko1jDSc",
+          "name": "craig@theidudes.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $items('GetPendingFile',0,0)[0].json.id }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "value": "=",
+          "mode": "url"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms",
+          "mode": "list",
+          "cachedResultName": "RAG-Completed",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-1392, 1920],
+      "id": "35833167-15f9-4f94-9241-ca7ffd205eb1",
+      "name": "Move Failed",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "agQVZargPko1jDSc",
+          "name": "craig@theidudes.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT file_id, status\n  FROM core.file_status\n  WHERE file_id = $1\n  AND status IN ('completed', 'processing')",
+        "options": {
+          "queryReplacement": "={{ $json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-3472, 1696],
+      "id": "cfa9f92b-f62d-4f25-b596-5aead4d59b57",
+      "name": "checkExists",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "1da34a24-ec38-4378-85ae-ec3806ff20e0",
+      "name": "Every5Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-4032, 1824]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f2f847d6-d776-4c1d-9df2-1b734d3f0f15",
+              "leftValue": "= {{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-3280, 1808],
+      "id": "d37e722e-ea3f-4757-ae10-1909a029dd62",
+      "name": "IfExists"
+    }
+  ],
+  "connections": {
+    "GetPendingFile": {
+      "main": [
+        [
+          {
+            "node": "checkExists",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IfExists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ProcessDocument": {
+      "main": [
+        [
+          {
+            "node": "CheckSuccess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set parentDrive": {
+      "main": [
+        [
+          {
+            "node": "GetPendingFile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "ExtractFromFile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MarkProcessing": {
+      "main": [[]]
+    },
+    "CheckSuccess": {
+      "main": [
+        [
+          {
+            "node": "EmitOnce",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MarkFailed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeleteOldChunks": {
+      "main": [[]]
+    },
+    "InsertEmbedding": {
+      "main": [
+        [
+          {
+            "node": "UpdateStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateStatus": {
+      "main": [
+        [
+          {
+            "node": "Move file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MarkFailed": {
+      "main": [
+        [
+          {
+            "node": "Move Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractFromFile": {
+      "main": [
+        [
+          {
+            "node": "ExtractAndPackage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractAndPackage": {
+      "main": [
+        [
+          {
+            "node": "MarkProcessing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ProcessDocument",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EmitOnce": {
+      "main": [
+        [
+          {
+            "node": "DeleteOldChunks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "InsertEmbedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move file": {
+      "main": [
+        [
+          {
+            "node": "Comleted: LogToSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Failed": {
+      "main": [
+        [
+          {
+            "node": "FAILED: LogToSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkExists": {
+      "main": [
+        [
+          {
+            "node": "IfExists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every5Min": {
+      "main": [
+        [
+          {
+            "node": "set parentDrive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IfExists": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
+}

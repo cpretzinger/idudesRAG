@@ -1,0 +1,181 @@
+{
+  "name": "08-session-cleanup-cron",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "6b32af98-b6f5-45a3-b924-d56f99c3fd99",
+      "name": "Schedule - Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1168,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH deleted_sessions AS (\n  DELETE FROM core.user_sessions \n  WHERE expires_at < NOW() \n  RETURNING token\n),\ndeleted_reset_tokens AS (\n  DELETE FROM core.password_reset_tokens \n  WHERE expires_at < NOW() OR used = true\n  RETURNING token\n)\nSELECT \n  (SELECT COUNT(*) FROM deleted_sessions) as sessions_cleaned,\n  (SELECT COUNT(*) FROM deleted_reset_tokens) as reset_tokens_cleaned",
+        "options": {}
+      },
+      "id": "b198e993-b36c-44bb-8d15-c6bca479dedc",
+      "name": "Cleanup Expired Sessions",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -928,
+        -16
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.metrics (metric_name, metric_value, tags) VALUES \n  ('sessions_cleaned', $1, '{\"type\":\"session\"}'),\n  ('reset_tokens_cleaned', $2, '{\"type\":\"reset_token\"}')",
+        "options": {
+          "queryReplacement": "={{ $json[0].sessions_cleaned }}\n{{ $json[0].reset_tokens_cleaned }}"
+        }
+      },
+      "id": "ec23fb54-0275-4bb0-9e75-034ca02522c4",
+      "name": "Log Cleanup Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -688,
+        -16
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-large-cleanup-001",
+              "leftValue": "={{ $('Cleanup Expired Sessions').item.json[0].sessions_cleaned }}",
+              "rightValue": 1000,
+              "operator": {
+                "type": "number",
+                "operation": "larger"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6b89d883-c6aa-4fba-92b7-5af6169509a3",
+      "name": "Check If Large Cleanup",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "VACUUM ANALYZE core.user_sessions; VACUUM ANALYZE core.password_reset_tokens;",
+        "options": {}
+      },
+      "id": "d89b7910-614a-4b59-99ff-8922dd818c88",
+      "name": "Vacuum Tables",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -208,
+        -128
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule - Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Expired Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Expired Sessions": {
+      "main": [
+        [
+          {
+            "node": "Log Cleanup Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Cleanup Metrics": {
+      "main": [
+        [
+          {
+            "node": "Check If Large Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Large Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Vacuum Tables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3d61ae8c-6cc3-4bf6-baef-3e964049fbb3",
+  "meta": {
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  },
+  "id": "HORPiDdBHdeAk4zf",
+  "tags": []
+}

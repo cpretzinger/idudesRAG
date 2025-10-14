@@ -1,0 +1,456 @@
+
+-----BEGIN HOW YOU CAN SPEND MORE TO ACQUIRE INSURANCE CLIENTS | INSURANCE AGENCY PLAYBOOK-----
+    <cite>Speaker 1:</cite>
+  <time>0:00</time>
+  <p>Hey, Mr Jason, do you remember when I almost canceled my Christmas Kauai trip back in 2019?</p>
+  <cite>Speaker 2:</cite>
+  <time>0:06</time>
+  <p>Uh, yeah, I remember that you were pretty stressed out about something, what was going on?</p>
+  <cite>Speaker 1:</cite>
+  <time>0:11</time>
+  <p>Well, before we tell them what happened, let&#39;s look at the reason I was actually able to get on that plane, even though I was freaking out, All right. So today, Jason, we&#39;re going to talk about retention. Ooh retention.</p>
+  <cite>Speaker 2:</cite>
+  <time>0:35</time>
+  <p>What did you say, Mr Craig? I thought we were talking about sales.</p>
+  <cite>Speaker 1:</cite>
+  <time>0:44</time>
+  <p>Nope, I tricked you. First we need to know some things about retention, because without retention we can&#39;t really know much math wise, right?</p>
+  <cite>Speaker 2:</cite>
+  <time>0:48</time>
+  <p>I remember when I used to think that retention was something that like who cares right, it&#39;s all about sales and it was just to make a bonus. It&#39;s simple numbers. If I have 4 million in premium and my retention is 80%, then I need $800,000 in new business to end the year at 4 million. Isn&#39;t that all you need to know, mr Craig?</p>
+  <cite>Speaker 1:</cite>
+  <time>1:14</time>
+  <p>Kind of sort of no, no, no, not that&#39;s good. It&#39;s good, but you need what you need to do next Once you know your breakeven point. Do you know what that?</p>
+  <cite>Speaker 2:</cite>
+  <time>1:24</time>
+  <p>is Well, you find out how much growth you need to max out that bonus and multiply it by the beginning of the year premium. So if I need like 10% growth, then I need another 400,000 on top of that, on top of the 800,000, which comes to 1.2 million or 100 K a month. Is that right, Mr Craig?</p>
+  <cite>Speaker 1:</cite>
+  <time>1:45</time>
+  <p>Man, you are like a brain man with those numbers just spouting out of you.</p>
+  <cite>Speaker 2:</cite>
+  <time>1:49</time>
+  <p>like that You&#39;re not the first person to tell me I&#39;m like brain man, your wife. Yeah, it was a different reference, though.</p>
+  <cite>Speaker 1:</cite>
+  <time>1:56</time>
+  <p>Yeah, Well, anyway, you&#39;re close, so we can use retention to figure out our lifetime value.</p>
+  <cite>Speaker 2:</cite>
+  <time>2:05</time>
+  <p>LTV.</p>
+  <cite>Speaker 1:</cite>
+  <time>2:05</time>
+  <p>Mr Craig, what the holy pig is that Lifetime value is the prediction of net profit that you&#39;re going to get over the relationship of having this client right. So you&#39;re making a decision on how much that client is going to bring in for the over the course of them being with you, and we can figure that out.</p>
+  <cite>Speaker 2:</cite>
+  <time>2:24</time>
+  <p>Yep, that one is a big one, man. When I first figured that out, that was a. That was like a light bulb that went off. Okay. So this all makes sense, but how does this all fit in with with retention?</p>
+  <cite>Speaker 1:</cite>
+  <time>2:37</time>
+  <p>Well, think about it the longer a client stays with us, the more premium they&#39;re going to pay over time, right, and the higher our retention rate, the more clients we keep for longer periods. So retention directly impacts our lifetime value, I see.</p>
+  <cite>Speaker 2:</cite>
+  <time>2:55</time>
+  <p>So if we have higher retention rate, our LTV goes up and then we don&#39;t have to work as hard to replace lost clients with new sales. Do you like to work harder or less hard, Mr Craig?</p>
+  <cite>Speaker 1:</cite>
+  <time>3:06</time>
+  <p>I don&#39;t think you can say that on the air, but I am going to agree with you and say it gets really interesting here because once you know and without it getting hard, so once you know your LTV you can make much smarter not hard decisions about how much you&#39;re going to invest to get that new client what you said, mr Craig. Decisions about how much you&#39;re going to invest to get that new client what you said, mr Craig. So let&#39;s say your average client pays 1500 bucks of premium a year.</p>
+  <cite>Speaker 2:</cite>
+  <time>3:33</time>
+  <p>Does that make sense. Yeah, okay.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:34</time>
+  <p>And your average retention is 80%. Okay, right, so if an average. So that means, if they&#39;re at 80%, we can figure out right from that. There&#39;s just a quick conversion. You can even ask chat GBT if you want, but you can figure out exactly how many years it is. So with the 80% you&#39;re looking at five years of renewal, or five renewals, right, five times. So if we&#39;re getting 1,500 each time, that&#39;s five times 1,500.</p>
+  <cite>Speaker 2:</cite>
+  <time>4:04</time>
+  <p>That&#39;s right, I need a third hand. You can also ask Jeeves, right.</p>
+  <cite>Speaker 1:</cite>
+  <time>4:10</time>
+  <p>Yes, yeah, I believe that you have to say operator. Get me Javes.</p>
+  <cite>Speaker 2:</cite>
+  <time>4:15</time>
+  <p>So so you&#39;re saying the lifetime value of that client is $7,500. That&#39;s a lot more than that first month premium, Right?</p>
+  <cite>Speaker 1:</cite>
+  <time>4:23</time>
+  <p>Exactly. So, yeah, now you&#39;re profitable, right? And it&#39;s not just some kind of magic thing saying, oh, I guess I make more. It&#39;s actually knowing what you&#39;re going to make. And now you can make real business decisions. Because in the old days what would happen is I&#39;d say, oh, we got $1,500 in premium from this, so we made $300. Can&#39;t do it, right, like it doesn&#39;t make any sense.</p>
+  <cite>Speaker 2:</cite>
+  <time>4:50</time>
+  <p>You are blowing my mind, Mr Craig. I never thought of it that way before.</p>
+  <cite>Speaker 1:</cite>
+  <time>4:55</time>
+  <p>It&#39;s really a game changer, isn&#39;t it? I love it. It goes even further. When you understand LTV, you can make better decisions about your client service, your attention programs and even which types of clients to target. How so, Mr Craig? Well, if you know that a particular type of client has a higher LTV, maybe because they tend to stay longer or they buy more policies, or you can afford to invest more in acquiring, you can afford to spend more in acquiring them. You see? Yeah, so on the flip side, if a client has a lower LTV, I cut you off. I&#39;m sorry, but I&#39;m so excited about this.</p>
+  <cite>Speaker 2:</cite>
+  <time>5:36</time>
+  <p>Yeah, I was just going to say this makes so much sense. It does. Yeah, you&#39;re so calm. I can see how this could just have a huge impact on our growth strategy.</p>
+  <cite>Speaker 1:</cite>
+  <time>5:47</time>
+  <p>Absolutely. And the best part, even small improvements in retention can have a massive impact on the LTV and your profitability over time. It&#39;s the gift that keeps on giving.</p>
+  <cite>Speaker 2:</cite>
+  <time>5:59</time>
+  <p>I love those kinds of gifts, like on Christmas vacation. Was that the cheese of the month club? Oh?</p>
+  <cite>Speaker 1:</cite>
+  <time>6:10</time>
+  <p>right, clark, you look like you could use a cool one.</p>
+  <cite>Speaker 2:</cite>
+  <time>6:14</time>
+  <p>Okay. So how do we actually calculate this LTV? Is there a formula, Mr Craig?</p>
+  <cite>Speaker 1:</cite>
+  <time>6:22</time>
+  <p>Well, as a matter of fact, there is, and it&#39;s pretty simple, right? It&#39;s just the average premium per client times the average retention rate divided by the one, minus the average retention rate.</p>
+  <cite>Speaker 2:</cite>
+  <time>6:34</time>
+  <p>Ooh, can you break that down for me, because I got to know this?</p>
+  <cite>Speaker 1:</cite>
+  <time>6:39</time>
+  <p>I bet you do Sure thing. So let&#39;s go back to the example. If your average premium per client is $1,500, your average retention rate is $80, then your lifetime value of that premium is $6,000.</p>
+  <cite>Speaker 2:</cite>
+  <time>6:52</time>
+  <p>Boom.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:53</time>
+  <p>Okay, I think I got it Okay, and then we can compare that LTV to our acquisition costs to see if we&#39;re profitable, right, and we were going to always want to put that that premium converted into what your comp is Right, but you&#39;ve got it, though, and it&#39;s just an average, so some clients are going to have a higher LTV, some are going to be lower, but understanding that average is really powerful to work from.</p>
+  <cite>Speaker 2:</cite>
+  <time>7:17</time>
+  <p>Yeah, this is absolutely incredible. I feel like I&#39;ve been leaving so much money on the table by not understanding this.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:26</time>
+  <p>Oh, mr Jason, don&#39;t beat yourself up. Most agents don&#39;t fully leverage retention and LTV in their growth strategies. I mean, I didn&#39;t? You actually showed me a lot of these things too, right? Yeah, yeah, that&#39;s the irony of this episode. But now that you know, you can start making smarter data-driven decisions. Do you like making data-driven decisions?</p>
+  <cite>Speaker 2:</cite>
+  <time>7:49</time>
+  <p>Mr Jason, I do, and I do so much that I am ready to dive in. But wait, you never told me what happened with your Kauai trip.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:59</time>
+  <p>Oh, right, I thought you would have remembered, but that&#39;s all right. So let&#39;s just say I had a last minute realization about the LTV of some key clients and it totally changed my perspective on that decision. I knew that there was some big money coming in because of the future revenues, so I wasn&#39;t as freaked out man.</p>
+  <cite>Speaker 2:</cite>
+  <time>8:18</time>
+  <p>I absolutely love it. Retention and LTV for the win. Yep.</p>
+  <cite>Speaker 1:</cite>
+  <time>8:24</time>
+  <p>So, folks, if you could take one thing away from this episode, let it be this Retention is not just a feel-good metric, it&#39;s a key driver for your long-term profitability. So start tracking it, start improving it and start reaping them rewards Got to reap them.</p>
+  <cite>Speaker 2:</cite>
+  <time>8:40</time>
+  <p>Got to reap them. And if you want to dive deeper into calculating your own LTV and using it to make better business decisions, be sure to download the worksheet that we put together. Another worksheet, why not? It&#39;ll walk you through the process step by step. Dude, if you collect all these worksheets and you got all of them, you are probably cranking, and if so, you have to email us and let us know.</p>
+  <cite>Speaker 1:</cite>
+  <time>9:06</time>
+  <p>Yep, because if you don&#39;t email us and let us know, mr Jason is not going to let me make any more Right.</p>
+  <cite>Speaker 2:</cite>
+  <time>9:12</time>
+  <p>So you can email Fred at the iDudescom, that&#39;s F-R-E-D, at T-H-E-I-D-U-D-E-Scom.</p>
+  <cite>Speaker 1:</cite>
+  <time>9:26</time>
+  <p>No joke. Yeah, fred&#39;s going to check it out and Fred is going to be super pumped that you sent a message. So, basically, if you send the message in, you&#39;re voting for me, and if you don&#39;t, you&#39;re voting for Jason. I think I&#39;m going to get a lot of votes. Yeah, and you know what else? So you can download the thing in the notes or you can head over to the web page which you gave part of as part of that email address. Okay, did you realize that the webpage and the email address are almost the same? It just has a somebody&#39;s name with an ad in front of it and then no www. You&#39;re blowing my mind today. I know it&#39;s just it&#39;s a highly techie day. So, uh, yeah, is that it for today?</p>
+  <cite>Speaker 2:</cite>
+  <time>10:02</time>
+  <p>That&#39;s it, folks. So yeah, is that it for today? That&#39;s it, folks. Remember. Retention is the gift that keeps on giving, just like good old Mr what was his name? Uncle Eddie said right, nurture those client relationships and watch your profits soar. This is Craig and Jason signing off. Signing off.</p>
+
+-----END HOW YOU CAN SPEND MORE TO ACQUIRE INSURANCE CLIENTS | INSURANCE AGENCY PLAYBOOK-----
+
+
+-----BEGIN 8 PROMPT STEPS FOR 10X BETTER CHATGPT ANSWERS | INSURANCE AGENCY PLAYBOOK-----
+    <cite>Speaker 1:</cite>
+  <time>0:00</time>
+  <p>The art of prompting for chat GPT. We talked about it. You got the handout If you listened to the last episode. If you didn&#39;t, well, no worries, there&#39;s one down below. Same thing right down below. Just click the link.</p>
+  <cite>Speaker 1:</cite>
+  <time>0:12</time>
+  <p>So you&#39;re an agent like me, pnc agent probably, maybe a life agent. Either way, that&#39;s awesome. Are you ready for some cold, hard fact bombs? The robots are coming, my friends, and they&#39;re not just here to take your jobs, they&#39;re here to steal your clients too. That&#39;s right, the AI revolution is upon us, and if you&#39;re not prepared, your agency could be the next casualty. But fear not, because in today&#39;s episode, I&#39;m going to arm you with the knowledge and the tools you need not just to survive, but to thrive in the face of this existential opportunity. Are you ready? Let&#39;s go.</p>
+  <cite>Speaker 1:</cite>
+  <time>1:00</time>
+  <p>So in today&#39;s episode, we&#39;re going to dive deep into the art and science of prompting. We&#39;re going to explore eight crucial steps that are going to help you get the most out of interactions with your AI tools, from chat GPT to custom-built solutions whatever&#39;s out there right? So grab a pen and paper, because you&#39;re about to learn the secrets to becoming a master prompter. Now grab your sheet. Click down in the bottom, if you haven&#39;t done it already and you can hit pause, that&#39;s fine. Hit pause and just go get it. But number one, step one, is be clear and specific. Now, a lot of these things are really going to help you in your marriage too, but in your dialogue with any of the LLMs, especially chat GPT, you want to make sure you&#39;re clear and specific. The first step is really crafting to crafting this. An effective prompt is to be super crystal clear. You&#39;re not dealing with something with emotions. You&#39;re not dealing with something that can infer like think Spock, you&#39;re talking to Spock. Ambiguity is the enemy of you getting results. So you want to make sure they&#39;re not going to make any assumptions. And if they do make any assumptions, they&#39;re going to make the wrong assumptions or weird assumptions. So we just want to. We want to manage it right. It&#39;s going to get us the best data possible, as long as we are putting the right information in to extract it right. You&#39;re not going to go try to put the nail into the coffin. Maybe that&#39;s not the best analogy. You&#39;re not going to go try to put the screw into the wood over here using a hammer. Right Wrong tool. You can use a screwdriver or a drill. But same thing here, right? Ambiguity is the wrong tool for this.</p>
+  <cite>Speaker 1:</cite>
+  <time>2:39</time>
+  <p>We&#39;re not trying to make somebody interested or make them curious, right? We&#39;re trying to extract information from something that has it. So we have to ask the right questions in order to get it. So, as an example, you want to learn more about the benefits of life insurance. If you said, tell me about insurance, you&#39;re not going to get a great answer, right, it&#39;s going to be pretty crappy. But if you say, what are the benefits of insurance for young families? Now you&#39;re going to get some bullet points. Right Now you have something that you can write an article about or that you could put in. You could then take those three bullet points. We&#39;ll get down to that when we get there.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:10</time>
+  <p>But the key is being specific. So don&#39;t leave room for any interpretation, any misinterpretation, because that&#39;s what it will likely be, and the more targeted that the question is, the more targeted the response is going to be. So garbage in, garbage out, precision in, precision out. So that&#39;s great. Provide context. Context is so, so important here. Context is king when it comes to prompting. So the more background information you can provide, the better equipped the AI is going to be to understand the nuances of the request and give you that golden response that you want. Request and give you that golden response that you want.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:50</time>
+  <p>Think about asking a question of somebody that is like in the middle of a process but not giving them the steps prior to that question. Right, they&#39;re not going to understand what to say. So it&#39;s the same thing here. Every time you talk into this thing, for the most part, it doesn&#39;t have much memory, so it&#39;s not going to remember that prior conversation. So you want to make sure that you provide it enough that it can infer from that, right? So, man, my nose is bad news today. Sorry about that Again.</p>
+  <cite>Speaker 1:</cite>
+  <time>4:14</time>
+  <p>Like, think about, like, term life. What is term life insurance is going to give you a response, right, but if you add some context like this explain the benefits of term life insurance for a 30 year old nonsmoker, now you&#39;re giving it really, really detailed context. So think about the situation that you&#39;re asking it in and for and you want to make sure that you supply all of the details. Now, there&#39;s some of them. Like some of the graphics generators are a little different where it wants shorter, more concise, but for all intents and purposes, with ChatGPT, I believe you can put in like 120 000 token prompt, which is like 100 000 words, something like that. Um, all right, so, oh, yeah, oh, number three is great use simple language.</p>
+  <cite>Speaker 1:</cite>
+  <time>5:03</time>
+  <p>When it comes to prompting, simplicity is your friend. So you don&#39;t want to use jargon, you don&#39;t want technical terms, you want to use complex language, like it could come up with complex language, but don&#39;t don&#39;t give it to it. So it has to like unwind what you&#39;re writing, right? Think second, third grade level, fifth grade level, something that&#39;s really clear and really easy to read, because the easier you make it for it, the more effort it can put on the output instead of trying to understand it. So, and and then miss the mark. Right, you want to get it. You want to hopefully have it. Get it in one shot, right, the first shot.</p>
+  <cite>Speaker 1:</cite>
+  <time>5:38</time>
+  <p>But you often, and like many times we&#39;re going to ask again or ask again, ask again, and keep making it more, keep whittling it down, because you&#39;re not going to lose it. So, for example, here, can you elucidate the operational mechanisms of life insurance? Why would you say that? I don&#39;t think anybody ever would, but if you did, it&#39;s probably not going to get you the best response. Right, because it&#39;s a little. Yeah, so how does life insurance work? That&#39;d be great. Right Now, in relation to the prior questions, you probably might be thinking, hey, that question is a little too short or not clear enough, and you&#39;re right.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:16</time>
+  <p>But for this example and for this point, it&#39;s just to help you out there. So step four ask one question at a time. I&#39;m bad at this. I do it. I have a lot of questions in. I will number them if I do cram multiple questions in. So be careful with that. What I&#39;ve found most recently that&#39;s become more effective is if I type out the questions or I voice to text the questions out so that I have them. Then I&#39;ll copy and paste each one individually and it is just going to put more energy into each question. If you gave it five questions numbered, it&#39;s going to answer them Likely. It&#39;s going to answer them Likely. It&#39;s going to answer all of them. But you&#39;re going to get much less meat on that bone. So you want to make sure you go one at a time.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:01</time>
+  <p>Again, another example I wasn&#39;t very creative when I was coming up with my stuff, but it&#39;s just to prove the point. So, one question at a time. What is whole life insurance. Now, if we&#39;re going to follow the format, I probably would say what is whole life insurance and how does it help a 23-year-old? We don&#39;t want to ask what is whole life insurance, term life insurance, universal life insurance and what are the accounts that are associated with it. We don&#39;t want to do all that. If we want to ask all those things, totally cool, you have unlimited questions. It&#39;s not the genie, right? You&#39;re allowed to ask more than three questions, so just do it one at a time, no problem.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:40</time>
+  <p>Specify the desired format. So, if you have a format in mind for your response, put it in there. So, whether you&#39;re looking for a bulleted list, a summary, a paragraph, a detailed explanation, specify what you want. Now you also could set in your settings. You could have like a generic system prompt, so a tonality that it always talks in, or a way to address you. Like I haven&#39;t called me dude, so it says dude. I said act like a surfer, so it talks all kind of surfer to me. I told it to throw F-bombs, and every now and then, so it makes it fun, right, but you can organize the way that it speaks to you in any way. So, however, you like to have that done. So that&#39;s really helpful. Right, you&#39;re going to specify that.</p>
+  <cite>Speaker 1:</cite>
+  <time>8:22</time>
+  <p>So, oh, another thing that&#39;s really awesome, and this just came out. So, if you&#39;re new to it, great, you came at a great time. Back before we weren&#39;t able to do this, but a couple of days ago, when the new update came out, I just asked it hey, can you put that in a PDF? And boom, it outputted a list that I made. Oh no, it was um, oh no, it wasn&#39;t that. I thought it was the eight, the eight steps, but it&#39;s not. So, um, but I could have, like what I did was I told it to to create a Google doc and it did. So that was pretty cool, and I didn&#39;t know it was going to do that.</p>
+  <cite>Speaker 1:</cite>
+  <time>8:55</time>
+  <p>Like, that&#39;s new. So every day it&#39;s almost every day or every week, something new is coming out. And, uh, just think, you know, if you wait four weeks, that&#39;s four new things that you missed. If you wait eight weeks, that&#39;s eight new things you missed, and you&#39;re going to be even more behind and you&#39;re going to be more like Blockbuster, and I hate it when people are like Blockbuster. So, let&#39;s not be like Blockbuster, let&#39;s be like Netflix.</p>
+  <cite>Speaker 1:</cite>
+  <time>9:16</time>
+  <p>So if you were to say something like what are the benefits of whole life insurance? Probably not going to be that great, but if you said, list the top five benefits of whole life insurance, that you&#39;re going to get something right. And you could say give me bullets of the top five and then it&#39;s going to do, do, do, do, do. And if there are long bullets, you could say make them shorter. Right Now you can talk to it like mid conversation. Number six step six examples. I love examples.</p>
+  <cite>Speaker 1:</cite>
+  <time>9:42</time>
+  <p>It really, really this is kind of new for me to add the examples. I this is kind of new for me to add the examples. I didn&#39;t used to put it, but I was at a bot summit event where we were doing some builds on some new bots for the agency and what we found was that using examples, huge, huge. So if you&#39;re trying to understand how term life insurance works, you might prompt the AI with something like explain term life insurance with an example of a 40-year-old policyholder. This will help the AI frame it. So you&#39;re creating that. In this case, you&#39;re asking it to create the example. You could also provide examples for additional context, and it works out very well. So I&#39;ll say something provide examples for additional context and it works out very well. So I&#39;ll say something like for additional context.</p>
+  <cite>Speaker 1:</cite>
+  <time>10:32</time>
+  <p>Think of it like this here&#39;s an example A magician pulls a rabbit out of the hat. That&#39;s a trick, right, if we&#39;re talking about tricks or whatever. So that is a really great way to make it relatable. You can. You can think about it as if you&#39;re talking to a kid. You&#39;re trying to explain a concept to a kid who&#39;s going to give you really valuable information, but it&#39;s hard to get them to understand it first. Right, so really smart on the back end, but we have to first communicate.</p>
+  <cite>Speaker 1:</cite>
+  <time>11:00</time>
+  <p>Number seven be patient and iterative. Yes, you may yell at your computer, but that&#39;s okay. I was having to help me with some code yesterday that I was working on. I was learning Python and I was doing some stuff, and I got stuck and it just kept running me in circles. But what I noticed was I was, instead of being patient and iterative, I kept demanding the same thing and I was putting all caps and I was cussing at it and that wasn&#39;t getting me anywhere, right, it just kept giving me the same answer. I partially did it because I wanted to have that happen so that I could tell the story. I&#39;ll be honest, but also it&#39;s a good lesson, right? There&#39;s no sense in getting mad. There&#39;s no sense in thinking it&#39;s stupid because it&#39;s not and it doesn&#39;t matter, right? It just means I&#39;m asking it correctly and if I keep doing it this way, it won&#39;t help me now and if I keep doing this way in the future it probably won&#39;t work. So we want to stick to things that work. So that is number seven. Let&#39;s go to number eight. We will bring this baby home. We&#39;re at number eight. There we go.</p>
+  <cite>Speaker 1:</cite>
+  <time>12:04</time>
+  <p>So use follow upup questions. Don&#39;t be afraid to use follow-up questions that can help you dig deeper. So, just like a human conversation, follow-up questions are a great way to keep the discussion flowing. Right? You&#39;re going to ensure that you&#39;re getting the most value. The thing will come up with more stuff.</p>
+  <cite>Speaker 1:</cite>
+  <time>12:20</time>
+  <p>You can do something like, let&#39;s say, you have it. Help, you write a post, right? So the first shot&#39;s not going to be great. Definitely, never copy and paste anything that is created without reading it first, but I would give it two or three iterations first, right, so give it. Ask for the post. Hey, I want to do a post about the great rates we have in Alabama. Awesome. So it creates something. Now take that, put it back in there and say is that really the most ideal post that you could make to attract people? And then it&#39;s going to give you a bunch of reasons why it&#39;s not. And then you can say apply them. And then you do it again, and then you do it again until it doesn&#39;t find anything, and now you have yourself a really good post that you could personalize. You&#39;re going to go in there and change it around because you don&#39;t want to just copy and paste garbage. So just be careful, but that&#39;s a really good way to iterate that I&#39;ve found extremely useful. Yeah, so that I think my folks is a wrap. I appreciate you jumping in here.</p>
+  <cite>Speaker 1:</cite>
+  <time>13:17</time>
+  <p>Make sure to download that sheet If you don&#39;t have it. It has the eight simple steps, everything I went over today so that you can get on ChatGPT. Make sure you pay your $20. It&#39;s worth it. It is a no brainer. You get access to that for oh, I don&#39;t work for them. I don&#39;t get anything by saying this. It&#39;s just. It&#39;s that important because the folks that don&#39;t do it are the ones that are going to be sitting at home pretty soon. So thanks a lot, folks, and appreciate it. We will talk soon. Be good.</p>
+
+-----END 8 PROMPT STEPS FOR 10X BETTER CHATGPT ANSWERS | INSURANCE AGENCY PLAYBOOK-----
+
+
+-----BEGIN CHATGPT DETERMINES YOUR INSURANCE CAREER?-----
+    <cite>Speaker 1:</cite>
+  <time>0:00</time>
+  <p>Well, hello, welcome back to the Insurance Dudes. It&#39;s another edition of the Han Solo version where it&#39;s just Craig and that&#39;s me, I&#39;m your host, craig Pretzinger, and my partner in crime, mr Jason Feltman, is away on a special top secret assignment, and it has nothing to do with what I&#39;m going to talk about, or does it? Do you like the dramatic silence? So, all right, we talked a little bit about LLMs last time, in fact a lot bit. We hit you with a few episodes. We&#39;re going to keep going because it&#39;s that important, and it&#39;s not just that, it&#39;s some nice thing to have or it&#39;s kind of cool, which it is, those things. But that&#39;s not just it, right. It&#39;s a must-have if you want to stay competitive and you want to stay relevant in the new age. This age is not going away. It&#39;s kind of like saying 10 years ago, saying I&#39;ll just wait until the internet has gone away. Well, that&#39;s not happening, unless this makes it go away, in which case it&#39;s even more important, right? So, either way, it&#39;s either going to augment and increase the effectiveness of the internet and of your social, of your content marketing strategy and everything you do online, and it&#39;s going to keep you relevant with that right.</p>
+  <cite>Speaker 1:</cite>
+  <time>1:26</time>
+  <p>So let&#39;s talk about steps. Now. Hopefully, you downloaded the guide. I want to go through some of those things on there, right? So you downloaded that guide. It talks about how to use ChatGPT. Actually, before we get there, I want to go through implementation. This is not on that paper, but these are five important things that how you can leverage what you do with these LLMs right, whether it&#39;s chat, gpt or one of the other ones.</p>
+  <cite>Speaker 1:</cite>
+  <time>1:56</time>
+  <p>So first, identify your biggest challenges and inefficiencies. Now, this is not hard to do. Just watch right, observe the hard part is sitting. Still the hard part is not hard to do Just watch right, observe the hard part is sitting. Still the hard part is not saying anything. And if you can&#39;t do it, which some folks can&#39;t, that&#39;s fine. Well, I don&#39;t know that it&#39;s fine, but we&#39;re not going to hold it against anybody. What we want to do is get somebody that can be unbiased and just watch right. If you can&#39;t think of the things and usually I know for me, if somebody says, hey, what are your biggest challenges of the year? It&#39;s like ah, blank. I notice them as the time happens and I usually jot them down. I like to carry a little pad along.</p>
+  <cite>Speaker 1:</cite>
+  <time>2:37</time>
+  <p>So, second thing research and select the right LLM tools for your needs. Now, most of us as agents are going to be perfectly fine with just ChatGPT, but you want to get the paid one. I said that last time. It&#39;s 20 bucks. I don&#39;t know if it&#39;s going to be 20 bucks forever, but you&#39;d be hard pressed to spend more than 20 bucks a month because anything over would be based off of data. But I think you get a million tokens, which is how they track how many characters you used, and I do have allergies going. So that is number two. Number three we want to train the team on how to use it, how to integrate it, what to do, what not to do, and that&#39;s important because this thing is going to be on everybody&#39;s computer or on their phone, right? If your carrier says you can&#39;t use it, which I have heard, I think is a thing which is insane. Why would you take a tool away from somebody that&#39;s actually going to make them more effective? But that&#39;s neither here nor there.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:34</time>
+  <p>Number four start small. So you want to start small, don&#39;t go big. This is one of my worst hangups is that I&#39;ll say oh wow, we got this new thing. Now I want to build the entire city, right. So don&#39;t start with the city, start with, you know, one blade of grass and then move up from there. And you want to measure, track and measure those results, right, pilot them small. Think of how software companies launch a beta version right, because they&#39;re testing it. Don&#39;t just build the whole thing and then, right, start small, get it going, get momentum and you&#39;ll start to see it and then iterate and scale and successful initiatives, so as these things start to work or kind of work, iterate, and then you&#39;re going to blow it up. Right, that&#39;s the key and you could do it.</p>
+  <cite>Speaker 1:</cite>
+  <time>4:23</time>
+  <p>The key here, everybody, is not that it necessarily totally replaces everything, but it definitely speeds things up, and the problem with not embracing it is, if everything is speeding up around you and you aren&#39;t, you&#39;re going to get left behind, all right. So you may be thinking this is all great, craig, oh, that&#39;s awesome, great. I&#39;m just not sure I&#39;m ready for it and I get it. I mean, a year ago that&#39;s where I was. I was looking at this going oh my God, another fricking thing with another fricking sign on. And let me tell you, since that day that I said that I probably have acquired 500 different new sign ons. Okay, that&#39;s how many different tools and different things there are. Now I don&#39;t still have all 500 of those. I&#39;ve canceled a lot, but it&#39;s important to note that a lot of new SaaS products are out there, all driven by this technology.</p>
+  <cite>Speaker 1:</cite>
+  <time>5:21</time>
+  <p>It is a mad, mad hunt. I wouldn&#39;t encourage you to go out and start getting all these apps. Do not do that. All you need is ChatGPT, so go get that. If you&#39;re going to pay for any account for anything, that&#39;s the one. It&#39;s like having super Google. So as you get out there, as you&#39;re toying with this thing, don&#39;t forget if you did download the how to create the perfect prompt sheet over in the show notes, we&#39;ll drop it in this episode too, so you can have it.</p>
+  <cite>Speaker 1:</cite>
+  <time>5:49</time>
+  <p>But I want to leave you with a quick story. So a few years ago I was really struggling about well five. Well, it was really tough. Eight years ago, that&#39;s when I quit drinking and had a lot of damage to fix after that. So I went from a struggle for a very long time and then, as many folks know, or if you&#39;ve been following us for any time, you know we invented this telephonal system and really took off and really blew it up in our agencies, which was like the 180 degree turnaround. So things were going really well and there hadn&#39;t been any significant setbacks in business for quite a while. So we were crushing.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:30</time>
+  <p>It. Do a two, 50 a month, 300, and about a year and a half ago by and I&#39;ve shared this story too but my sales manager left, saying that he wasn&#39;t going to be in this business and all that. And it was right before I was going on vacation, like a day before, of course, and when I was on vacation he took my entire sales team. So I&#39;m gone and I went from where we&#39;re writing 250 consistently a month to well, I think we did 25K that month. So it was very hard, right, and I was searching, and then, of course, along comes some deaths of the family. So it was a tough year, right.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:08</time>
+  <p>2023 started off where I was like, okay, we&#39;m going to, we&#39;re going to get it going. Then my dad dies and that is a. It&#39;s a big setback, right. It really, really really messes you up. So if anybody&#39;s been through that, then I&#39;m sure you could resonate. If you have it. I&#39;m sorry that you&#39;re probably going to well, not probably, I mean but let&#39;s not go there.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:32</time>
+  <p>So I was really searching for answers, right, like, oh my gosh, do I just want to eject? I mean, done, fine, made enough, we don&#39;t. How much more do you need? I could just stop and I thought about the agents that we help and the agents that we have in our groups and all of the agents that feel the way that I felt right. Then right, I was back in that place, back at the old Craig place, back where Craig was right when he quit drinking. Everything&#39;s falling apart. And that&#39;s kind of what led me to this, right To where this is, about the time when ChatGPT came out, and I remember Mr Jason called me and said, hey, you got to check this ChatGPT thing out.</p>
+  <cite>Speaker 1:</cite>
+  <time>8:15</time>
+  <p>And I&#39;m like, all right, sure, and I started asking questions. It was pretty cool and at the time, a year ago, which seems like a million years ago now at the time, a year ago, it was very exciting. And the interesting thing is looking back at what that tech was a year ago to what it is now, where, if you watched well, if you haven&#39;t signed up for ChatGPT then you likely didn&#39;t watch the last release, but I encourage you, go to the OpenAI webpage and watch the last release for ChatGPT 4.0. It&#39;s four with a little O, like the letter O. Look at that and that might blow your mind, because that is like something out of a sci-fi movie to me, and it&#39;s only the beginning. So this is why I implore you you&#39;ve got to get on this thing, do not get left behind Like.</p>
+  <cite>Speaker 1:</cite>
+  <time>9:11</time>
+  <p>It got me out of a rough place, in fact, and I&#39;m going to share more than I probably should After my dad&#39;s died. I&#39;m struggling, you know, I&#39;m struggling mentally struggling to hold it together and I actually worked through a lot of different things, asking it questions. The way that it could respond is very human and it was very, very interesting Like the recommendations it gave, like how it helped me work through some situations. So it can really help you with almost anything. It&#39;s bizarre how much information this thing has and it&#39;s not all messed up and slogged together like it is on the internet, right. So go in there, do that and we&#39;ll circle back. Next time I&#39;m going to we&#39;ll, we&#39;ll walk through that sheet that you have and I think that you&#39;ll have a pretty good grasp and understanding of of this whole thing. So, thank you, get out there, test this stuff out. You&#39;re going to have fun. We&#39;ll see you, and don&#39;t forget to like and subscribe. If you haven&#39;t subscribed, I mean, what are you doing? What are you doing?</p>
+
+-----END CHATGPT DETERMINES YOUR INSURANCE CAREER?-----
+
+
+-----BEGIN AI TAKEOVER? WILL YOU BE BLOCKBUSTER OR NETFLIX?-----
+    <cite>Speaker 1:</cite>
+  <time>0:00</time>
+  <p>The AI takeover. Are you going to be Blockbuster? Are you going to be Netflix? Definitely want to be Netflix, right, all right.</p>
+  <cite>Speaker 1:</cite>
+  <time>0:17</time>
+  <p>So I&#39;m going to dive into a quick story here about an insurance agent. I know, let&#39;s call him Jason. No, no, let&#39;s not call him Jason, let&#39;s call her Jasafine. Jasafine has an agency out in Colorado and just closed a big client. His team had a big day, closed somebody that was about six 7,000 in premium. They call back the next week and start talking to the sales agents saying, hey, I know I signed up, but I just came across this AI-powered insurance platform and it promises that I can get better rates based off of how I&#39;m going to drive, not based on how I did drive. So his heart starts to sink, her heart starts to sink, and she may feel a little panicky, right? And the thought is is this the beginning of the end for the agency, right? Well, let me tell you, my friend, I am here by myself, because Mr Jason is not here, which is why I shared the story about Jessafine. The answer is no. Well, the answer actually is probably, or it can be, no. Now is it the beginning of the end for some agents? 100%, 100%, but it doesn&#39;t have to be right.</p>
+  <cite>Speaker 1:</cite>
+  <time>1:32</time>
+  <p>The key is to embracing AI. Ai is very, very critical. I know that you may have just rolled your eyes If you&#39;re anything like my wife, anytime that somebody talks or brings up very key movers of our civilization that have occurred. This is one of them. You can go back to fire, you can go back to the wheel, you can go back to spoken language, you can go back to written language, you can go to the car, the airplane, right, significant things that have made a huge impact and affected our daily life and changed everything.</p>
+  <cite>Speaker 1:</cite>
+  <time>2:32</time>
+  <p>The internet. Remember how? I don&#39;t know if it. Well, some of you probably don&#39;t remember, but I could definitely remember when the internet came out, I was so stoked I mean, I was like holy crap, this is what you know, this is what they&#39;ve been talking about, this is what we, this is the future right. And there were many people like my folks, my parents, would say, oh, what is that? My grandpa I remember my grandparents like I&#39;m not going on that, what is that? That&#39;s stupid, right. And this is like back then, having a computer wasn&#39;t as important, right? But the internet put the computers on everybody&#39;s desk.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:06</time>
+  <p>So what is AI going to do, right? What things are AI going to do? One thing that we know for certain that it&#39;s going to cause is job losses. It&#39;s going to replace a lot of people. Okay, if you haven&#39;t gotten down and dirty into the world of AI, I&#39;m hopeful that I could shed a little light on it for you. But by the end of this, you&#39;re going to have some great information on what it is, how to use it and why it&#39;s so important. So you got to stick with me on this one.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:38</time>
+  <p>But this stat is the one that freaks me out, okay, because it has really far reaching consequences and nobody&#39;s immune to it. This will affect every single person in the country. Okay, it&#39;s such a big number and it&#39;s going to happen so soon that it&#39;s kind of scary. Okay, so some of the big thought leaders in the AI world conservatively estimate that 85 million jobs are going to evaporate by 2025. Now, this isn&#39;t something I&#39;m making up to shock everybody. This isn&#39;t something that you know and it&#39;s not something that&#39;s secret. This is something that is talked about and they&#39;re saying a conservative number. Now, I sure hope that I misheard that, because I could guarantee that insurance agencies aren&#39;t going to be immune. But here&#39;s the thing this is what I&#39;m certain of is that the agencies that thrive in the new world, that embrace the power of AI and don&#39;t fight against it, are going to succeed and are going to thrive. Now, I&#39;ve been elbows deep for well over a year and we&#39;ve been using automations and all kinds of things like that in our agencies and for other businesses for years, so making the leap between was more of a finally it&#39;s here for me, right, kind of like for NVIDIA.</p>
+  <cite>Speaker 1:</cite>
+  <time>5:08</time>
+  <p>If you&#39;re not familiar with NVIDIA, it&#39;s what&#39;s driving, it&#39;s the hardware behind everything, right, the AI requires a massive amount of processing power, and so there&#39;s these farms filled with NVIDIA processors just to run these things. So what are they running? What is it? Well, it&#39;s called an LLM, okay. So if you haven&#39;t heard the term LLM, you may find it interesting to know that it stands for not laser lunges metrics. No, it stands for large language model, and I&#39;m sorry you can&#39;t land every joke. So what do these tools do? What the heck is an LLM? Where can I find them? Well, think about this. It&#39;s the engine. No, it&#39;s the brain behind automation, okay, so if you can think back to chatbots, back in, you know, from a year ago, or even from a month ago to when they came out chatbots.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:09</time>
+  <p>You go to a website. A little thing pops up. It says hey, I&#39;m Zappy the App Chat, and then you get to pick between five things. The thing that you need is not amongst the list of the five things, so you have to pick the thing that&#39;s closest, which isn&#39;t even close. Blah, blah, blah. So you have to pick the thing that&#39;s closest, which isn&#39;t even close, blah, blah, blah. Right, so those were not AI driven, those were just logic and it was hard-coded logic. So what would happen is somebody goes in and just basically programs this thing right, they program the bot to. If it does this, then this, and you only give them this choice. It&#39;s a flow chart. So very simple, very annoying to interact with because it had no personality or it has a fake personality. That is the same every time. Okay, so it has no learning skills, has no ability to adapt, has no ability to think on the fly, has no ability to execute anything really beyond those instructions. That&#39;s there.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:09</time>
+  <p>Okay, so now introduce what&#39;s just recently come out. And we&#39;re talking over the last year. Okay, so, over the last year. If you got on ChatGPT at the very, very beginning. Then you&#39;re more familiar with it and the changes that have happened. But over the last year that you&#39;re more familiar with it and the changes that have happened, but over the last year, it&#39;s insane how much faster, how much better and how much more knowledgeable and how much more can be done by one of these assistants. Now they call them, right, a chatbot assistant and anybody can make these things. So it&#39;s really good.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:44</time>
+  <p>Now, this isn&#39;t going to when we go. We&#39;re not going to go very deep into that. We&#39;re going to stay high level on this one. I&#39;m going to do a few episodes here and we&#39;ll tear through. So but let&#39;s talk about some success stories.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:57</time>
+  <p>Okay, I think that before we dive in, we get into the nitty gritty of it. I think it&#39;s important just to hear like application right Does, does this apply? And it does. There&#39;s a billion use cases, even in your agency, even that don&#39;t need to be client facing. So if there&#39;s concerns about the C word, not the bad word, well, some people call it bad word, it&#39;s not four letters, but that C word is a non-issue, because you can help by installing a lot of things that have nothing to do with the actual inner workings or mechanisms of the agency and aren&#39;t necessarily holding any information on the client outside of the system. So I think that&#39;s one of the biggest hiccups and issues that carriers have is they consider the data like the personal data of the client. They consider that theirs. So we have to honor that right. If that&#39;s the rule, that&#39;s the rule. So don&#39;t share the data, right. If you buy a lead, I don&#39;t know, I think that there&#39;s a line there, right, because if I paid for that data, that I own that data, in my opinion. Now, I&#39;m not an attorney, but I am babbling, so we&#39;ll move on All right.</p>
+  <cite>Speaker 1:</cite>
+  <time>9:15</time>
+  <p>So let&#39;s look at these real world examples. I have one agency that I&#39;ve talked to, and actually many agencies because we&#39;ve brought this up in our elite group and hand over with the teledudes and just a lot of the agents that we interact and serve have used these for a multitude of different things. But one agency was struggling with high volume of inquiries, so they were a larger agency. I think it was like 15 million, 15 million a premium, and they have a lot of inbound calls, but they were running pretty lean, a lot like me. We&#39;re at $12 billion and we&#39;ve got less sales or less service people than most $12 billion agencies. Because we have a lot of automation in place to pick up that slack, because it&#39;s a lot less expensive to handle some of the stuff that could be automated in a way than it is to bring somebody on right. If we&#39;re going to bring somebody on for a job that is going to cost me 50K to have that person here, then I better get some kind of return on it. Right Now I could build something for myself, create some automation to replace somebody that would be doing the $50,000 a year.</p>
+  <cite>Speaker 1:</cite>
+  <time>10:31</time>
+  <p>And guess what? In addition to that, that person or that entity is never going to call in sick, is never going to cause any drama, is never going to do anything. That I find annoying. Well, no, it probably will say something. Uh, when I&#39;ve said jokes to it, but for the most part it it will play better than most people Right now. It has to be directed, but again, so do people. So pretty interesting, right? Uh, what happens? So? So in the before they put this thing in place, uh, people were getting voicemails.</p>
+  <cite>Speaker 1:</cite>
+  <time>11:09</time>
+  <p>People were not getting calls back. They&#39;re getting pretty pissed. That&#39;s what he was telling me. So I just said hey, man, why don&#39;t you just put something in place that handles the traffic, just to let them know? It doesn&#39;t need to even be the voicemail, just something like hey, everybody&#39;s on the phone, we&#39;ll get back to you ASAP, and then put that reminder somewhere so that somebody knows how to do it? We pretty much set the same thing up over here, so that no calls are run into voicemail, no calls are just disappearing because, depending on your carrier, there could be strange phone systems and strange voicemail systems in the background where nobody knows where they go Just one thing that I&#39;ve seen happen to me. So that&#39;s a possibility.</p>
+  <cite>Speaker 1:</cite>
+  <time>11:52</time>
+  <p>And so what does it do? What were the big improvements we got? Our response time is way quicker. Right, I&#39;m not getting complaints. The other agency same thing. I just modeled what they did and he did what I&#39;d asked him. So I guess I modeled what I told him. But what did we do? And he&#39;s able to get more Google reviews as a result. He created an automation that asks for Google reviews, sends them directly there, and he used one of our tricks that we&#39;ve talked about before, which is you could set it up where you have a W landing page and you ask people what they would rate it. If they click a one, two or three, you just send them to the thank you page and say thank you for your thing. Is there anything we could do to make it a four or five or to get you to a five, and we&#39;ll try to get some feedback because we definitely want to try to improve scores, and then, if there are four or five, it will kick them over to the Google page where then they&#39;re going to leave the real review. So it&#39;s just a way to filter and make sure that we don&#39;t get people put ones and twos and stuff. In fact I&#39;ve had people leave great reviews and then put a one because they think one is good. You know, like it&#39;s a one through five, it&#39;s a one.</p>
+  <cite>Speaker 1:</cite>
+  <time>13:11</time>
+  <p>I thought that Google made it pretty clear, but you never know with folks what else. So here&#39;s another one. This isn&#39;t even with the agency, but with Teledudes and our marketing campaigns there. And since a lot of folks probably listening have probably been served the ads that we do, all these crazy ads with the AI pictures, we had something happen with the content provider or the host of our site and what we did from that was or. I&#39;m sorry, what happened as a result for that, they did something with the code. That wasn&#39;t us was. It was on their side, but it killed traffic like all of a sudden. We went from, you know, or we have ads we have 500 to a thousand hits coming in a day to almost non-existent, just organic traffic well, you know, like 100 a day. So we were scrambling, trying to figure out what to do, because we have ads running right, people clicking, no traffic. That&#39;s a problem, right. So we actually had.</p>
+  <cite>Speaker 1:</cite>
+  <time>14:20</time>
+  <p>I took an assistant, an AI assistant. I gave it all of the code from the webpage, which is probably more than most agents are going to do for stuff, but it&#39;s important to understand the depth of what it could do. So I had to analyze the code. It kicked me back a message saying that there were bugs in that code. That was not my code, that was ClickFunnels code. So basically, the site had done something, had wigged out, and what we did was we were able to basically reconstruct the site, put it on a different platform and get it up and running again, and now we have it in there analyzing our stats weekly to tell us what we should change, because it could also look at where people are going on the site, all that kind of stuff.</p>
+  <cite>Speaker 1:</cite>
+  <time>15:07</time>
+  <p>So I know I went a little too far in the weeds there, but it&#39;s real important to understand that you can put it on things that it understands and it&#39;s been trained on. And it&#39;s been trained on a lot of things, right Like, it&#39;s been trained on basically everything, at least at a high level, and it&#39;s going to understand. And if it doesn&#39;t understand or it gives you a weird answer, you continue to ask for clarification. Right, I usually ask for clarification even if I get a good answer, because you never know, right Like it could sound pretty convincing with a completely wrong answer, which is really interesting. So that problem solved less than a day, the old way, I mean, we could have been down for weeks, but it increased our conversions To offertheidewscom, which is Internet Lead Secrets. That&#39;s the ad right, that&#39;s our funnel. So you go to Internet Lead Secrets and we had a 40% increase in purchases on Internet Lead Secrets just by well fixing the code.</p>
+  <cite>Speaker 1:</cite>
+  <time>16:13</time>
+  <p>And then it also gave throughout doing a number of split tests. It kept giving us recommendations on which one to go with or which headline to change or which button to change color. So really crazy stuff, really really deep, interesting stuff. So, oh, and even on the back. So, if anybody that has got that before, anybody that&#39;s actually gotten Internet Elite Secrets, you know that the second page has a script, or the perfect script, and it analyzed the traffic on that and also improved that which it should be. 100% take rate, because that&#39;s a no brainer. But at the end of the day it is what it is and folks are skeptical.</p>
+  <cite>Speaker 1:</cite>
+  <time>16:57</time>
+  <p>But yeah, that has been very effective and you can use it for so many things. Right, you could have it help you craft emails. Have it help you craft a copy for websites, have it do anything or anything with writing. But again, you don&#39;t ask it to write something for you and then copy and paste or you will not look good. Be very careful, all right. So I have also made for you a cheat sheet, all right. So I gave you a cheat sheet that has information on how to go on, what ChatGPT is where to go. It has some recommendations on what to do. So on that cheat sheet, it&#39;s going to tell you to sign up.</p>
+  <cite>Speaker 1:</cite>
+  <time>17:36</time>
+  <p>I would highly encourage you to pay the 20 bucks a month. 20 bucks, it&#39;s 20 bucks. Pay 20 bucks a month. I don&#39;t get anything for doing this. I don&#39;t work for ChatGPT, but it has changed my life. Get in there and you&#39;re going to be way ahead of most people. Now, remember the title of this episode Blockbuster Netflix. I&#39;m telling you, the blockbusters of the insurance world are not going to have a chat GPT account.</p>
+  <cite>Speaker 1:</cite>
+  <time>18:02</time>
+  <p>That is a guarantee. And start small, right, start small, do little projects. But ideally, this is where an agency owner should be working. Right, working in the place that is, generating the tools and resources and information that their team could use or that they could use to train their team or that they could use to drive more traffic to their team. Right, you get leverage as an agent the more that you can automate, the more that you can delegate and the more that you can create and eject. Right, I&#39;m on here creating information to help you, create information to help your team, because that&#39;s what I do here.</p>
+  <cite>Speaker 1:</cite>
+  <time>18:48</time>
+  <p>Right, I don&#39;t go out there and sell policies. I don&#39;t go out there and take payments. I mean, I pulled up one day recently and somebody was in the parking lot waiting for an appointment to talk to somebody and they&#39;re like oh, are you Craig? I said oh no, I&#39;m just here to you know I don&#39;t meet with the clients and, if you like to, fantastic. Just ask yourself if meeting with somebody who has $2,000 in premium with you is worth the $150 for the time that you&#39;re spending. Is it worth it? Is it generating more? Right? Yeah, I upsold a mariner&#39;s policy, great. So you got an extra $10 a year for the hour and a half that you worked. What if that hour was spent on developing a new, unique mechanism that would drive more traffic to your agency? What if that hour was spent making a video that explained to your team how to do something? Or explained to your customers how to do something? Or building a YouTube channel or something else that&#39;s going to make long-term, lasting impact on your agency? And that&#39;s where I&#39;m going to leave it.</p>
+  <cite>Speaker 1:</cite>
+  <time>20:04</time>
+  <p>We&#39;re going to dive into ChatGPT next time, but make sure you go in the show notes, download the cheat sheet, okay, and we will dive in and go deep. Thank you and appreciate you listening. Make sure to. If you do want to check out if you didn&#39;t check out the thing I was talking about that we&#39;ve totally revamped as a result of what? Of the tools that are out there, head over to offertheidudescom. That&#39;s offertheidudescom and you can download your copy of Internet Lead Secrets for a very reasonable amount. We put a lot of work into it and it is very helpful, and it&#39;s not unfair to ask to be paid for our work. So we appreciate you and we hope we see you soon. Thank you very much.</p>
+
+-----END AI TAKEOVER? WILL YOU BE BLOCKBUSTER OR NETFLIX?-----
+
+
+-----BEGIN REFERRALS ARE THE GRAVY | INSURANCE AGENCY PLAYBOOK-----
+    <cite>Speaker 1:</cite>
+  <time>0:00</time>
+  <p>You want to know what the gravy is, Mr Craig.</p>
+  <cite>Speaker 2:</cite>
+  <time>0:04</time>
+  <p>Are you talking about the stuff from Thanksgiving?</p>
+  <cite>Speaker 1:</cite>
+  <time>0:06</time>
+  <p>Referrals. Oh, that guy.</p>
+  <cite>Speaker 2:</cite>
+  <time>0:09</time>
+  <p>That&#39;s right. Insurance dudes are on a mission to escape being handcuffed by our agencies.</p>
+  <cite>Speaker 1:</cite>
+  <time>0:16</time>
+  <p>How? By uncovering the secrets to creating a predictable, consistent and profitable agency sales machine. I am Craig Prutzinger. I am Craig Pritzker. I am Jason Feltman. We are agents, we are insurance students. I&#39;m Jason, the referral renegade Feltman. Welcome back, growth warriors. Today we&#39;re unleashing the power of one of the most effective yet often overlooked strategies for growing your agencies, and that&#39;s referral marketing. And don&#39;t forget I&#39;m going to say this every time Every time I have a different name, I&#39;m going to repeat it within the opening, which is I&#39;m Jason, the referral renegade Feltman.</p>
+  <cite>Speaker 2:</cite>
+  <time>1:01</time>
+  <p>I love how you&#39;re leaning into becoming uncomfortable, and I am craig the word of mouth, wizard pretzinger, and I guess I get to say it twice if you&#39;re not actively cultivating referrals, you&#39;re leaving a ton of money on the table. But don&#39;t worry, we&#39;re here to help you change that.</p>
+  <cite>Speaker 1:</cite>
+  <time>1:23</time>
+  <p>Let&#39;s start with why referrals are so insanely valuable. Think about it when a client refers someone to you, they&#39;re essentially putting their reputation on the line. They&#39;re saying I trust this agency so much I&#39;m willing to recommend them to the people I care about, the people that&#39;ll give me crap.</p>
+  <cite>Speaker 2:</cite>
+  <time>1:43</time>
+  <p>Exactly, yeah. And because of that personal endorsement, referred prospects are more likely to trust you right off the bat. They&#39;re predisposed to like you and do business with you, mr Jason.</p>
+  <cite>Speaker 1:</cite>
+  <time>1:58</time>
+  <p>Not to mention referrals tend to have a higher lifetime value than other types of clients. They&#39;re more loyal, less price sensitive and more likely to refer others than themselves. It&#39;s the gift that keeps on giving.</p>
+  <cite>Speaker 2:</cite>
+  <time>2:16</time>
+  <p>But here&#39;s the thing Referrals don&#39;t just happen by accident, Mr Jason.</p>
+  <cite>Speaker 1:</cite>
+  <time>2:22</time>
+  <p>No, they don&#39;t.</p>
+  <cite>Speaker 2:</cite>
+  <time>2:24</time>
+  <p>Mr Jason, the referral renegade. That&#39;s right To generate a steady stream of high quality referrals, you need to be proactive and you have to be systematic.</p>
+  <cite>Speaker 1:</cite>
+  <time>2:35</time>
+  <p>Yeah, that&#39;s right, mr Craig, 100%. The first step is to understand the psychology of why clients refer. Psychology of why clients refer Typically it&#39;s because they&#39;ve had an exceptional experience with your agency, that they like you right and that they want to help others have the same experience. They feel a sense of loyalty and appreciation.</p>
+  <cite>Speaker 2:</cite>
+  <time>3:01</time>
+  <p>Yep. And on the flippity flip, there&#39;s also psychological barriers that can hold clients back from referring, even if they&#39;re happy with you. They might worry about being seen as pushy or might simply forget to do it right. Everybody&#39;s busy.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:18</time>
+  <p>Yep, yep, a hundred percent. That&#39;s why it&#39;s so important to make referring as easy and natural as possible. One of the best ways to do that is by identifying your agency&#39;s best referral sources and nurturing those relationships.</p>
+  <cite>Speaker 2:</cite>
+  <time>3:33</time>
+  <p>Yeah, think about it. Which clients have already referred you in the past and who have expressed a lot of enthusiasm and appreciation for your services? These are your raving fans, the ones who are most likely to refer you again in the future.</p>
+  <cite>Speaker 1:</cite>
+  <time>3:49</time>
+  <p>Your agency has raving fans of insurance Raving Well. All right, make a point of staying in touch with these clients. I mean, they&#39;re worth their weight in gold, not just about insurance matters, but the personal lives too. They&#39;re humans. You can send all kinds of things, like a handwritten note. I know I&#39;m not a big fan of paper, but, dude, there&#39;s nothing better than a handwritten note on their birthday. You can have Sally in your office or Bertha in the back do it for you. Why is Bertha in the back? Well, because that&#39;s where she sits. Oh, okay, and invite them to exclusive events, like your summer cookouts in front of your agency, like Mr Craig does in his American flag Speedos, or just give them a call to check in and say what up.</p>
+  <cite>Speaker 2:</cite>
+  <time>4:42</time>
+  <p>I love wearing the American flag Speedos when it&#39;s 115 out and we just grill it up. In the tuxen In the tuxen. So another key aspect of building a referral engine because I want to keep to business here, mr Jason is having a systematic approach and process for asking for referrals. So many agents feel awkward about this, but the truth is, if you&#39;ve provided great service, most clients are happy to refer to you. You just need to ask.</p>
+  <cite>Speaker 1:</cite>
+  <time>5:13</time>
+  <p>Yeah, the key is to ask at the right time in the right way. Typically, the best time to ask is right after you deliver positive results or experience for your client. They&#39;re feeling good about your service and are way more likely to be receptive for your client. They&#39;re feeling good about your service and are way more likely to be receptive to your request. This literally just happened recently in our agency. We&#39;re getting back into sales, where we weren&#39;t allowed to sell in California, and our sales agent just started doing this referral system where he kept asking for referrals. Finally, a few people started being more and more receptive to his referrals and then he would give them a you know, quote them, talk to them for a while and then ask that referral for a referral. And he&#39;s been able to daisy chain those and started this domino effect and now he&#39;s starting to close a lot of them.</p>
+  <cite>Speaker 2:</cite>
+  <time>6:06</time>
+  <p>That sounds like a total game changer.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:08</time>
+  <p>It&#39;s a gum changer In terms of how to ask.</p>
+  <cite>Speaker 2:</cite>
+  <time>6:12</time>
+  <p>You may be wondering. So this is important Be specific, make it easy for them, Instead of saying if you know anyone who needs some insurance, please do me a favor, send them my way, Don&#39;t.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:24</time>
+  <p>Nope, don&#39;t do that.</p>
+  <cite>Speaker 2:</cite>
+  <time>6:25</time>
+  <p>Don&#39;t do that.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:25</time>
+  <p>Don&#39;t ever do that.</p>
+  <cite>Speaker 2:</cite>
+  <time>6:27</time>
+  <p>Try something like hey, we&#39;re always looking to help more people like you. If you have any friends or family or colleagues who could benefit and have a great experience like you just did, here&#39;s some great ways to get them over to us.</p>
+  <cite>Speaker 1:</cite>
+  <time>6:40</time>
+  <p>I love how you just told them that they had a great experience, which is a great marketing tactic too. They did have a great experience. Don&#39;t be afraid of that. It&#39;s not cheesy, because if you you know you should have given them a great experience, let them know that it was a great experience. Who cares? Don&#39;t be afraid to offer incentives or rewards, also for successful referrals. I mean, it&#39;s like you&#39;re buying leads anyways, maybe or maybe not, but we all know leads can be a bit pricey. So if you normally spend X amount on a sale and now somebody gives you a referral, I mean why not cut in half? Yeah, why not give them something, something? It could be something as simple as a gift card to a local coffee shop which I&#39;m sure is starbucks, if you live in this on planet earth or a discount on the next policy renewal, which you can&#39;t really do I don&#39;t know, but heck, you could, you know, give them a policy review.</p>
+  <cite>Speaker 1:</cite>
+  <time>7:45</time>
+  <p>I&#39;m sure there&#39;s something. Come on, yeah, there&#39;s all kinds of stuff. There&#39;s something the point is to appreciate, to show the appreciation and to make them feel valued.</p>
+  <cite>Speaker 2:</cite>
+  <time>7:56</time>
+  <p>Yeah, I mean that&#39;s it right. Technology can also play a big role in making referrals easy and trackable. There&#39;s tools out there that allow your clients to refer you. With just a couple of clicks right, they can automate the process. We have a process that&#39;s worked really well with the email through the. You know you set it up a compliant thing and it goes out and asks for the review and we get a lot of reviews. If you want to see, oh, another, I&#39;m sorry, we get referrals from the reviews and we do get a lot of. I&#39;ll bonus my folks on reviews because people look at reviews before they jump on right.</p>
+  <cite>Speaker 1:</cite>
+  <time>8:36</time>
+  <p>That&#39;s a form of referral, sure, yeah, ultimately, though, the best way to generate referrals is by providing exceptional service, which we should be doing this anyways as an agency. You want to be the best right, and you want your team to do this. So if you treat your team well, they should be treating your clients well. When you constantly go above and beyond for your clients, referrals it can happen, naturally, because people want to share that positive experience with others. But you&#39;ve got to ask, you&#39;ve got to train your team to ask Totes my goats, yep.</p>
+  <cite>Speaker 2:</cite>
+  <time>9:14</time>
+  <p>And to recap, so understand number one, the psychology of referrals. Right, understand that they&#39;re not going to offer to do the referral and your people aren&#39;t going to ask. It&#39;s something that you have to initiate. We need to identify and nurture our best referral sources. You could, you know, if you segment your book, you could look at who hits a certain threshold. Maybe they&#39;re the best referrals, whatever. Figure out who is the best and then implement a system and process for asking, leverage technology and, above all, provide service. That&#39;s worth talking about.</p>
+  <cite>Speaker 1:</cite>
+  <time>9:55</time>
+  <p>If you do all those things consistently, you&#39;ll be amazed at how your referral business starts to grow, and it&#39;s not going to be overnight. It will start to grow Like it&#39;s incremental at first. So just keep doing this consistently. It&#39;s the ultimate form of social proof and can fuel your agency&#39;s growth for years to come. And, honestly, it&#39;s better than buying leads. I mean, if you&#39;re buying leads anyways, this is a way to lower your lead costs by implementing this right, because now you&#39;re getting more sales, because it doesn&#39;t cost any extra and if you ask every person, you will get a referral 100%.</p>
+  <cite>Speaker 2:</cite>
+  <time>10:37</time>
+  <p>It&#39;s the same way. People say internet leads don&#39;t work. Well, they do, but only you close 2%. That&#39;s the way it works, right? So you have to buy 100 to get two. That&#39;s just the way it works. Yep. So, and you want to put this into action. Guess what? Mr Jason&#39;s favorite we got a referral marketing checklist.</p>
+  <cite>Speaker 1:</cite>
+  <time>10:57</time>
+  <p>Craig loves the checklist. Hey, he&#39;s busting them out for you.</p>
+  <cite>Speaker 2:</cite>
+  <time>11:00</time>
+  <p>Listen to me. If you don&#39;t like any of these things, just shoot us an email and I won&#39;t make any more. He spends a lot of time on this. No joke, I put these things together because I think that there&#39;s value to them and we&#39;re going to help you grow, yep. And if not, rip it up, send it back to the office here, and I won&#39;t tell Mr Jason that you sent it.</p>
+  <cite>Speaker 1:</cite>
+  <time>11:21</time>
+  <p>Well, you can Google where Craig&#39;s office is. I&#39;m just saying Okay, so you can download this checklist right below in the show notes, and if you have any questions or success stories, please share with us. We&#39;d love to hear from you. You can shoot us an email, leave us a comment on the social medias or Google Craig, yeah, google me.</p>
+  <cite>Speaker 2:</cite>
+  <time>11:45</time>
+  <p>Why not Remember? Your best clients, though, are really who you should be Googling, because they&#39;re going to be your best marketers, and you can empower them to spread the word and watch your business soar to new heights.</p>
+  <cite>Speaker 1:</cite>
+  <time>11:59</time>
+  <p>Well, I guess that&#39;s all for today. Referral rock stars. Ooh, that&#39;s right, you heard that from me. Until next time, keep vowing, keep vowing. I&#39;m sorry, mr Craig, I&#39;m starting to get the giggles, but keep wowing your clients all right and keep reaping the referral rewards.</p>
+  <cite>Speaker 2:</cite>
+  <time>12:25</time>
+  <p>I love a little alliteration. This is Craig, the word of mouth wizard, and.</p>
+  <cite>Speaker 1:</cite>
+  <time>12:30</time>
+  <p>Jason the referral renegade. Felt man Signing off.</p>
+
+-----END REFERRALS ARE THE GRAVY | INSURANCE AGENCY PLAYBOOK-----

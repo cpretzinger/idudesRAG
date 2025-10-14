@@ -62,9 +62,29 @@ export async function requestPasswordReset(email: string): Promise<{ success: bo
 }
 
 export async function logout() {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('session_token')
-    localStorage.removeItem('user')
+  if (typeof window === 'undefined') return
+
+  // Get session token before clearing
+  const sessionToken = localStorage.getItem('session_token')
+
+  // Clear localStorage first (optimistic)
+  localStorage.removeItem('session_token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('expires_at')
+  localStorage.removeItem('tenant')
+
+  // Call server to invalidate session (fire and forget)
+  if (sessionToken) {
+    try {
+      await fetch(`${N8N_AUTH_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_token: sessionToken })
+      })
+    } catch (error) {
+      console.error('Server logout failed:', error)
+      // Don't throw - local logout already happened
+    }
   }
 }
 

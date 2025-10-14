@@ -1,0 +1,236 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "height": 464,
+        "width": 1132,
+        "color": 4
+      },
+      "id": "e4e3096c-77bb-45e2-a885-7f3a6ae96ca9",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 🔍 POSTGRES CONNECTION MONITOR\n\n**Purpose:** Prevents database connection pool exhaustion\n\n**Runs:** Every 1 minute (independent monitoring)\n\n**Alerts When:**\n• n8n connections > 15\n• Connection leaks detected  \n• Utilization > 70%\n\n**Logs:** All metrics to `core.metrics` for trending",
+        "height": 464,
+        "width": 1132,
+        "color": 4
+      },
+      "id": "4242395b-9981-4e74-a18e-47c685ba5a4e",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📖 SETUP\n\n**1. Create metrics table:**\n```sql\nCREATE TABLE core.metrics (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  metric_name VARCHAR(100),\n  metric_value NUMERIC,\n  tags JSONB DEFAULT '{}',\n  recorded_at TIMESTAMPTZ DEFAULT NOW()\n);\n```\n\n**2. Activate workflow**\n\n**3. Extend FormatAlert for:**\n• Slack webhooks\n• Discord alerts  \n• PagerDuty\n• Email notifications",
+        "height": 446,
+        "width": 476,
+        "color": 5
+      },
+      "id": "e7c9f523-490e-477a-b89e-e4d7ce4697b5",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        960,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 17
+            }
+          ]
+        }
+      },
+      "id": "75fea232-6078-4d13-ab46-1416e51695d1",
+      "name": "Every1Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -336,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  count(*)::int as total_connections,\n  count(*) FILTER (WHERE state = 'active')::int as active_connections,\n  count(*) FILTER (WHERE state = 'idle')::int as idle_connections,\n  count(*) FILTER (WHERE state = 'idle in transaction')::int as leaked_connections,\n  count(*) FILTER (WHERE application_name LIKE '%n8n%')::int as n8n_connections,\n  (SELECT setting::int FROM pg_settings WHERE name = 'max_connections') as max_connections,\n  ROUND((count(*)::numeric / (SELECT setting::int FROM pg_settings WHERE name = 'max_connections')) * 100, 1) as utilization_pct\nFROM pg_stat_activity\nWHERE datname = current_database();",
+        "options": {}
+      },
+      "id": "0f088ce4-7f61-4471-8d1d-daf482b46a74",
+      "name": "CheckConnections",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -112,
+        592
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nlet severity = 'INFO';\nif (data.leaked_connections > 0) severity = 'CRITICAL';\nelse if (data.n8n_connections > 25) severity = 'CRITICAL';\nelse if (data.utilization_pct > 80) severity = 'HIGH';\nelse if (data.n8n_connections > 15) severity = 'WARNING';\n\nconst alert = {\n  timestamp: new Date().toISOString(),\n  severity: severity,\n  service: 'postgres_connection_pool',\n  title: '⚠️ Postgres Connection Alert',\n  \n  metrics: {\n    n8n_connections: data.n8n_connections,\n    total_connections: data.total_connections,\n    max_connections: data.max_connections,\n    utilization_pct: data.utilization_pct,\n    leaked_connections: data.leaked_connections,\n    active: data.active_connections,\n    idle: data.idle_connections\n  },\n  \n  analysis: {\n    connections_remaining: data.max_connections - data.total_connections,\n    is_leak_detected: data.leaked_connections > 0,\n    threshold_exceeded: data.n8n_connections > 15\n  },\n  \n  recommended_actions: []\n};\n\nif (data.leaked_connections > 0) {\n  alert.recommended_actions.push(\n    '🔴 CONNECTION LEAK - Check idle transactions',\n    'ALTER DATABASE SET idle_in_transaction_session_timeout = \\'60s\\';'\n  );\n}\n\nif (data.n8n_connections > 25) {\n  alert.recommended_actions.push(\n    '🟠 High n8n connections - Consolidate queries'\n  );\n}\n\nif (data.utilization_pct > 70) {\n  alert.recommended_actions.push(\n    '🟡 High utilization - Consider scaling max_connections'\n  );\n}\n\nif (alert.recommended_actions.length === 0) {\n  alert.recommended_actions.push('✅ Metrics elevated but acceptable');\n}\n\nconst msg = `\n🚨 ${alert.title}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSeverity: ${alert.severity}\nTime: ${alert.timestamp}\n\n📊 Metrics:\n• n8n: ${alert.metrics.n8n_connections}\n• Total: ${alert.metrics.total_connections}/${alert.metrics.max_connections}\n• Utilization: ${alert.metrics.utilization_pct}%\n• Leaked: ${alert.metrics.leaked_connections}\n\n💡 Actions:\n${alert.recommended_actions.map((a, i) => `${i + 1}. ${a}`).join('\\n')}\n`;\n\nalert.formatted_message = msg;\nconsole.warn(msg);\n\nreturn { json: alert };"
+      },
+      "id": "7e58a9ec-712a-42b2-93d2-a9a3aff3c94c",
+      "name": "FormatAlert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO core.metrics (metric_name, metric_value, tags)\nVALUES \n  ('postgres_total_connections', {{ $json.total_connections }}, '{\"source\": \"monitor\"}'::jsonb),\n  ('postgres_n8n_connections', {{ $json.n8n_connections }}, '{\"source\": \"monitor\"}'::jsonb),\n  ('postgres_leaked_connections', {{ $json.leaked_connections }}, '{\"source\": \"monitor\"}'::jsonb),\n  ('postgres_utilization_pct', {{ $json.utilization_pct }}, '{\"max\": {{ $json.max_connections }}}'::jsonb)\nRETURNING metric_name, metric_value;",
+        "options": {}
+      },
+      "id": "bf9a139f-97b9-4a3c-8196-9d7e09914f8c",
+      "name": "LogMetrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        560,
+        608
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5be66234-e71d-423d-92f3-7697f661220f",
+              "leftValue": "={{ $json.n8n_connections }}",
+              "rightValue": 15,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "5f1ad1fe-fcb3-4cac-b1bc-eb922662b8e9",
+              "leftValue": "={{ $json.leaked_connections }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "c58653e6-6354-4616-ae28-946ca9ab3a80",
+              "leftValue": "={{ $json.utilization_pct }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        112,
+        608
+      ],
+      "id": "febab437-162f-42c3-821b-13dd391667b0",
+      "name": "ThresholdCheck"
+    }
+  ],
+  "connections": {
+    "Every1Min": {
+      "main": [
+        [
+          {
+            "node": "CheckConnections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CheckConnections": {
+      "main": [
+        [
+          {
+            "node": "ThresholdCheck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FormatAlert": {
+      "main": [
+        [
+          {
+            "node": "LogMetrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ThresholdCheck": {
+      "main": [
+        [
+          {
+            "node": "FormatAlert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LogMetrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  }
+}

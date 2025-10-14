@@ -1,0 +1,167 @@
+table_name,column_name,data_type,nullable,column_default
+api_cache,key_hash,text,NOT NULL,
+api_cache,cache_type,text,NOT NULL,
+api_cache,model,text,NOT NULL,
+api_cache,model_version,text,NOT NULL,'v1'::text
+api_cache,request_payload,jsonb,NOT NULL,
+api_cache,response_data,jsonb,NOT NULL,
+api_cache,cost_usd,numeric,NULL,
+api_cache,hit_count,integer,NOT NULL,0
+api_cache,created_at,timestamp with time zone,NOT NULL,now()
+api_cache,updated_at,timestamp with time zone,NOT NULL,now()
+auth_logs,id,uuid,NOT NULL,gen_random_uuid()
+auth_logs,tenant,character varying,NOT NULL,'idudes'::character varying
+auth_logs,email,character varying,NOT NULL,
+auth_logs,action,character varying,NOT NULL,
+auth_logs,status,character varying,NOT NULL,
+auth_logs,ip_address,character varying,NULL,
+auth_logs,user_agent,text,NULL,
+auth_logs,created_at,timestamp with time zone,NOT NULL,(now() AT TIME ZONE 'America/Phoenix'::text)
+drive_sync_state,id,text,NOT NULL,'drive_changes'::text
+drive_sync_state,page_token,text,NOT NULL,
+drive_sync_state,last_sync_at,timestamp with time zone,NULL,now()
+drive_sync_state,total_changes_processed,bigint,NULL,0
+drive_sync_state,last_error,text,NULL,
+embeddings,id,bigint,NOT NULL,nextval('embeddings_id_seq'::regclass)
+embeddings,file_id,text,NOT NULL,
+embeddings,filename,text,NOT NULL,
+embeddings,chunk_index,integer,NOT NULL,
+embeddings,text,text,NOT NULL,
+embeddings,chunk_size,integer,NOT NULL,
+embeddings,embedding,USER-DEFINED,NOT NULL,
+embeddings,file_type,text,NULL,
+embeddings,file_size,integer,NULL,
+embeddings,created_at,timestamp with time zone,NULL,now()
+embeddings,updated_at,timestamp with time zone,NULL,now()
+embeddings,content_hash,text,NULL,
+enrichment_logs,id,uuid,NOT NULL,gen_random_uuid()
+enrichment_logs,tenant,text,NOT NULL,'idudes'::text
+enrichment_logs,document_id,uuid,NOT NULL,
+enrichment_logs,status,text,NOT NULL,
+enrichment_logs,metadata_extracted,jsonb,NULL,
+enrichment_logs,error_message,text,NULL,
+enrichment_logs,created_at,timestamp with time zone,NOT NULL,(now() AT TIME ZONE 'America/Phoenix'::text)
+file_pipeline_status,file_id,character varying,NOT NULL,
+file_pipeline_status,filename,character varying,NOT NULL,
+file_pipeline_status,rag_status,character varying,NULL,'pending'::character varying
+file_pipeline_status,rag_chunks_count,integer,NULL,0
+file_pipeline_status,rag_embedding_count,integer,NULL,0
+file_pipeline_status,rag_completed_at,timestamp without time zone,NULL,
+file_pipeline_status,rag_error_message,text,NULL,
+file_pipeline_status,social_status,character varying,NULL,'not_started'::character varying
+file_pipeline_status,social_posts_generated,integer,NULL,0
+file_pipeline_status,social_completed_at,timestamp without time zone,NULL,
+file_pipeline_status,social_error_message,text,NULL,
+file_pipeline_status,created_at,timestamp without time zone,NULL,now()
+file_pipeline_status,updated_at,timestamp without time zone,NULL,now()
+file_status,file_id,text,NOT NULL,
+file_status,filename,text,NOT NULL,
+file_status,status,text,NOT NULL,
+file_status,chunks_count,integer,NULL,0
+file_status,error_message,text,NULL,
+file_status,created_at,timestamp with time zone,NULL,now()
+file_status,updated_at,timestamp with time zone,NULL,now()
+metrics,id,uuid,NOT NULL,gen_random_uuid()
+metrics,metric_name,character varying,NOT NULL,
+metrics,metric_value,numeric,NOT NULL,
+metrics,tags,jsonb,NULL,'{}'::jsonb
+metrics,recorded_at,timestamp with time zone,NULL,now()
+password_reset_tokens,id,uuid,NOT NULL,gen_random_uuid()
+password_reset_tokens,user_id,uuid,NULL,
+password_reset_tokens,token,character varying,NOT NULL,
+password_reset_tokens,expires_at,timestamp without time zone,NOT NULL,
+password_reset_tokens,used,boolean,NULL,false
+password_reset_tokens,created_at,timestamp without time zone,NULL,now()
+password_resets,id,uuid,NOT NULL,gen_random_uuid()
+password_resets,user_id,uuid,NULL,
+password_resets,token_hash,character varying,NOT NULL,
+password_resets,expires_at,timestamp without time zone,NOT NULL,
+password_resets,created_at,timestamp without time zone,NULL,now()
+social_content_generated,id,uuid,NOT NULL,gen_random_uuid()
+social_content_generated,episode_title,character varying,NOT NULL,
+social_content_generated,file_id,text,NULL,
+social_content_generated,day_number,integer,NOT NULL,
+social_content_generated,day_theme,character varying,NOT NULL,
+social_content_generated,topic_title,text,NOT NULL,
+social_content_generated,topic_category,character varying,NULL,
+social_content_generated,instagram_content,text,NULL,
+social_content_generated,facebook_content,text,NULL,
+social_content_generated,linkedin_content,text,NULL,
+social_content_generated,schedule_data,jsonb,NULL,
+social_content_generated,review_scores,jsonb,NULL,
+social_content_generated,review_summary,text,NULL,
+social_content_generated,status,character varying,NULL,'pending_schedule'::character varying
+social_content_generated,ghl_instagram_id,character varying,NULL,
+social_content_generated,ghl_facebook_id,character varying,NULL,
+social_content_generated,ghl_linkedin_id,character varying,NULL,
+social_content_generated,posted_at,timestamp with time zone,NULL,
+social_content_generated,created_at,timestamp with time zone,NULL,now()
+social_content_generated,updated_at,timestamp with time zone,NULL,now()
+social_content_generated,work_id,text,NULL,
+social_content_generated,attempt,integer,NULL,0
+social_feedback_insights,id,uuid,NOT NULL,gen_random_uuid()
+social_feedback_insights,pattern_type,character varying,NOT NULL,
+social_feedback_insights,pattern_description,text,NOT NULL,
+social_feedback_insights,sample_content_ids,ARRAY,NOT NULL,
+social_feedback_insights,avg_engagement_rate,numeric,NULL,
+social_feedback_insights,sample_size,integer,NOT NULL,
+social_feedback_insights,platform,character varying,NULL,
+social_feedback_insights,topic_category,character varying,NULL,
+social_feedback_insights,day_theme,character varying,NULL,
+social_feedback_insights,confidence_score,numeric,NULL,
+social_feedback_insights,recommendation,text,NULL,
+social_feedback_insights,status,character varying,NULL,'active'::character varying
+social_feedback_insights,created_at,timestamp with time zone,NULL,now()
+social_feedback_insights,updated_at,timestamp with time zone,NULL,now()
+social_post_performance,id,uuid,NOT NULL,gen_random_uuid()
+social_post_performance,content_id,uuid,NULL,
+social_post_performance,platform,character varying,NOT NULL,
+social_post_performance,ghl_post_id,character varying,NULL,
+social_post_performance,likes,integer,NULL,0
+social_post_performance,comments,integer,NULL,0
+social_post_performance,shares,integer,NULL,0
+social_post_performance,saves,integer,NULL,0
+social_post_performance,reach,integer,NULL,0
+social_post_performance,impressions,integer,NULL,0
+social_post_performance,clicks,integer,NULL,0
+social_post_performance,engagement_rate,numeric,NULL,
+social_post_performance,virality_score,numeric,NULL,
+social_post_performance,save_rate,numeric,NULL,
+social_post_performance,performance_tier,character varying,NULL,
+social_post_performance,sentiment_score,numeric,NULL,
+social_post_performance,top_performing_elements,jsonb,NULL,
+social_post_performance,metrics_updated_at,timestamp with time zone,NULL,now()
+social_post_performance,created_at,timestamp with time zone,NULL,now()
+social_processed,file_id,character varying,NOT NULL,
+social_processed,filename,character varying,NULL,
+social_processed,first_processed_at,timestamp without time zone,NULL,now()
+social_processed,last_checked_at,timestamp without time zone,NULL,now()
+social_scheduling,id,uuid,NOT NULL,gen_random_uuid()
+social_scheduling,platform,character varying,NOT NULL,
+social_scheduling,content_type,character varying,NOT NULL,
+social_scheduling,day_of_week,character varying,NOT NULL,
+social_scheduling,optimal_hour,integer,NOT NULL,
+social_scheduling,optimal_minute,integer,NULL,0
+social_scheduling,timezone,character varying,NULL,'America/Phoenix'::character varying
+social_scheduling,engagement_score,numeric,NULL,
+social_scheduling,priority_rank,integer,NULL,1
+social_scheduling,source,character varying,NULL,
+social_scheduling,notes,text,NULL,
+social_scheduling,created_at,timestamp with time zone,NULL,now()
+social_scheduling,updated_at,timestamp with time zone,NULL,now()
+user_sessions,token,character varying,NOT NULL,
+user_sessions,user_id,uuid,NOT NULL,
+user_sessions,expires_at,timestamp with time zone,NOT NULL,
+user_sessions,created_at,timestamp with time zone,NOT NULL,(now() AT TIME ZONE 'America/Phoenix'::text)
+user_sessions,last_accessed,timestamp with time zone,NULL,(now() AT TIME ZONE 'America/Phoenix'::text)
+user_sessions,id,uuid,NULL,gen_random_uuid()
+user_sessions,session_token,character varying,NULL,
+users,id,uuid,NOT NULL,gen_random_uuid()
+users,email,character varying,NOT NULL,
+users,name,character varying,NOT NULL,
+users,password_hash,character varying,NOT NULL,
+users,role,character varying,NOT NULL,'user'::character varying
+users,created_at,timestamp with time zone,NOT NULL,(now() AT TIME ZONE 'America/Phoenix'::text)
+users,updated_at,timestamp with time zone,NOT NULL,(now() AT TIME ZONE 'America/Phoenix'::text)
+users,must_reset_password,boolean,NULL,true
+users,last_login,timestamp without time zone,NULL,

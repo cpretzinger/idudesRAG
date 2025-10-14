@@ -1,0 +1,196 @@
+{
+  "name": "04.5-Auth-Logout",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/auth/logout",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "831c59e0-c68a-4a2d-b540-2ee3a4748be9",
+      "name": "Webhook - Logout",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1024,
+        32
+      ],
+      "webhookId": "idudesrag-auth-logout"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM core.user_sessions WHERE token = $1 RETURNING user_id, token",
+        "options": {
+          "queryReplacement": "={{ $json.body.session_token }}"
+        }
+      },
+      "id": "7be2764b-097b-4a1e-a869-4daa9cd15482",
+      "name": "Delete Session",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -784,
+        32
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-deleted-001",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0964f549-77e9-454b-8d25-ab6d9a5a4ddf",
+      "name": "Check If Deleted",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, was_logged_in: false, sessions_cleared: 0, message: 'No active session found' } }}",
+        "options": {}
+      },
+      "id": "39898098-36e7-408d-b4f9-abe21ca7e55e",
+      "name": "Respond - Already Logged Out",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.auth_logs (tenant, email, action, status, ip_address, user_agent, created_at) VALUES ($1, (SELECT email FROM core.users WHERE id = $2), $3, $4, $5, $6, NOW() AT TIME ZONE 'America/Phoenix')",
+        "options": {
+          "queryReplacement": "=idudes\n{{ $('Delete Session').item.json[0].user_id }}\nlogout\nsuccess\n{{ $('Webhook - Logout').item.json.headers['x-forwarded-for'] || 'unknown' }}\n{{ $('Webhook - Logout').item.json.headers['user-agent'] || 'unknown' }}"
+        }
+      },
+      "id": "be273233-b49e-4bcf-9649-1e0bc2df23cc",
+      "name": "Log Logout Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -304,
+        144
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, was_logged_in: true, sessions_cleared: 1, message: 'Logout successful' } }}",
+        "options": {}
+      },
+      "id": "87728c09-df95-404e-8847-bc350dfb23cf",
+      "name": "Respond - Logout Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -64,
+        32
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Logout": {
+      "main": [
+        [
+          {
+            "node": "Delete Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Session": {
+      "main": [
+        [
+          {
+            "node": "Check If Deleted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Deleted": {
+      "main": [
+        [
+          {
+            "node": "Respond - Already Logged Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Logout Event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond - Logout Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "df30b191-abab-4300-a35c-47e774e10bfb",
+  "meta": {
+    "instanceId": "4bb33feb86ca4f5fc513a2380388fe9bf2c23463bf38edc4be554b00c909d710"
+  },
+  "id": "kTTy7A1l2WdIzg6v",
+  "tags": [
+    {
+      "createdAt": "2025-09-25T22:05:21.601Z",
+      "updatedAt": "2025-09-25T22:05:21.601Z",
+      "id": "qtVOjimT0HrcWY4f",
+      "name": "✅"
+    }
+  ]
+}

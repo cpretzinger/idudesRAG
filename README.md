@@ -264,64 +264,149 @@ Content-Type: application/json
 
 ## 🗄️ **DATABASE SCHEMA**
 
-### **Documents Table**
+### **Current Schema: `core` (Railway PostgreSQL)**
+
+**Connection:** `postgres://postgres@yamabiko.proxy.rlwy.net:15649/railway`
+**Schema:** `core` (16 active tables)
+**Extensions:** pgvector (0.8.1), uuid-ossp, pg_trgm
+**Live Documentation:** `/documentation/database/` (auto-updated hourly)
+
+### **Core Tables**
+
+**User & Auth:**
+- `users` - User accounts (superadmin/admin/user roles)
+- `user_sessions` - Session management
+- `auth_logs` - Authentication event logging
+- `password_resets` / `password_reset_tokens` - Password recovery
+
+**Document Processing:**
+- `embeddings` - Vector embeddings (1536-dim, pgvector)
+- `file_status` - File processing status
+- `file_pipeline_status` - RAG + Social pipeline tracking
+- `enrichment_logs` - Document enrichment logs
+- `drive_sync_state` - Google Drive sync state
+
+**Social Media Automation:**
+- `social_content_generated` - AI-generated social posts
+- `social_post_performance` - Performance metrics (engagement, reach)
+- `social_feedback_insights` - ML-derived performance patterns
+- `social_scheduling` - Optimal posting times per platform
+- `social_processed` - Processing deduplication
+
+**System:**
+- `metrics` - Application metrics & observability
+
+### **Key Functions**
+
+**Vector Search:**
 ```sql
-CREATE TABLE documents (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    filename TEXT NOT NULL,
-    content TEXT,
-    file_size INTEGER,
-    file_type TEXT,
-    spaces_url TEXT,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+-- Search documents by semantic similarity
+SELECT * FROM core.search_documents(
+  query_embedding := '[0.1, 0.2, ...]'::vector(1536),
+  similarity_threshold := 0.7,
+  result_limit := 10
 );
 ```
 
-### **Embeddings Table**
+**Social Media:**
 ```sql
-CREATE TABLE document_embeddings (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
-    chunk_text TEXT NOT NULL,
-    embedding vector(1536),
-    chunk_index INTEGER,
-    chunk_metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT NOW()
+-- Get optimal posting time
+SELECT * FROM core.get_optimal_posting_time('instagram_reel', 'monday', 1);
+
+-- Generate 10-day campaign schedule
+SELECT * FROM core.schedule_10_day_campaign('2025-01-15');
+
+-- Update post performance metrics
+SELECT * FROM core.update_post_performance(
+  content_id, platform, likes, comments, shares, saves, reach, impressions, clicks
 );
-
--- Vector similarity index
-CREATE INDEX idx_document_embeddings_vector 
-ON document_embeddings USING ivfflat (embedding vector_cosine_ops);
 ```
 
-### **Search Function**
+### **Schema Documentation**
+
+**Latest Schema Files:**
+- **Full SQL:** `/documentation/database/schema_latest.sql`
+- **Markdown:** `/documentation/database/schema.md`
+- **Column CSV:** `/documentation/database/columns.csv`
+
+**Schema Backups:** Hourly snapshots at `/var/backups/db-sot/`
+**Migration History:** See `/migrations/schema-core-2025-10-12.sql`
+
+**Auto-Sync (Implemented Oct 14, 2025):**
+- Hourly cron job syncs latest schema to `/documentation/database/`
+- Non-breaking implementation (fails silently if project path missing)
+- Creates markdown, SQL, and CSV formats automatically
+- Ensures AI coding agents always have current schema reference
+
+---
+
+## 🚀 **API CACHING SYSTEM** (Added Oct 14, 2025)
+
+### **Unified Cache Table: `core.api_cache`**
+
+**Purpose:** Reduce OpenAI API costs by caching LLM generations, embeddings, and reviews
+
+**Table Structure:**
 ```sql
-CREATE OR REPLACE FUNCTION search_documents(
-    query_embedding vector(1536),
-    match_threshold float DEFAULT 0.8,
-    match_count int DEFAULT 10
-)
-RETURNS TABLE (
-    document_id uuid,
-    filename text,
-    chunk_text text,
-    similarity float
-) 
-LANGUAGE sql AS $$
-    SELECT 
-        d.id as document_id,
-        d.filename,
-        de.chunk_text,
-        1 - (de.embedding <=> query_embedding) as similarity
-    FROM document_embeddings de
-    JOIN documents d ON de.document_id = d.id
-    WHERE 1 - (de.embedding <=> query_embedding) > match_threshold
-    ORDER BY de.embedding <=> query_embedding
-    LIMIT match_count;
-$$;
+CREATE TABLE core.api_cache (
+  key_hash text PRIMARY KEY,              -- SHA256 hash of request
+  cache_type text CHECK (IN 'embedding', 'generation', 'review'),
+  model text NOT NULL,                     -- e.g., 'gpt-5-nano'
+  model_version text DEFAULT 'v1',        -- Prompt version for invalidation
+  request_payload jsonb NOT NULL,          -- Full request context
+  response_data jsonb NOT NULL,            -- Cached LLM response
+  cost_usd numeric(10,6),                  -- Cost tracking
+  hit_count int DEFAULT 0,                 -- Cache effectiveness metric
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
 ```
+
+**Indexes (Performance Optimized):**
+- `idx_api_cache_lookup` - Fast key+type lookups
+- `idx_api_cache_type` - Cache type filtering
+- `idx_api_cache_hit_count` - ROI analysis
+
+**Cache Types:**
+1. **Generation Cache** - Social media copy (50-80% cost reduction)
+2. **Embedding Cache** - Vector embeddings (moderate savings)
+3. **Review Cache** - Content review passes (low-priority optimization)
+
+**Usage in n8n Workflows:**
+See `/json-flows/farts.md` for complete 7-node cache integration pattern
+
+**Cost Impact:**
+- Expected savings: 50-80% on duplicate content generation
+- Cache hit tracking via `hit_count` column
+- Query cache stats: `SELECT cache_type, SUM(hit_count) FROM core.api_cache GROUP BY cache_type;`
+
+---
+
+## 🔧 **POSTGRESQL PERFORMANCE OPTIMIZATIONS** (Oct 14, 2025)
+
+### **Indexes Added:**
+```sql
+-- Cache lookup optimization (He-Man approved ⚔️)
+CREATE INDEX idx_api_cache_lookup ON core.api_cache(key_hash, cache_type);
+
+-- Embeddings content hash (deduplication)
+ALTER TABLE core.embeddings ADD COLUMN content_hash text;
+CREATE INDEX idx_embeddings_content_hash ON core.embeddings(content_hash);
+```
+
+### **Database Functions:**
+```sql
+-- Cleanup old cache entries (default: 90 days retention)
+SELECT core.cleanup_old_cache(90);
+
+-- Get cache effectiveness stats
+SELECT * FROM core.get_cache_stats();
+```
+
+### **Concurrency Handling:**
+- UPSERT pattern with `ON CONFLICT` for atomic cache writes
+- Row-level locking prevents race conditions
+- `hit_count` increments are atomic (PostgreSQL ACID guarantees)
 
 ---
 
@@ -329,7 +414,7 @@ $$;
 
 ### **Upload Workflow (5 Nodes)**
 1. **Webhook** - Receive document uploads
-2. **Code** - Decode base64 and extract metadata  
+2. **Code** - Decode base64 and extract metadata
 3. **PostgreSQL** - Store document metadata
 4. **Code** - Chunk text for embeddings
 5. **OpenAI** - Generate embeddings → **PostgreSQL** - Store vectors
@@ -341,6 +426,27 @@ $$;
 4. **PostgreSQL** - Vector similarity search
 5. **Code** - Format and return results
 
+### **Social Content Workflow 10 (With Caching - Oct 14, 2025)**
+
+**Base Workflow:** 12+ nodes for RAG-powered social media generation
+**Cache Integration:** +7 nodes per cache type (generation/embedding/review)
+
+**Cache Pattern (7 Nodes):**
+1. **Build Cache Key** (Code) - SHA256 hash of model + prompt + content
+2. **Check Cache** (Postgres) - Lookup cached response
+3. **Cache Hit?** (IF) - Route to cached or fresh path
+4. **Use Cached** (Code) - Extract cached response (TRUE path)
+5. **Format Fresh** (Code) - Normalize LLM output (FALSE path)
+6. **Store Cache** (Postgres) - UPSERT with hit_count tracking
+7. **Merge** (Merge) - Combine cached + fresh results
+
+**Implementation Guide:** `/json-flows/farts.md` (complete drop-in configs)
+**Generator Prompts:** `/json-flows/GENERATOR-NODE-EXACT.md`
+
+**Cost Savings:**
+- Generation cache: 50-80% reduction on duplicate episodes
+- Hit tracking: `SELECT SUM(hit_count) FROM core.api_cache WHERE cache_type='generation';`
+
 ### **Import Workflows**
 ```bash
 # Upload workflow
@@ -348,10 +454,13 @@ curl -X POST "your-n8n-url/api/v1/workflows/import" \
   -H "Content-Type: application/json" \
   -d @idudes-n8n-workflow.json
 
-# Search workflow  
+# Search workflow
 curl -X POST "your-n8n-url/api/v1/workflows/import" \
   -H "Content-Type: application/json" \
   -d @SEARCH-WORKFLOW-NODES.json
+
+# Social content automation (workflow 10)
+# Located at: /json-flows/10-social-content-automation.json
 ```
 
 ---
@@ -499,17 +608,34 @@ MIT License - Feel free to use for commercial or personal projects.
 
 ## 🎯 **ROADMAP**
 
+### **Q4 2024 - COMPLETED ✅**
+- [x] Core RAG pipeline with pgvector
+- [x] n8n workflow automation
+- [x] Social media content generation
+- [x] Railway PostgreSQL deployment
+- [x] Vercel UI deployment
+
+### **October 2025 - COMPLETED ✅**
+- [x] **API caching system** (50-80% cost reduction)
+- [x] **Schema auto-sync** (hourly to `/documentation/database/`)
+- [x] **PostgreSQL optimization** (composite indexes, UPSERT patterns)
+- [x] **Workflow 10 cache integration** (7-node pattern documented)
+- [x] **gpt-5-nano migration** (default model for all coding/n8n work)
+
 ### **Q1 2025**
 - [ ] Multi-file upload support
 - [ ] Real-time search suggestions
 - [ ] Document versioning
 - [ ] Advanced filtering options
+- [ ] Embedding cache implementation (Phase 2)
+- [ ] Review cache implementation (Phase 3)
 
-### **Q2 2025**  
+### **Q2 2025**
 - [ ] Multi-language support
 - [ ] OCR for scanned documents
 - [ ] Chat interface with documents
 - [ ] Enterprise SSO integration
+- [ ] Cache effectiveness dashboard
 
 ### **Q3 2025**
 - [ ] Kubernetes deployment option

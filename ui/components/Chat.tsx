@@ -49,7 +49,7 @@ export default function Chat() {
     trackQuery()
 
     try {
-      const res = await fetch('https://ai.thirdeyediagnostics.com/webhook/chat-knowledge', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,8 +58,7 @@ export default function Chat() {
         body: JSON.stringify({
           messages: [...messages, userMessage],
           model: 'gpt-5-nano',
-          session_id: sessionId,
-          user_id: user?.id
+          session_id: sessionId
         })
       })
 

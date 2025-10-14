@@ -13,7 +13,7 @@
     "database": {
       "url": "${DATABASE_URL}",
       "schema": "tenant_${TENANT_SLUG}",
-      "vectorTable": "document_embeddings"
+      "vectorTable": "embeddings"
     },
     "redis": {
       "url": "${REDIS_URL}",

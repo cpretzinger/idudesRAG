@@ -41,7 +41,7 @@ export async function GET(): Promise<NextResponse<StatsResponse | { error: strin
     // Get all stats in parallel
     const [filesResult, embeddingsResult, queriesResult] = await Promise.all([
       // Total files (from file_status table)
-      client.query<CountResult>("SELECT COUNT(*)::text as count FROM core.file_status WHERE status = 'completed'"),
+      client.query<CountResult>("SELECT COUNT(*)::text as count FROM core.file_pipeline_status WHERE rag_status = 'completed'"),
 
       // Total embeddings (chunks)
       client.query<CountResult>("SELECT COUNT(*)::text as count FROM core.embeddings"),

@@ -19,9 +19,8 @@ export default function Uploader() {
       const formData = new FormData()
       formData.append('file', file, file.name)
 
-      // Send to n8n webhook directly - it expects binary upload
-      const n8nBaseUrl = process.env.NEXT_PUBLIC_N8N_URL || 'https://ai.thirdeyediagnostics.com/webhook'
-      const res = await fetch(`${n8nBaseUrl}/upload`, {
+      // Send to Next.js API proxy which validates session
+      const res = await fetch('/api/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session?.session_token || ''}`

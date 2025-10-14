@@ -1,0 +1,13 @@
+Phase 2: Embedding Cache
+
+  - Same 6-node pattern
+  - Wrap "Build Query Embeddings" node
+  - cache_type = 'embedding'
+  - Est. savings: 20-30% on enrichment queries
+
+  Phase 3: Review Cache
+
+  - Same 6-node pattern
+  - Wrap "Expert Review" node
+  - cache_type = 'review'
+  - Est. savings: 15-20% on content reviews

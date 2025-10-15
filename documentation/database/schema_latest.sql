@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict PxjagcnBmXppCdebVGIEUFwxxGerfGH7R4QCTa4MHXAAxlaH5mMTm10K0AIRshy
+\restrict hzunf6Ffo9ArnsqD9uvijj5PRujRR8Ta0f9U01r0gbZN8d8TFdS9oEeIPYIrfpv
 
 -- Dumped from database version 16.10 (Debian 16.10-1.pgdg12+1)
 -- Dumped by pg_dump version 17.6 (Ubuntu 17.6-0ubuntu0.25.04.1)
@@ -869,7 +869,8 @@ CREATE TABLE core.embeddings (
     file_size integer,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    content_hash text
+    content_hash text,
+    content_type text DEFAULT 'episode'::text
 );
 
 
@@ -878,6 +879,13 @@ CREATE TABLE core.embeddings (
 --
 
 COMMENT ON COLUMN core.embeddings.content_hash IS 'SHA256 hash of text content for deduplication';
+
+
+--
+-- Name: COLUMN embeddings.content_type; Type: COMMENT; Schema: core; Owner: -
+--
+
+COMMENT ON COLUMN core.embeddings.content_type IS 'Content source classification: episode, book, guide, etc.';
 
 
 --
@@ -1477,6 +1485,13 @@ CREATE INDEX idx_embeddings_content_hash ON core.embeddings USING btree (file_id
 
 
 --
+-- Name: idx_embeddings_content_type; Type: INDEX; Schema: core; Owner: -
+--
+
+CREATE INDEX idx_embeddings_content_type ON core.embeddings USING btree (content_type);
+
+
+--
 -- Name: idx_embeddings_created_at; Type: INDEX; Schema: core; Owner: -
 --
 
@@ -1821,5 +1836,5 @@ ALTER TABLE ONLY core.user_sessions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict PxjagcnBmXppCdebVGIEUFwxxGerfGH7R4QCTa4MHXAAxlaH5mMTm10K0AIRshy
+\unrestrict hzunf6Ffo9ArnsqD9uvijj5PRujRR8Ta0f9U01r0gbZN8d8TFdS9oEeIPYIrfpv
 

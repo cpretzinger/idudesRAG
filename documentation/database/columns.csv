@@ -34,6 +34,7 @@ embeddings,file_size,integer,NULL,
 embeddings,created_at,timestamp with time zone,NULL,now()
 embeddings,updated_at,timestamp with time zone,NULL,now()
 embeddings,content_hash,text,NULL,
+embeddings,content_type,text,NULL,'episode'::text
 enrichment_logs,id,uuid,NOT NULL,gen_random_uuid()
 enrichment_logs,tenant,text,NOT NULL,'idudes'::text
 enrichment_logs,document_id,uuid,NOT NULL,

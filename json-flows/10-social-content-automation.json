@@ -14,7 +14,7 @@
       "typeVersion": 1,
       "position": [
         -1392,
-        -192
+        -320
       ],
       "webhookId": "0c8869b7-c940-4654-b4d9-480e20f87aca"
     },
@@ -31,8 +31,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        528,
-        -432
+        736,
+        -560
       ]
     },
     {
@@ -48,8 +48,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        544,
-        -240
+        752,
+        -368
       ]
     },
     {
@@ -60,7 +60,7 @@
       "typeVersion": 1,
       "position": [
         -1952,
-        16
+        -112
       ]
     },
     {
@@ -77,7 +77,7 @@
       "typeVersion": 2,
       "position": [
         -1424,
-        64
+        -64
       ],
       "credentials": {
         "postgres": {
@@ -95,8 +95,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1264,
-        64
+        -784,
+        -64
       ]
     },
     {
@@ -108,8 +108,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        160,
-        96
+        784,
+        -32
       ]
     },
     {
@@ -122,7 +122,7 @@
       "typeVersion": 2,
       "position": [
         -2176,
-        416
+        288
       ]
     },
     {
@@ -159,7 +159,7 @@
       "typeVersion": 4.2,
       "position": [
         -1520,
-        560
+        432
       ]
     },
     {
@@ -171,8 +171,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -224,
-        544
+        400,
+        416
       ]
     },
     {
@@ -188,8 +188,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        -32,
-        416
+        592,
+        288
       ],
       "credentials": {
         "postgres": {
@@ -200,15 +200,15 @@
     },
     {
       "parameters": {
-        "jsCode": "// PARSE + CLEAN — extracts 3 sections and sanitizes junk characters/markdown.\n// Keeps real hashtags (#Tag) but removes markdown headers, bullets, **bold**, etc.\n\n// ---------- helpers ----------\nconst prefer = (...vals) => {\n  for (const v of vals) if (v != null && String(v).trim() !== '') return v;\n  return '';\n};\n\nconst safeGetNodeJson = (name) => {\n  try {\n    const arr = $items(name, 0, 0);\n    if (Array.isArray(arr) && arr[0]?.json) return arr[0].json;\n  } catch {}\n  try {\n    const j = $node[name]?.json;\n    if (j) return j;\n  } catch {}\n  return null;\n};\n\nconst readFromInputs = () => {\n  const all = $input.all();\n  for (const it of all) {\n    const j = it.json || {};\n    if (typeof j.strict_output === 'string' && j.strict_output.trim()) return j.strict_output;\n    if (typeof j.output        === 'string' && j.output.trim())        return j.output;\n    if (typeof j.text          === 'string' && j.text.trim())          return j.text;\n    if (typeof j.content       === 'string' && j.content.trim())       return j.content;\n  }\n  return '';\n};\n\n// Cleanup: remove markdown/bullets/excess whitespace but KEEP real hashtags.\nconst clean = (s) => {\n  let t = String(s ?? '');\n  t = t\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '') // zero-width\n    .replace(/\\t/g, '  ');\n  t = t.replace(/```[\\s\\S]*?```/g, m => m.replace(/```/g, '')); // code fences\n  t = t.replace(/`{1,3}([^`]+)`{1,3}/g, '$1');                  // inline code\n  t = t.replace(/^\\s*#{1,6}\\s*/gm, '');                         // md headers\n  t = t.replace(/^\\s*[-*•·]+[\\t ]*/gm, '');                     // bullets at BOl\n  t = t.replace(/[•·]/g, '');                                   // stray bullets\n  t = t.replace(/\\*\\*(.*?)\\*\\*/g, '$1').replace(/__(.*?)__/g, '$1').replace(/_(.*?)_/g, '$1'); // bold/italics\n  t = t.replace(/--+/g, '—');                                   // double dash\n  t = t.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 ($2)'); // [text](url)\n  t = t.replace(/(^|\\s)#{2,}(?=\\s|$)/g, '$1');                  // bare ##\n  t = t.replace(/\\s+([.,!?;:])(?!\\w)/g, '$1');                  // space before punct\n  t = t.replace(/[ \\t]+\\n/g, '\\n');                             // trim line-end spaces\n  t = t.replace(/\\n{3,}/g, '\\n\\n');                             // collapse 3+ newlines\n  t = t.replace(/[^\\S\\r\\n]{2,}/g, ' ');                         // collapse spaces\n  return t.trim();\n};\n\n// ---------- 1) SOURCE TEXT ----------\nconst cur = $json || {};\nlet rawText = String(\n  prefer(cur.strict_output, cur.output, cur.text, cur.content, readFromInputs())\n);\n\n// Normalize outer text\nrawText = rawText\n  .replace(/\\r\\n/g, '\\n')\n  .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '')\n  .trim();\n\nif (!rawText) {\n  return [{\n    json: {\n      day_number: null,\n      day_theme: '',\n      episode_title: '',\n      topic_title: '',\n      instagram_content: '',\n      facebook_content: '',\n      linkedin_content: '',\n      _parser_note: 'No generator output found.'\n    }\n  }];\n}\n\n// Soft header enforcement (optional)\nconst STRICT_HEADERS = false;\nconst hasIG = /^([\\t ]*)###\\s*INSTAGRAM\\s*REEL\\s*:?$/im.test(rawText);\nconst hasFB = /^([\\t ]*)###\\s*FACEBOOK\\s*POST\\s*:?$/im.test(rawText);\nconst hasLI = /^([\\t ]*)###\\s*LINKEDIN\\s*POST\\s*:?$/im.test(rawText);\nif (STRICT_HEADERS && !(hasIG && hasFB && hasLI)) {\n  throw new Error('Format error: expected all three headers (### INSTAGRAM REEL / ### FACEBOOK POST / ### LINKEDIN POST).');\n}\n\n// ---------- 2) SECTION EXTRACTION ----------\nconst getSection = (src, label) => {\n  const re = new RegExp(\n    String.raw`^[\\t ]*###\\s*${label}\\s*:?\\s*\\n?([\\s\\S]*?)(?=^[\\t ]*###\\s*|\\Z)`,\n    'im'\n  );\n  const m = src.match(re);\n  return m ? m[1].trim() : '';\n};\n\nlet instagram_content = getSection(rawText, 'INSTAGRAM\\\\s*REEL');\nlet facebook_content  = getSection(rawText, 'FACEBOOK\\\\s*POST');\nlet linkedin_content  = getSection(rawText, 'LINKEDIN\\\\s*POST');\n\n// Fallback label-style blocks\nconst fallbackByLabel = (labelRegex) => {\n  const re = new RegExp(String.raw`^\\s*${labelRegex}\\s*:\\s*`, 'im');\n  if (!re.test(rawText)) return '';\n  const after = rawText.split(re)[1] || '';\n  const nextHeader = after.search(/^[\\t ]*###\\s*/m);\n  return (nextHeader >= 0 ? after.slice(0, nextHeader) : after).trim();\n};\n\nif (!instagram_content) instagram_content = fallbackByLabel('Instagram\\\\s*Reel');\nif (!facebook_content)  facebook_content  = fallbackByLabel('Facebook');\nif (!linkedin_content)  linkedin_content  = fallbackByLabel('LinkedIn');\n\n// Clean sections\ninstagram_content = clean(instagram_content);\nfacebook_content  = clean(facebook_content);\nlinkedin_content  = clean(linkedin_content);\n\n// ---------- 2b) VALIDATOR ----------\nconst missing = [];\nif (!instagram_content) missing.push('INSTAGRAM REEL');\nif (!facebook_content)  missing.push('FACEBOOK POST');\nif (!linkedin_content)  missing.push('LINKEDIN POST');\nif (missing.length) {\n  throw new Error('Empty sections after parsing: ' + missing.join(', '));\n}\n\n// ---------- 2c) REBUILD strict_output ----------\nconst strict_output =\n  '### INSTAGRAM REEL\\n' + instagram_content + '\\n\\n' +\n  '### FACEBOOK POST\\n' + facebook_content  + '\\n\\n' +\n  '### LINKEDIN POST\\n' + linkedin_content;\n\n// ---------- 3) METADATA (prefer Combine Enrichment Data) ----------\nconst CED = safeGetNodeJson('Combine Enrichment Data') || {};\nconst EP  = safeGetNodeJson('Combine Episode Content') || {};\n\nconst out = {\n  day_number:    prefer(cur.day_number,  CED.day_number,  EP.day_number)  || null,\n  day_theme:     prefer(cur.day_theme,   CED.day_theme,   EP.day_theme)   || '',\n  episode_title: prefer(cur.episode_title, CED.episode_title, EP.episode_title) || '',\n  topic_title:   prefer(cur.concept, cur.topic_title, CED.concept, CED.title, CED.topic_title, EP.concept) || '',\n  instagram_content,\n  facebook_content,\n  linkedin_content,\n  strict_output\n};\n\nif (![out.instagram_content, out.facebook_content, out.linkedin_content].some(s => String(s).trim())) {\n  out._parser_note = 'Parsed sections were empty after cleanup. Check upstream output formatting.';\n}\n\nreturn [{ json: out }];\n"
+        "jsCode": "\n  // PARSE + CLEAN — extracts 3 sections and sanitizes junk characters/markdown.\n  // Keeps real hashtags (#Tag) but removes markdown headers, bullets, **bold**, etc.\n\n  // ---------- helpers ----------\n  const prefer = (...vals) => {\n    for (const v of vals) if (v != null && String(v).trim() !== '') return v;\n    return '';\n  };\n\n  const safeGetNodeJson = (name) => {\n    try {\n      const arr = $items(name, 0, 0);\n      if (Array.isArray(arr) && arr[0]?.json) return arr[0].json;\n    } catch {}\n    try {\n      const j = $node[name]?.json;\n      if (j) return j;\n    } catch {}\n    return null;\n  };\n\n  const readFromInputs = () => {\n    const all = $input.all();\n    for (const it of all) {\n      const j = it.json || {};\n      // ← PRIORITY ORDER: response_data FIRST (from cache), then generated_content, then fallbacks\n      if (typeof j.response_data     === 'string' && j.response_data.trim())     return j.response_data;\n      if (typeof j.generated_content === 'string' && j.generated_content.trim()) return\n  j.generated_content;\n      if (typeof j.strict_output     === 'string' && j.strict_output.trim())     return j.strict_output;\n      if (typeof j.output            === 'string' && j.output.trim())            return j.output;\n      if (typeof j.text              === 'string' && j.text.trim())              return j.text;\n      if (typeof j.content           === 'string' && j.content.trim())           return j.content;\n    }\n    return '';\n  };\n\n  // Cleanup: remove markdown/bullets/excess whitespace but KEEP real hashtags.\n  const clean = (s) => {\n    let t = String(s ?? '');\n    t = t\n      .replace(/\\r\\n/g, '\\n')\n      .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '') // zero-width\n      .replace(/\\t/g, '  ');\n    t = t.replace(/```[\\s\\S]*?```/g, m => m.replace(/```/g, '')); // code fences\n    t = t.replace(/`{1,3}([^`]+)`{1,3}/g, '$1');                  // inline code\n    t = t.replace(/^\\s*#{1,6}\\s*/gm, '');                         // md headers\n    t = t.replace(/^\\s*[-*•·]+[\\t ]*/gm, '');                     // bullets at BOl\n    t = t.replace(/[•·]/g, '');                                   // stray bullets\n    t = t.replace(/\\*\\*(.*?)\\*\\*/g, '$1').replace(/__(.*?)__/g, '$1').replace(/_(.*?)_/g, '$1'); // \n  bold/italics\n    t = t.replace(/--+/g, '—');                                   // double dash\n    t = t.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 ($2)'); // [text](url)\n    t = t.replace(/(^|\\s)#{2,}(?=\\s|$)/g, '$1');                  // bare ##\n    t = t.replace(/\\s+([.,!?;:])(?!\\w)/g, '$1');                  // space before punct\n    t = t.replace(/[ \\t]+\\n/g, '\\n');                             // trim line-end spaces\n    t = t.replace(/\\n{3,}/g, '\\n\\n');                             // collapse 3+ newlines\n    t = t.replace(/[^\\S\\r\\n]{2,}/g, ' ');                         // collapse spaces\n    return t.trim();\n  };\n\n  // ---------- 1) SOURCE TEXT ----------\n  const cur = $json || {};\n  let rawText = String(\n    prefer(cur.response_data, cur.generated_content, cur.strict_output, cur.output, cur.text, cur.content,\n   readFromInputs())\n  );"
       },
       "id": "0f288ac7-441c-4c10-974a-9210eded63a2",
       "name": "Parse Generated Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2656,
-        32
+        3696,
+        -96
       ]
     },
     {
@@ -223,8 +223,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        2880,
-        720
+        3920,
+        592
       ],
       "credentials": {
         "openAiApi": {
@@ -242,8 +242,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3696,
-        416
+        4736,
+        288
       ]
     },
     {
@@ -255,8 +255,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3728,
-        1152
+        4768,
+        1024
       ]
     },
     {
@@ -272,8 +272,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        3888,
-        1152
+        4928,
+        1024
       ],
       "credentials": {
         "postgres": {
@@ -367,8 +367,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        656,
-        1328
+        1280,
+        1200
       ],
       "id": "35a27bb9-e777-46f9-8a04-04b497a448a4",
       "name": "Switch"
@@ -376,7 +376,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json.system_prompt }}",
+        "text": "={{ $json.user_prompt }}",
         "options": {
           "systemMessage": "={{ $json.system_prompt }}"
         }
@@ -384,8 +384,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        1696,
-        416
+        2736,
+        288
       ],
       "id": "29304aaf-1014-4fb8-8e38-6d385e34b764",
       "name": "Generate Content"
@@ -401,8 +401,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        3392,
-        416
+        4432,
+        288
       ],
       "id": "3cca5996-caf5-4559-b4eb-75f4a5b240fd",
       "name": "Expert Review"
@@ -418,8 +418,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        -144,
-        96
+        480,
+        -32
       ],
       "id": "9e956b03-83c1-4098-8462-3659092e2941",
       "name": "Extract Concepts"
@@ -435,8 +435,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        1360,
-        784
+        2400,
+        640
       ],
       "id": "3c27199c-930b-47e1-ab31-5705f11bec1e",
       "name": "Optimize Instagram"
@@ -452,8 +452,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        3520,
-        736
+        4560,
+        608
       ],
       "id": "89dffacc-c2b2-4b86-a6b7-d39dd132272c",
       "name": "Optimize LinkedIn"
@@ -469,8 +469,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        2288,
-        768
+        3328,
+        640
       ],
       "id": "b5ca3554-b16c-4706-92ed-5348c34fb422",
       "name": "Optimize Facebook"
@@ -482,8 +482,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -512,
-        96
+        112,
+        -32
       ],
       "id": "82dacd86-21fe-4ed2-ae06-c5b81e1e29c1",
       "name": "cleanAndPrep"
@@ -497,8 +497,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        4080,
-        1152
+        5120,
+        1024
       ],
       "id": "d634fecb-9e13-4386-9408-5c21bcab92f7",
       "name": "Respond to Webhook"
@@ -556,31 +556,6 @@
               },
               "renameOutput": true,
               "outputKey": "Ready"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "loose",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "91fb158a-f54f-4ef3-a508-4d48a29a6c92",
-                    "leftValue": "={{ $json.is_ready }}",
-                    "rightValue": "",
-                    "operator": {
-                      "type": "boolean",
-                      "operation": "false",
-                      "singleValue": true
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "Not Ready"
             }
           ]
         },
@@ -590,8 +565,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        -384,
-        -192
+        -176,
+        -320
       ],
       "id": "56bf96c2-ef45-4b7b-84c4-66c8835f5438",
       "name": "Switch1"
@@ -604,7 +579,7 @@
       "typeVersion": 2,
       "position": [
         -1744,
-        416
+        288
       ],
       "id": "99426ee4-b87e-4a59-a354-c0757b2efaed",
       "name": "buildBody"
@@ -635,8 +610,8 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        528,
-        -576
+        736,
+        -704
       ],
       "id": "7fd5e9c5-edd5-4280-9878-ebd7c06ee43a",
       "name": "MoveToCompleted",
@@ -658,8 +633,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -560,
-        352
+        64,
+        224
       ],
       "id": "917c69a9-b0db-4aa5-8a61-295c51ba04ec",
       "name": "Merge"
@@ -673,28 +648,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        4784,
-        352
+        5824,
+        224
       ],
       "id": "742f3362-3896-4a8e-b1bd-1069f3e68252",
       "name": "setFields"
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "combineBy": "combineByPosition",
-        "options": {
-          "includeUnpaired": true
-        }
-      },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        960,
-        304
-      ],
-      "id": "db8720db-fe7c-444d-a40a-bce869c98e07",
-      "name": "Merge1"
     },
     {
       "parameters": {
@@ -705,19 +663,19 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        160,
-        416
+        784,
+        288
       ]
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\n\nconst items = $input.all();\nreturn items.map(item => {\n  const model = 'gpt-5-nano';\n\n  // ✅ Use a template literal (backticks) so multi-line is valid\n  const system = String.raw`You are a formatting-strict social copy generator for The Insurance Dudes.\n\nOUTPUT CONTRACT (MUST PASS ALL)\n1) Output EXACTLY three sections, in this order, with these exact headers:\n   ### INSTAGRAM REEL\n   ### FACEBOOK POST\n   ### LINKEDIN POST\n2) No text before the first header or after the last section.\n3) Each section MUST be non-empty text (may include newlines). Do not include code fences.\n4) Do not invent facts. Preserve links as given.\n\nFORMAT (OUTPUT EXACTLY LIKE THIS)\n### INSTAGRAM REEL\n<instagram copy here>\n\n### FACEBOOK POST\n<facebook copy here>\n\n### LINKEDIN POST\n<linkedin copy here>\n\nSELF-CHECK (STRICT)\n- If any header is missing, or any section is empty, REWRITE UNTIL ALL CHECKS PASS.\n- If any extra text exists outside the three sections, REMOVE IT.\n- When finished, ensure the output starts with \"### INSTAGRAM REEL\" and ends with the LinkedIn section text (no trailing blank lines beyond one newline).`;\n\n  const user = String(item.json.enriched_content_chunks || '');\n  const episode_id = item.json.file_id || 'none';\n  const prompt_version = 'gen_v3';\n\n  const key_hash = crypto.createHash('sha256')\n    .update(JSON.stringify({ model, system, user, episode_id, prompt_version }))\n    .digest('hex');\n\n  return {\n    json: {\n      ...item.json,\n      gen_cache_key: key_hash,\n      gen_model: model,\n      gen_prompt_version: prompt_version,\n      // optionally pass the prompts along if you want to inspect them downstream\n      system_prompt: system,\n      user_prompt: user\n    }\n  };\n});\n"
+        "jsCode": "const crypto = require('crypto');\nconst items = $input.all();\n\nreturn items.map(item => {\n  const model = 'gpt-5-nano';\n\n  // prefer mapped prompt_library user_prompt; then packed enrichment; then a safe fallback\n  const user_prompt = String(\n    item.json.user_prompt\n    || item.json.enriched_content_chunks\n    || `${item.json.episode_title || ''} | Day ${item.json.day_number || '?'} | ${item.json.concept || ''}`\n  );\n\n  // align version with prompt_library (see #3)\n  const prompt_version = item.json.prompt_version || 'v2';\n  const system_prompt_id = `generator_${prompt_version}`;\n\n  const key_hash = crypto.createHash('sha256')\n    .update(JSON.stringify({\n      model,\n      system_prompt_id,\n      user_prompt,\n      episode_id: item.json.file_id || 'none'\n    }))\n    .digest('hex');\n\n  return {\n    json: {\n      ...item.json,\n      gen_cache_key: key_hash,\n      gen_model: model,\n      gen_prompt_version: prompt_version,   // <<< align with prompt library\n      system_prompt_id,\n      user_prompt\n    }\n  };\n});\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
-        416
+        1104,
+        288
       ],
       "id": "52125537-cae3-42c4-bb54-a254b3173664",
       "name": "Build Gen Cache Key"
@@ -727,14 +685,14 @@
         "operation": "executeQuery",
         "query": "SELECT\n  key_hash,\n  response_data,\n  hit_count,\n  created_at\nFROM core.api_cache\nWHERE key_hash = $1\n  AND cache_type = 'generation'\nLIMIT 1;",
         "options": {
-          "queryReplacement": "={{ $json.gen_cache_key }}"
+          "queryReplacement": "={{ [ $json.gen_cache_key ] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        624,
-        416
+        1376,
+        288
       ],
       "id": "5a3fa323-a0dc-446c-8444-a4ee3cc5be83",
       "name": "Check Gen Cache",
@@ -785,8 +743,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        768,
-        416
+        1504,
+        256
       ],
       "id": "b7bb69c0-246f-4170-8211-a4bd5e11a5b2",
       "name": "Cache Hit?"
@@ -798,8 +756,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1296,
-        224
+        1920,
+        96
       ],
       "id": "94055e52-9f5a-4332-9bab-4bccdf3fa8c6",
       "name": "Use Cached Generation"
@@ -811,8 +769,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4192,
-        416
+        5232,
+        288
       ],
       "id": "81da5c36-ebfa-4ca4-a564-85fb1c57ae0d",
       "name": "setupRouter"
@@ -828,8 +786,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        4048,
-        256
+        5088,
+        128
       ],
       "id": "155b8d0b-da6d-4d8c-8f08-c8f44998626c",
       "name": "Merge content + Review"
@@ -841,8 +799,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5152,
-        352
+        6192,
+        224
       ],
       "id": "72690b8e-17cb-40aa-98a0-eb1b67bd3de4",
       "name": "contentValidator"
@@ -854,8 +812,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        352,
-        512
+        976,
+        384
       ],
       "id": "e75b440c-d305-4714-b7b4-dbb2ee2164cc",
       "name": "InitializeContext"
@@ -867,8 +825,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4656,
-        816
+        5696,
+        688
       ],
       "id": "9f9a29a5-b560-4888-b729-95cda812b5b7",
       "name": "incrementCounter"
@@ -884,8 +842,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        4800,
-        816
+        5840,
+        688
       ],
       "id": "564a517f-ac3f-4b56-8cf4-9e000222f442",
       "name": "UPSERT Failed Attempt",
@@ -981,8 +939,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        4320,
-        400
+        5360,
+        272
       ],
       "id": "a56a1fc2-2d55-4228-8675-5ad257a16ed8",
       "name": "Recommendation"
@@ -994,8 +952,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3856,
-        416
+        4896,
+        288
       ],
       "id": "cfcbf70c-4154-4321-bbe6-a4090a33d589",
       "name": "WrapReview"
@@ -1011,8 +969,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        4960,
-        352
+        6000,
+        224
       ],
       "id": "607b47bc-641e-404d-a835-56da4ab70100",
       "name": "UpsertApproved",
@@ -1030,8 +988,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4144,
-        608
+        5184,
+        480
       ],
       "id": "b24450e0-ede9-48a3-b544-1c0b575a0580",
       "name": "ApplyReviewFixes"
@@ -1043,8 +1001,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4288,
-        608
+        5328,
+        480
       ],
       "id": "8e221e5b-7213-4cf3-9735-74fb2de32e31",
       "name": "Parse 3 Sections"
@@ -1079,8 +1037,8 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1,
       "position": [
-        4848,
-        608
+        5888,
+        480
       ],
       "id": "db3198f6-0511-4ebf-b14c-bd23215ca6ae",
       "name": "Re-Review",
@@ -1098,8 +1056,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1984,
-        416
+        3024,
+        288
       ],
       "id": "d367facb-846d-4e66-b1cc-2587715e8762",
       "name": "Format Fresh Generation"
@@ -1116,8 +1074,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2096,
-        288
+        3248,
+        144
       ],
       "id": "5cd4cf6d-22da-4a48-89d2-cd0ed09e70e3",
       "name": "Store Gen Cache",
@@ -1133,8 +1091,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        2352,
-        0
+        3392,
+        -128
       ],
       "id": "6478285a-0e0a-44da-aa17-757722175a1a",
       "name": "Merge Cached + Store Gen"
@@ -1146,8 +1104,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5280,
-        608
+        6320,
+        480
       ],
       "id": "4b0be200-c521-476d-98d3-5d40bebe8d4a",
       "name": "Parse Re-Review"
@@ -1181,8 +1139,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5488,
-        608
+        6528,
+        480
       ],
       "id": "3b01bf75-6c66-437d-af21-4738126dc597",
       "name": "If:Approved"
@@ -1198,8 +1156,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        5504,
-        832
+        6544,
+        704
       ],
       "id": "e09bcb06-5a96-487c-b8c8-e1c3248eeaf8",
       "name": "UpsertApprovedOnReReview",
@@ -1239,8 +1197,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5008,
-        816
+        6048,
+        688
       ],
       "id": "c7e61369-9a1c-4c96-b36d-0cefd095d65f",
       "name": "If: Less Than 2 Attempts"
@@ -1252,8 +1210,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5200,
-        800
+        6240,
+        672
       ],
       "id": "f04f75fb-091d-43e8-a6ee-a6025104d6e5",
       "name": "useStrictPrompt"
@@ -1269,8 +1227,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        5200,
-        1056
+        6240,
+        928
       ],
       "id": "27392b82-5faa-45d1-a0b3-b5ed5c63ca0d",
       "name": "statusManual",
@@ -1307,8 +1265,8 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        5200,
-        1184
+        6240,
+        1056
       ],
       "id": "aab398fb-a770-4ad4-b4ca-cedbbb87d37d",
       "name": "Move2ManualReview",
@@ -1327,7 +1285,7 @@
       "typeVersion": 2,
       "position": [
         -1968,
-        416
+        288
       ],
       "id": "dcc929c6-bca3-4434-92db-87278d9d5188",
       "name": "InjectPersonaContext"
@@ -1339,8 +1297,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2512,
-        16
+        3552,
+        -112
       ],
       "id": "766d4d92-27f3-4055-9347-984f63e65828",
       "name": "Trim Payload"
@@ -1348,16 +1306,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "query": "SELECT role, content\n  FROM core.prompt_library\n  WHERE prompt_key = $1\n    AND version = COALESCE($2, 'v3');",
         "options": {
-          "queryReplacement": "=$1 = {{$json.prompt_key}}\n$2 = {{$json.prompt_version}}"
+          "queryReplacement": "={{ [ $json.prompt_key, $json.prompt_version ] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1392,
-        384
+        2320,
+        256
       ],
       "id": "6249cc75-ffba-4f03-8a0f-345807b5951b",
       "name": "SelectPrompt",
@@ -1375,8 +1333,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1536,
-        416
+        2544,
+        256
       ],
       "id": "b182b1f0-b000-40a9-b48d-274c1e50c66e",
       "name": "MapperFunction"
@@ -1384,7 +1342,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v3');\n",
         "options": {
           "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
         }
@@ -1392,8 +1350,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2880,
-        416
+        3888,
+        272
       ],
       "id": "34bcad25-dcd6-4aee-99c9-1c1daf3aaff9",
       "name": "SelectReviewerPrompt",
@@ -1411,8 +1369,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3008,
-        416
+        4048,
+        288
       ],
       "id": "881697d7-afbc-4315-9ce7-3daa385b23e5",
       "name": "MapperFunctionReviewer"
@@ -1428,8 +1386,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        5072,
-        160
+        6112,
+        32
       ],
       "id": "f00642e0-a77c-4423-b731-1a8da78a3291",
       "name": "UpdatePersona",
@@ -1451,8 +1409,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        3232,
-        416
+        4272,
+        288
       ],
       "id": "1c2b3ee5-54a3-4c78-b02f-6b6c3260f0e2",
       "name": "Merge content + ReviewPrompts"
@@ -1464,8 +1422,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4416,
-        608
+        5456,
+        480
       ],
       "id": "dad80fa4-feba-41e4-908c-6e5d7187d81c",
       "name": "SetReReviewerPrompt"
@@ -1481,8 +1439,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        4560,
-        608
+        5600,
+        480
       ],
       "id": "faa93898-5cd8-489c-b283-f56f721ab514",
       "name": "SelectReReviewerPrompt",
@@ -1500,8 +1458,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4688,
-        608
+        5728,
+        480
       ],
       "id": "1aaddd34-7a47-4cbb-8161-d29623bc1fa5",
       "name": "MapperFunctionReReviewer"
@@ -1513,8 +1471,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5136,
-        608
+        6176,
+        480
       ],
       "id": "1d3933e8-da31-418c-8550-451946b8ec4c",
       "name": "map + safe trim"
@@ -1526,8 +1484,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        752,
-        784
+        1376,
+        656
       ],
       "id": "11451ce4-75dc-4073-afd9-2e3071012097",
       "name": "SetInstaOptimizer"
@@ -1535,7 +1493,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v3');\n",
         "options": {
           "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
         }
@@ -1543,8 +1501,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        880,
-        784
+        1952,
+        656
       ],
       "id": "95c42d4b-365a-44a4-9311-d3db2c851937",
       "name": "IG:SelectOptimizerPrompt",
@@ -1562,8 +1520,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1216,
-        784
+        2256,
+        656
       ],
       "id": "38121d8c-d1d0-4188-8db0-32430cf6f9b4",
       "name": "MapperFunctionInsta"
@@ -1575,8 +1533,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1808,
-        768
+        2848,
+        640
       ],
       "id": "fe86e124-b88e-42b5-8549-5a44e15c813f",
       "name": "SetFacebookOptimizerPrompt"
@@ -1584,7 +1542,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v3');\n",
         "options": {
           "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
         }
@@ -1592,8 +1550,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1952,
-        768
+        2992,
+        640
       ],
       "id": "56040de5-6fa0-49ab-8ba8-591e8db89210",
       "name": "Facebook: OptimizerPrompt",
@@ -1611,8 +1569,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2080,
-        768
+        3120,
+        640
       ],
       "id": "e461c864-79fe-4e65-b575-227292342c32",
       "name": "MapperFunctionFacebookOptimizer"
@@ -1624,8 +1582,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3040,
-        736
+        4080,
+        608
       ],
       "id": "ed187a19-0beb-4e8e-864d-e9294bd28fce",
       "name": "SetLinkedInOptimizerPrompt"
@@ -1633,7 +1591,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v3');\n",
         "options": {
           "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
         }
@@ -1641,8 +1599,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        3184,
-        736
+        4224,
+        608
       ],
       "id": "19652ef5-31b2-4f9f-81d5-4dce8f6e47be",
       "name": "LinkedIn: OptimizerPrompt",
@@ -1660,8 +1618,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3312,
-        736
+        4352,
+        608
       ],
       "id": "457b18a3-a416-40a4-b663-14a64e4d137b",
       "name": "MapperFunctionLinkedInOptimizer"
@@ -1673,8 +1631,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1808,
-        880
+        2800,
+        912
       ],
       "id": "0c34aea4-4b09-4191-abd4-590fbcf989f6",
       "name": "IG Validator"
@@ -1688,8 +1646,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3600,
-        1152
+        4592,
+        1072
       ]
     },
     {
@@ -1699,8 +1657,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3376,
-        1024
+        4416,
+        896
       ],
       "id": "78340d5f-4c6a-4dd8-928b-981d89ffb627",
       "name": "LinkedIn Validator"
@@ -1712,8 +1670,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2944,
-        864
+        3984,
+        736
       ],
       "id": "8bf81f3c-5523-43d5-b64f-c5d74fa8fed7",
       "name": "FB Validator"
@@ -1728,7 +1686,7 @@
       "typeVersion": 2,
       "position": [
         -976,
-        -192
+        -320
       ]
     },
     {
@@ -1741,7 +1699,7 @@
       "typeVersion": 2,
       "position": [
         -1232,
-        -192
+        -320
       ]
     },
     {
@@ -1755,8 +1713,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -752,
-        -192
+        -544,
+        -320
       ],
       "id": "0293ebdb-331d-445a-8f41-cf7c20b50c7d",
       "name": "FetchFileStatus",
@@ -1775,25 +1733,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -560,
-        -192
+        -352,
+        -320
       ],
       "id": "8a9d9b5e-b0e6-4eb4-aad0-4f45a0ffb569",
       "name": "FoldStatus"
-    },
-    {
-      "parameters": {
-        "amount": 15
-      },
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        48,
-        -112
-      ],
-      "id": "91207179-bb04-4bfc-a9a2-513f82e41efc",
-      "name": "Wait",
-      "webhookId": "5d015ff5-22b6-4186-a67b-9b30d92c0cbd"
     },
     {
       "parameters": {
@@ -1809,7 +1753,7 @@
       "typeVersion": 2,
       "position": [
         -1648,
-        64
+        -64
       ],
       "credentials": {
         "postgres": {
@@ -1832,7 +1776,7 @@
       "typeVersion": 2,
       "position": [
         -1152,
-        1040
+        912
       ],
       "credentials": {
         "postgres": {
@@ -1844,32 +1788,90 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"prompt_key\": \"generator\",\n  \"prompt_version\": \"v2\"\n}",
+        "jsonOutput": "{\n  \"prompt_key\": \"expert_review\",\n  \"prompt_version\": \"v3\"          \n}\n",
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1152,
-        336
-      ],
-      "id": "9bc84df4-a621-4847-9809-1b5f12794023",
-      "name": "Edit Fields"
-    },
-    {
-      "parameters": {
-        "mode": "raw",
-        "jsonOutput": "{\n  \"prompt_key\": \"expert_review\",\n  \"prompt_version\": \"v2\"          \n}\n",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        2672,
-        336
+        3712,
+        208
       ],
       "id": "145d24fb-ae9e-4ed9-a53e-547fc9d62846",
       "name": "setPromptExpert"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -768,
+        -320
+      ],
+      "id": "660a4552-78cc-426c-918c-898beb994a61",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pack Enrichment (after Search Similar (Q1))\nconst sims = $input.all().map(i => i.json.text).filter(Boolean);\nconst enriched = sims.map((t,i)=>`[${i+1}] ${t}`).join('\\n---\\n');\n\n// pull the day metadata back in from BEFORE the DB call\nconst day = $items('Merge', 0, 0)?.[0]?.json || {};  // 'Merge' is the node right before Extract Embeddings\nreturn [{\n  json: {\n    ...day,\n    enriched_content_chunks: enriched\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1104
+      ],
+      "id": "5e375071-4ba9-44f6-9804-df02cf364b30",
+      "name": "packAndRejoin"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2128,
+        368
+      ],
+      "id": "df0c2575-7c94-47e5-b68e-96cebbc7b0e9",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.api_cache\nSET hit_count = hit_count + 1, updated_at = now()\nWHERE key_hash = $1 AND cache_type = 'generation';\n",
+        "options": {
+          "queryReplacement": "={{ [$json.key_hash || $json.gen_cache_key] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1600,
+        -16
+      ],
+      "id": "97b057a1-d5fc-4efa-9873-f1f07cac07a3",
+      "name": "bumpCacheCount",
+      "executeOnce": false,
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine which prompt version to use based on review status\n  const review_status = $json.review_status || '';\n  const prompt_version = (review_status === 'REJECT' || review_status === 'APPROVE_WITH_EDITS') ? 'v2' :\n  'v3';\n\n  return [{\n    json: {\n      ...$json,\n      prompt_version: prompt_version\n    }\n  }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1936,
+        272
+      ],
+      "id": "77d96b88-4321-4a91-881c-b50ffa635327",
+      "name": "setPromptVersion"
     }
   ],
   "connections": {
@@ -1970,7 +1972,7 @@
       "main": [
         [
           {
-            "node": "Combine Enrichment Data",
+            "node": "packAndRejoin",
             "type": "main",
             "index": 0
           }
@@ -2194,13 +2196,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Wait",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -2242,17 +2237,6 @@
         ]
       ]
     },
-    "Merge1": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Combine Enrichment Data": {
       "main": [
         [
@@ -2260,6 +2244,11 @@
             "node": "InitializeContext",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
           }
         ]
       ]
@@ -2290,16 +2279,16 @@
       "main": [
         [
           {
-            "node": "Use Cached Generation",
+            "node": "bumpCacheCount",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Merge1",
+            "node": "setPromptVersion",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -2566,7 +2555,7 @@
       "main": [
         [
           {
-            "node": "Merge1",
+            "node": "Generate Content",
             "type": "main",
             "index": 0
           }
@@ -2826,11 +2815,22 @@
         ]
       ]
     },
+    "FB Validator": {
+      "main": [
+        [
+          {
+            "node": "Combine Optimized Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Gate Ready": {
       "main": [
         [
           {
-            "node": "FetchFileStatus",
+            "node": "Merge2",
             "type": "main",
             "index": 0
           }
@@ -2870,17 +2870,6 @@
         ]
       ]
     },
-    "Wait": {
-      "main": [
-        [
-          {
-            "node": "FetchFileStatus",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "ResolveEpisode": {
       "main": [
         [
@@ -2892,7 +2881,40 @@
         ]
       ]
     },
-    "Edit Fields": {
+    "setPromptExpert": {
+      "main": [
+        [
+          {
+            "node": "SelectReviewerPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "FetchFileStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "packAndRejoin": {
+      "main": [
+        [
+          {
+            "node": "Combine Enrichment Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
       "main": [
         [
           {
@@ -2903,11 +2925,22 @@
         ]
       ]
     },
-    "setPromptExpert": {
+    "bumpCacheCount": {
       "main": [
         [
           {
-            "node": "SelectReviewerPrompt",
+            "node": "Use Cached Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "setPromptVersion": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
             "type": "main",
             "index": 0
           }

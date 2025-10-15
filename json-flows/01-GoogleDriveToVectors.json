@@ -33,14 +33,14 @@
     },
     {
       "parameters": {
-        "jsCode": "const OPENAI_API_KEY = $env.OPENAI_API_KEY;\n\n  const items = $input.all();\n\n  let meta = items.find(i => i.json?.file_id && i.json?.filename)?.json;\n\n  if (!meta) {\n    const pkg = $items('ExtractAndPackage', 0, 0)?.[0]?.json;\n    if (pkg?.file_id && pkg?.filename) meta = pkg;\n  }\n  if (!meta) {\n    throw new Error('Missing file metadata. Ensure ExtractAndPackage connects to ProcessDocument.');\n  }\n\n  const file_id = meta.file_id;\n  const filename = meta.filename;\n  const mime_type = meta.mime_type || 'text/plain';\n\n  let content = '';\n  for (const it of items) {\n    if (typeof it.json?.data === 'string') { content = it.json.data; break; }\n    if (typeof it.json?.content === 'string') { content = it.json.content; break; }\n    if (typeof it.json === 'string') { content = it.json; break; }\n    if (it.binary && Object.keys(it.binary).length) {\n      const [binKey] = Object.keys(it.binary);\n      const b64 = it.binary[binKey]?.data;\n      if (b64) { content = Buffer.from(b64, 'base64').toString('utf-8'); break; }\n    }\n  }\n  if (!content || content.length < 50) {\n    throw new Error('No content found for file: ' + filename);\n  }\n\n  function finalClean(s) {\n    return String(s)\n      .replace(/\\r\\n?/g, '\\n')\n      .replace(/\\t/g, ' ')\n      .replace(/\\u0000/g, '')\n      .normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')\n      .replace(/\\u00A0/g, ' ')\n      .replace(/\\u2018|\\u2019|\\u201A|\\u2032/g, \"'\")\n      .replace(/\\u201C|\\u201D|\\u201E|\\u2033/g, '\"')\n      .replace(/\\u2014/g, '-')\n      .replace(/\\u2013/g, '-')\n      .replace(/\\u2026/g, '...')\n      .replace(/[ \\t]+/g, ' ')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .trim();\n  }\n  const cleanedText = finalClean(content);\n  if (cleanedText.length < 50) throw new Error('Cleaned text too short');\n\n  const CHUNK_SIZE = 900;\n  const OVERLAP = 150;\n  const chunks = [];\n  let start = 0;\n  while (start < cleanedText.length) {\n    let end = Math.min(start + CHUNK_SIZE, cleanedText.length);\n    if (end < cleanedText.length) {\n      const window = cleanedText.slice(start, end);\n      const breaks = [window.lastIndexOf('\\n\\n'), window.lastIndexOf('\\n'), window.lastIndexOf('. '),\n  window.lastIndexOf('! '), window.lastIndexOf('? ')];\n      const best = Math.max(...breaks);\n      if (best > CHUNK_SIZE * 0.5) end = start + best + 1;\n    }\n    const txt = cleanedText.slice(start, end).trim();\n    if (txt) chunks.push(txt);\n    if (end >= cleanedText.length) break;\n    start = Math.max(0, end - OVERLAP);\n  }\n  if (!chunks.length) throw new Error('No chunks created');\n\n  const t0 = Date.now();\n\n  async function embedBatch(batch) {\n    const res = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.openai.com/v1/embeddings',\n      headers: { 'Authorization': 'Bearer ' + OPENAI_API_KEY, 'Content-Type': 'application/json' },\n      body: { input: batch, model: 'text-embedding-3-small' },\n      json: true,\n      timeout: 120000,\n    });\n    return res.data.map(d => d.embedding);\n  }\n\n  const BATCH = 100;\n  const embs = [];\n  for (let i = 0; i < chunks.length; i += BATCH) {\n    const out = await embedBatch.call(this, chunks.slice(i, i + BATCH));\n    embs.push(...out);\n  }\n\n  const duration = Math.floor((Date.now() - t0) / 1000);\n\n  return chunks.map((text, idx) => ({\n    json: {\n      file_id: file_id,\n      filename: filename,\n      file_type: mime_type,\n      file_size: cleanedText.length,\n      chunk_index: idx,\n      text: text,\n      chunk_size: text.length,\n      embedding: embs[idx],\n      total_chunks: chunks.length,\n      duration: duration,\n      status: 'completed'\n    }\n  }));\n"
+        "jsCode": "const OPENAI_API_KEY = $env.OPENAI_API_KEY;\n\nconst items = $input.all();\nconst content_type = items.find(i => i.json?.content_type)?.json?.content_type || 'episode';\n\n  let meta = items.find(i => i.json?.file_id && i.json?.filename)?.json;\n\n  if (!meta) {\n    const pkg = $items('ExtractAndPackage', 0, 0)?.[0]?.json;\n    if (pkg?.file_id && pkg?.filename) meta = pkg;\n  }\n  if (!meta) {\n    throw new Error('Missing file metadata. Ensure ExtractAndPackage connects to ProcessDocument.');\n  }\n\n  const file_id = meta.file_id;\n  const filename = meta.filename;\n  const mime_type = meta.mime_type || 'text/plain';\n\n  let content = '';\n  for (const it of items) {\n    if (typeof it.json?.data === 'string') { content = it.json.data; break; }\n    if (typeof it.json?.content === 'string') { content = it.json.content; break; }\n    if (typeof it.json === 'string') { content = it.json; break; }\n    if (it.binary && Object.keys(it.binary).length) {\n      const [binKey] = Object.keys(it.binary);\n      const b64 = it.binary[binKey]?.data;\n      if (b64) { content = Buffer.from(b64, 'base64').toString('utf-8'); break; }\n    }\n  }\n  if (!content || content.length < 50) {\n    throw new Error('No content found for file: ' + filename);\n  }\n\n  function finalClean(s) {\n    return String(s)\n      .replace(/\\r\\n?/g, '\\n')\n      .replace(/\\t/g, ' ')\n      .replace(/\\u0000/g, '')\n      .normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')\n      .replace(/\\u00A0/g, ' ')\n      .replace(/\\u2018|\\u2019|\\u201A|\\u2032/g, \"'\")\n      .replace(/\\u201C|\\u201D|\\u201E|\\u2033/g, '\"')\n      .replace(/\\u2014/g, '-')\n      .replace(/\\u2013/g, '-')\n      .replace(/\\u2026/g, '...')\n      .replace(/[ \\t]+/g, ' ')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .trim();\n  }\n  const cleanedText = finalClean(content);\n  if (cleanedText.length < 50) throw new Error('Cleaned text too short');\n\n  const CHUNK_SIZE = 900;\n  const OVERLAP = 150;\n  const chunks = [];\n  let start = 0;\n  while (start < cleanedText.length) {\n    let end = Math.min(start + CHUNK_SIZE, cleanedText.length);\n    if (end < cleanedText.length) {\n      const window = cleanedText.slice(start, end);\n      const breaks = [window.lastIndexOf('\\n\\n'), window.lastIndexOf('\\n'), window.lastIndexOf('. '),\n  window.lastIndexOf('! '), window.lastIndexOf('? ')];\n      const best = Math.max(...breaks);\n      if (best > CHUNK_SIZE * 0.5) end = start + best + 1;\n    }\n    const txt = cleanedText.slice(start, end).trim();\n    if (txt) chunks.push(txt);\n    if (end >= cleanedText.length) break;\n    start = Math.max(0, end - OVERLAP);\n  }\n  if (!chunks.length) throw new Error('No chunks created');\n\n  const t0 = Date.now();\n\n  async function embedBatch(batch) {\n    const res = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.openai.com/v1/embeddings',\n      headers: { 'Authorization': 'Bearer ' + OPENAI_API_KEY, 'Content-Type': 'application/json' },\n      body: { input: batch, model: 'text-embedding-3-small' },\n      json: true,\n      timeout: 120000,\n    });\n    return res.data.map(d => d.embedding);\n  }\n\n  const BATCH = 100;\n  const embs = [];\n  for (let i = 0; i < chunks.length; i += BATCH) {\n    const out = await embedBatch.call(this, chunks.slice(i, i + BATCH));\n    embs.push(...out);\n  }\n\n  const duration = Math.floor((Date.now() - t0) / 1000);\n\n  return chunks.map((text, idx) => ({\n    json: {\n      file_id: file_id,\n      filename: filename,\n      file_type: mime_type,\n      file_size: cleanedText.length,\n      chunk_index: idx,\n      text: text,\n      content_type: content_type,\n      chunk_size: text.length,\n      embedding: embs[idx],\n      total_chunks: chunks.length,\n      duration: duration,\n      status: 'completed'\n    }\n  }));\n"
       },
       "id": "de2f4862-6b2e-404d-ac6f-a296e1cc7442",
       "name": "ProcessDocument",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1696,
+        -1488,
         1616
       ]
     },
@@ -111,7 +111,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1600,
+        -1392,
         1440
       ],
       "id": "792f07cd-ea75-4127-a417-859cf2ca2158",
@@ -152,7 +152,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -1376,
+        -1168,
         1632
       ],
       "id": "cb586c30-29c9-4615-afce-0701315aab97",
@@ -161,16 +161,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO core.embeddings (\n  file_id,\n  filename,\n  chunk_index,\n  text,\n  chunk_size,\n  embedding,\n  file_type,\n  file_size,\n  created_at,\n  updated_at\n)\nVALUES (\n  $1,\n  $2,\n  $3,\n  $4,\n  $5,\n  $6::vector(1536),\n  $7,\n  $8,\n  NOW(),\n  NOW()\n)\nON CONFLICT (file_id, chunk_index) \nDO UPDATE SET\n  text = EXCLUDED.text,\n  embedding = EXCLUDED.embedding,\n  updated_at = NOW()\nRETURNING *;",
+        "query": "INSERT INTO core.embeddings (\n    file_id, filename, chunk_index, text, chunk_size,\n    embedding, file_type, file_size, content_type, created_at, updated_at\n  ) VALUES (\n    $1, $2, $3, $4, $5, $6::vector(1536), $7, $8, $9, NOW(), NOW()\n  )",
         "options": {
-          "queryReplacement": "={{ [$json.file_id, $json.filename, $json.chunk_index, $json.text, $json.chunk_size, JSON.stringify($json.embedding), $json.file_type, $json.file_size] }}"
+          "queryReplacement": "={{ [$json.file_id, $json.filename, $json.chunk_index, $json.text, $json.chunk_size, JSON.stringify($json.embedding), $json.file_type, $json.file_size, $json.content_type] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1152,
-        1632
+        -816,
+        1616
       ],
       "id": "2b7c5c76-4018-4bb7-ade4-5ecf03174d06",
       "name": "InsertEmbedding",
@@ -192,8 +192,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -928,
-        1632
+        -576,
+        1680
       ],
       "id": "7eb2d0cf-8afc-42bb-ba1d-0292297f5484",
       "name": "UpdateStatus",
@@ -215,7 +215,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1152,
+        -736,
         1824
       ],
       "id": "d7726481-f014-47d7-ab6b-0820b4efa13f",
@@ -340,7 +340,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        -704,
+        -288,
         1824
       ],
       "credentials": {
@@ -463,8 +463,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        -480,
-        1632
+        -32,
+        1616
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -522,7 +522,7 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -928,
+        -512,
         1824
       ],
       "id": "35833167-15f9-4f94-9241-ca7ffd205eb1",
@@ -613,8 +613,12 @@
     },
     {
       "parameters": {
-        "resource": "folder",
-        "name": "manifest",
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "19_PvHNRakfzzLjL6WsYGW0VJqkv5if2aMtFDYyFh_Bo",
+          "mode": "id"
+        },
         "driveId": {
           "__rl": true,
           "value": "0ADNv-WFOlNroUk9PVA",
@@ -624,13 +628,10 @@
         },
         "folderId": {
           "__rl": true,
-          "value": "root",
+          "value": "1P9vCe0flPbImHpcimMcNahQT7YN25M0_",
           "mode": "list",
-          "cachedResultName": "/ (Root folder)",
-          "cachedResultUrl": "https://drive.google.com/drive"
-        },
-        "options": {
-          "folderColorRgb": "#1648B4"
+          "cachedResultName": "RAG-Pending",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1P9vCe0flPbImHpcimMcNahQT7YN25M0_"
         }
       },
       "id": "d6efe636-740a-4ee3-b953-035fd518c683",
@@ -643,8 +644,8 @@
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "agQVZargPko1jDSc",
-          "name": "craig@theidudes.com"
+          "id": "OtvrT7x8YG4Mrx7n",
+          "name": "Google Drive account"
         }
       }
     },
@@ -715,7 +716,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// This node receives a downloaded .jsonl file and processes it directly.\n\nconst OPENAI_API_KEY = $env.OPENAI_API_KEY;\n\n// 1. Get file metadata and content from the downloaded file\nconst downloadedFile = $input.first();\nconst fileInfo = $items('GetPendingFile')[0].json; // Get original metadata\nconst content = downloadedFile.binary.data.toString('utf-8');\n\nif (!content) {\n  throw new Error('No content found in the downloaded .jsonl file.');\n}\n\nconst file_id = fileInfo.id;\nconst filename = fileInfo.name;\nconst mime_type = fileInfo.mimeType || 'application/jsonl';\n\n// 2. Parse the JSONL content\n// The file is already chunked, one JSON object per line.\nconst lines = content.trim().split('\\n');\nconst chunks = lines.map(line => JSON.parse(line).text);\n\nif (!chunks.length) throw new Error('No chunks found in .jsonl file');\n\nconst t0 = Date.now();\n\n// 3. Batch embeddings (This logic is the same as your original node)\nasync function embedBatch(batch) {\n  const res = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.openai.com/v1/embeddings',\n    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },\n    body: { input: batch, model: 'text-embedding-3-small' },\n    json: true,\n    timeout: 120000,\n  });\n  return res.data.map(d => d.embedding);\n}\n\nconst BATCH_SIZE = 100;\nconst embeddings = [];\nfor (let i = 0; i < chunks.length; i += BATCH_SIZE) {\n  const batchChunks = chunks.slice(i, i + BATCH_SIZE);\n  const batchEmbeddings = await embedBatch.call(this, batchChunks);\n  embeddings.push(...batchEmbeddings);\n}\n\nconst duration = Math.floor((Date.now() - t0) / 1000);\n\n// 4. Format the output EXACTLY like the original ProcessDocument node\n// This ensures the downstream nodes (InsertEmbedding, etc.) receive consistent data.\nreturn chunks.map((text, idx) => ({\n  json: {\n    file_id,\n    filename,\n    file_type: mime_type,\n    file_size: content.length,\n    chunk_index: idx,\n    text,\n    chunk_size: text.length,\n    embedding: embeddings[idx],\n    total_chunks: chunks.length,\n    duration,\n    status: 'completed'\n  }\n}));"
+        "jsCode": "/**\n * ProcessPreChunked (JSONL) — robust parse + episode/book classify + embeddings + backoff\n * Returns EXACT same shape as your original node + { content_type, _classify_debug }\n */\n\nconst OPENAI_API_KEY = $env.OPENAI_API_KEY;\nif (!OPENAI_API_KEY) throw new Error('Missing OPENAI_API_KEY');\n\nconst MODEL = 'text-embedding-3-small';\nconst BATCH_SIZE = 100;\nconst MAX_TOKENS = 7500;       // keep under ~8k ctx\nconst AVG_CHARS_PER_TOKEN = 4; // rough heuristic\nconst MAX_CHARS = MAX_TOKENS * AVG_CHARS_PER_TOKEN;\n\n// ---------- helpers ----------\nfunction decodeBinaryToUtf8(bin) {\n  if (!bin) return '';\n  // n8n binary.data is usually base64 string; tolerate Buffers/objects too\n  if (typeof bin === 'string') {\n    try { return Buffer.from(bin, 'base64').toString('utf-8'); } catch { return bin; }\n  }\n  if (typeof bin.data === 'string') {\n    try { return Buffer.from(bin.data, 'base64').toString('utf-8'); } catch { /* fallthrough */ }\n  }\n  if (typeof bin.toString === 'function') {\n    try { return bin.toString('utf-8'); } catch {}\n  }\n  return String(bin);\n}\n\nfunction normalize(s) {\n  return String(s || '')\n    .normalize('NFKD')\n    .replace(/\\r/g, '\\n')\n    .replace(/[^\\S\\n]+/g, ' ') // collapse spaces but keep newlines\n    .trim();\n}\n\nfunction hardNormalizeOneLine(s) {\n  return String(s || '')\n    .toLowerCase()\n    .normalize('NFKD')\n    .replace(/[^a-z0-9\\s]/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction truncateForEmbedding(s) {\n  if (!s) return '';\n  return s.length > MAX_CHARS ? s.slice(0, MAX_CHARS) : s;\n}\n\nasync function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }\n\nasync function withBackoff(fn, { tries = 5, base = 300 } = {}) {\n  let lastErr;\n  for (let i = 0; i < tries; i++) {\n    try { return await fn(); }\n    catch (e) {\n      const status = e?.response?.status || e?.statusCode;\n      const retryable = status === 429 || (status >= 500 && status < 600);\n      if (!retryable || i === tries - 1) throw e;\n      const delay = base * Math.pow(2, i) + Math.floor(Math.random() * 200);\n      await sleep(delay);\n      lastErr = e;\n    }\n  }\n  throw lastErr || new Error('withBackoff exhausted');\n}\n\nasync function embedBatch(batch) {\n  const body = { input: batch, model: MODEL };\n  const doCall = () => this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.openai.com/v1/embeddings',\n    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },\n    body, json: true, timeout: 120000,\n  });\n  const res = await withBackoff(doCall);\n  const arr = res?.data || [];\n  if (arr.length !== batch.length) {\n    throw new Error(`Embedding API returned ${arr.length} embeddings for batch of ${batch.length}`);\n  }\n  return arr.map(d => d.embedding);\n}\n\n// ---------- 1) read file ----------\nconst downloadedFile = $input.first();\nconst fileInfo = ($items('GetPendingFile')?.[0]?.json) || {};\nconst contentRaw = decodeBinaryToUtf8(downloadedFile?.binary?.data);\nif (!contentRaw) throw new Error('No content found in the downloaded .jsonl file.');\n\nconst file_id   = fileInfo.id;\nconst filename  = fileInfo.name || '';\nconst mime_type = fileInfo.mimeType || 'application/jsonl';\n\n// ---------- 2) parse JSONL ----------\nconst lines = contentRaw.split('\\n').map(l => l.trim()).filter(Boolean);\nif (!lines.length) throw new Error('No lines found in .jsonl file');\n\nconst chunks = [];\nfor (let i = 0; i < lines.length; i++) {\n  const line = lines[i];\n  try {\n    const obj = JSON.parse(line);\n    const maybeText =\n      obj.text ??\n      obj.content ??\n      obj.body ??\n      obj?.choices?.[0]?.message?.content ??\n      '';\n    const clean = normalize(maybeText);\n    if (clean) chunks.push(clean);\n  } catch (e) {\n    throw new Error(`JSONL parse error at line ${i + 1}: ${e.message}`);\n  }\n}\nif (!chunks.length) throw new Error('No chunks with text found in .jsonl file');\n\n// ---------- 3) classify episode vs book (first ~10 chunks) ----------\nconst sample = hardNormalizeOneLine(chunks.slice(0, 10).join(' '));\n\n// Intro 1\nconst intro1 = /insurance\\s+dudes?\\s+are\\s+on\\s+a\\s+mission\\s+to\\s+escape\\s+being\\s+handcuffed\\s+by\\s+our\\s+agencies/.test(sample);\n\n// Intro 2 cluster\nconst hasCraig  = /i\\s+am\\s+craig\\s+pretzinger/.test(sample);\nconst hasJason  = /i\\s+am\\s+jason\\s+feltman/.test(sample);\nconst hasAgents = /we\\s+are\\s+agents/.test(sample);\nconst hasDudes  = /we\\s+are\\s+insurance\\s+dudes?/.test(sample);\nconst intro2 = (hasCraig && hasJason && (hasAgents || hasDudes));\n\nconst content_type = (intro1 || intro2) ? 'episode' : 'book';\n\n// ---------- 4) embeddings with batching + backoff ----------\nconst t0 = Date.now();\nconst embeddings = [];\nfor (let i = 0; i < chunks.length; i += BATCH_SIZE) {\n  const batch = chunks.slice(i, i + BATCH_SIZE).map(truncateForEmbedding);\n  const vecs = await embedBatch.call(this, batch);\n  embeddings.push(...vecs);\n}\nif (embeddings.length !== chunks.length) {\n  throw new Error(`Embedding count mismatch: got ${embeddings.length}, expected ${chunks.length}`);\n}\nconst duration = Math.floor((Date.now() - t0) / 1000);\nconst file_size = contentRaw.length;\nconst total_chunks = chunks.length;\n\n// ---------- 5) return exactly like original + content_type ----------\nreturn chunks.map((text, idx) => ({\n  json: {\n    file_id,\n    filename,\n    file_type: mime_type,\n    file_size,\n    chunk_index: idx,\n    text,\n    chunk_size: text.length,\n    embedding: embeddings[idx],\n    total_chunks,\n    duration,\n    status: 'completed',\n    content_type,\n    // tiny debug; remove later if noisy\n    _classify_debug: { intro1, hasCraig, hasJason, hasAgents, hasDudes }\n  }\n}));\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -733,8 +734,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -976,
-        1440
+        -496,
+        1360
       ],
       "id": "13a3fd37-8cd0-48b8-88da-f4d3b835b5da",
       "name": "EmitOnce"
@@ -772,7 +773,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1808,
+        -1600,
         1328
       ],
       "id": "e901f92b-4ee1-4a57-86cc-1dab2f67c6ec",
@@ -811,45 +812,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -320,
-        1440
+        -192,
+        1360
       ],
       "id": "22dbd8e1-b483-427b-94bc-4561f32dc53b",
       "name": "SendPostToSocial"
-    },
-    {
-      "parameters": {
-        "operation": "move",
-        "fileId": {
-          "__rl": true,
-          "value": "={{ $json.file_id }}",
-          "mode": "id"
-        },
-        "driveId": {
-          "__rl": true,
-          "mode": "id",
-          "value": "0ADNv-WFOlNroUk9PVA"
-        },
-        "folderId": {
-          "__rl": true,
-          "mode": "id",
-          "value": "1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms"
-        }
-      },
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        -704,
-        1632
-      ],
-      "id": "3a785ea0-2f56-4cf2-816f-373a2439f7aa",
-      "name": "Move file",
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "OtvrT7x8YG4Mrx7n",
-          "name": "Google Drive account"
-        }
-      }
     },
     {
       "parameters": {
@@ -862,7 +829,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -2000,
+        -1792,
         1264
       ],
       "id": "2b3d3fc7-711f-4bf4-8d67-b219928ae559",
@@ -881,7 +848,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        -1904,
+        -1696,
         1456
       ],
       "id": "4599e4f7-ecb2-42f7-a76a-ab91f7cacac8",
@@ -890,17 +857,69 @@
     },
     {
       "parameters": {
-        "amount": 2
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.file_id }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "value": "0ADNv-WFOlNroUk9PVA",
+          "mode": "list",
+          "cachedResultName": "RAG-idudes-RAG-System",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/0ADNv-WFOlNroUk9PVA"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms",
+          "mode": "list",
+          "cachedResultName": "RAG-Completed",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1fSOIBLxf4bhz_ZeSlJSqqpCypYMfCSms"
+        }
       },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -304,
+        1616
+      ],
+      "id": "6eb0b9bc-13a6-402e-92f6-2a5d7194dc36",
+      "name": "Move to Completed",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OtvrT7x8YG4Mrx7n",
+          "name": "Google Drive account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        -768,
+        -640,
+        1392
+      ],
+      "id": "9ebb50ac-6a14-44e1-97ed-c6e09b22918e",
+      "name": "Wait",
+      "webhookId": "834fad8b-d75a-4370-8665-46802d4967cd"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Use the cleaned text already produced by ExtractAndPackage\nconst name = String($json.filename || '').toLowerCase();\nconst text = String($json.data || $json.content || '').toLowerCase();\n\nconst norm = (name + ' ' + text)\n  .normalize('NFKD').replace(/[^a-z0-9\\s]/g,' ')\n  .replace(/\\s+/g,' ')\n  .trim();\n\n// Episode intros present in every show\nconst intro1 = /insurance\\s+dudes?\\s+are\\s+on\\s+a\\s+mission\\s+to\\s+escape\\s+being\\s+handcuffed\\s+by\\s+our\\s+agencies/.test(norm);\nconst hasCraig  = /i\\s+am\\s+craig\\s+pretzinger/.test(norm);\nconst hasJason  = /i\\s+am\\s+jason\\s+feltman/.test(norm);\nconst hasAgents = /we\\s+are\\s+agents/.test(norm);\nconst hasDudes  = /we\\s+are\\s+insurance\\s+dudes?/.test(norm);\nconst intro2 = (hasCraig && hasJason && (hasAgents || hasDudes));\n\nconst content_type = (intro1 || intro2) ? 'episode' : 'book';\n\nreturn [{ json: { ...$json, content_type } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2032,
         1440
       ],
-      "id": "b22f9902-7058-470c-86aa-72a0b436b700",
-      "name": "Wait",
-      "webhookId": "b3606803-c12f-49ed-9811-80d3d2eb7ef6"
+      "id": "b7cf95eb-bdca-4ef9-8edd-f8a406f076b8",
+      "name": "Classify Source"
     }
   ],
   "connections": {
@@ -962,11 +981,6 @@
       "main": [
         [
           {
-            "node": "EmitOnce",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "InsertEmbedding",
             "type": "main",
             "index": 0
@@ -988,6 +1002,11 @@
             "node": "UpdateStatus",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -996,7 +1015,7 @@
       "main": [
         [
           {
-            "node": "Move file",
+            "node": "Move to Completed",
             "type": "main",
             "index": 0
           }
@@ -1049,7 +1068,7 @@
             "index": 0
           },
           {
-            "node": "ProcessDocument",
+            "node": "Classify Source",
             "type": "main",
             "index": 0
           }
@@ -1134,7 +1153,7 @@
       "main": [
         [
           {
-            "node": "Wait",
+            "node": "SendPostToSocial",
             "type": "main",
             "index": 0
           }
@@ -1144,17 +1163,6 @@
     "Upsert file_status": {
       "main": [
         []
-      ]
-    },
-    "Move file": {
-      "main": [
-        [
-          {
-            "node": "Comleted: LogToSheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
       ]
     },
     "DeleteOldChunks1": {
@@ -1173,11 +1181,33 @@
         ]
       ]
     },
+    "Move to Completed": {
+      "main": [
+        [
+          {
+            "node": "Comleted: LogToSheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Wait": {
       "main": [
         [
           {
-            "node": "SendPostToSocial",
+            "node": "EmitOnce",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Source": {
+      "main": [
+        [
+          {
+            "node": "ProcessDocument",
             "type": "main",
             "index": 0
           }

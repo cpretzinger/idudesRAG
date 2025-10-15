@@ -77,6 +77,13 @@ password_resets,user_id,uuid,NULL,
 password_resets,token_hash,character varying,NOT NULL,
 password_resets,expires_at,timestamp without time zone,NOT NULL,
 password_resets,created_at,timestamp without time zone,NULL,now()
+prompt_library,id,bigint,NOT NULL,nextval('prompt_library_id_seq'::regclass)
+prompt_library,prompt_key,text,NOT NULL,
+prompt_library,version,text,NOT NULL,
+prompt_library,role,text,NOT NULL,
+prompt_library,content,text,NOT NULL,
+prompt_library,created_at,timestamp with time zone,NULL,now()
+prompt_library,updated_at,timestamp with time zone,NULL,now()
 social_content_generated,id,uuid,NOT NULL,gen_random_uuid()
 social_content_generated,episode_title,character varying,NOT NULL,
 social_content_generated,file_id,text,NULL,
@@ -99,6 +106,8 @@ social_content_generated,created_at,timestamp with time zone,NULL,now()
 social_content_generated,updated_at,timestamp with time zone,NULL,now()
 social_content_generated,work_id,text,NULL,
 social_content_generated,attempt,integer,NULL,0
+social_content_generated,persona_segment,text,NULL,
+social_content_generated,emotion_tone,text,NULL,
 social_feedback_insights,id,uuid,NOT NULL,gen_random_uuid()
 social_feedback_insights,pattern_type,character varying,NOT NULL,
 social_feedback_insights,pattern_description,text,NOT NULL,

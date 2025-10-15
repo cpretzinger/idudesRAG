@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ifqocsF03reUTfWHPatWXv8AydZAFJi6qRlwxN9FXSYgruuDGWVVxO2ofuMMZO8
+\restrict PxjagcnBmXppCdebVGIEUFwxxGerfGH7R4QCTa4MHXAAxlaH5mMTm10K0AIRshy
 
 -- Dumped from database version 16.10 (Debian 16.10-1.pgdg12+1)
 -- Dumped by pg_dump version 17.6 (Ubuntu 17.6-0ubuntu0.25.04.1)
@@ -995,6 +995,40 @@ CREATE TABLE core.password_resets (
 
 
 --
+-- Name: prompt_library; Type: TABLE; Schema: core; Owner: -
+--
+
+CREATE TABLE core.prompt_library (
+    id bigint NOT NULL,
+    prompt_key text NOT NULL,
+    version text NOT NULL,
+    role text NOT NULL,
+    content text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: prompt_library_id_seq; Type: SEQUENCE; Schema: core; Owner: -
+--
+
+CREATE SEQUENCE core.prompt_library_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: prompt_library_id_seq; Type: SEQUENCE OWNED BY; Schema: core; Owner: -
+--
+
+ALTER SEQUENCE core.prompt_library_id_seq OWNED BY core.prompt_library.id;
+
+
+--
 -- Name: social_content_generated; Type: TABLE; Schema: core; Owner: -
 --
 
@@ -1021,6 +1055,8 @@ CREATE TABLE core.social_content_generated (
     updated_at timestamp with time zone DEFAULT now(),
     work_id text,
     attempt integer DEFAULT 0,
+    persona_segment text,
+    emotion_tone text,
     CONSTRAINT social_content_generated_day_number_check CHECK (((day_number >= 1) AND (day_number <= 10)))
 );
 
@@ -1180,6 +1216,13 @@ ALTER TABLE ONLY core.embeddings ALTER COLUMN id SET DEFAULT nextval('core.embed
 
 
 --
+-- Name: prompt_library id; Type: DEFAULT; Schema: core; Owner: -
+--
+
+ALTER TABLE ONLY core.prompt_library ALTER COLUMN id SET DEFAULT nextval('core.prompt_library_id_seq'::regclass);
+
+
+--
 -- Name: api_cache api_cache_pkey; Type: CONSTRAINT; Schema: core; Owner: -
 --
 
@@ -1273,6 +1316,14 @@ ALTER TABLE ONLY core.password_reset_tokens
 
 ALTER TABLE ONLY core.password_resets
     ADD CONSTRAINT password_resets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: prompt_library prompt_library_pkey; Type: CONSTRAINT; Schema: core; Owner: -
+--
+
+ALTER TABLE ONLY core.prompt_library
+    ADD CONSTRAINT prompt_library_pkey PRIMARY KEY (id);
 
 
 --
@@ -1699,6 +1750,13 @@ CREATE INDEX idx_users_role ON core.users USING btree (role) WHERE ((role)::text
 
 
 --
+-- Name: prompt_library_key_ver_role; Type: INDEX; Schema: core; Owner: -
+--
+
+CREATE UNIQUE INDEX prompt_library_key_ver_role ON core.prompt_library USING btree (prompt_key, version, role);
+
+
+--
 -- Name: ux_embeddings_file_idx; Type: INDEX; Schema: core; Owner: -
 --
 
@@ -1763,5 +1821,5 @@ ALTER TABLE ONLY core.user_sessions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ifqocsF03reUTfWHPatWXv8AydZAFJi6qRlwxN9FXSYgruuDGWVVxO2ofuMMZO8
+\unrestrict PxjagcnBmXppCdebVGIEUFwxxGerfGH7R4QCTa4MHXAAxlaH5mMTm10K0AIRshy
 

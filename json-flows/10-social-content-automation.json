@@ -14,78 +14,9 @@
       "typeVersion": 1,
       "position": [
         -1392,
-        -256
+        -192
       ],
       "webhookId": "0c8869b7-c940-4654-b4d9-480e20f87aca"
-    },
-    {
-      "parameters": {
-        "jsCode": "if ($json.ok) { return [{ json: $json }]; } return [];"
-      },
-      "id": "d89a5848-f7de-4c6a-884b-e3e81c92c897",
-      "name": "Payload OK",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -864,
-        -496
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "if (!$json.ok) { return [{ json: $json }]; } return [];"
-      },
-      "id": "88aae1ec-8351-4121-bf32-78be5fd24448",
-      "name": "Payload Invalid",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -960,
-        -256
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { status: 'bad_request', error: $json.error || 'file_id and filename required' } }}",
-        "options": {
-          "responseCode": 400
-        }
-      },
-      "id": "2d5cbe1d-e66c-4b47-97ba-b855580519b8",
-      "name": "Respond Bad Request",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        -832,
-        -256
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const b = $json.body || {};\nif (!b.file_id || !b.filename) {\n  return [{ json: { ok: false, status: 400, error: 'file_id and filename required' } }];\n}\nreturn [{ json: { ok: true, file_id: b.file_id, filename: b.filename } }];"
-      },
-      "id": "15beadb0-eada-4ca7-8283-f68c4feb1af8",
-      "name": "Validate Episode Payload",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -1200,
-        -256
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const data = Array.isArray($json) ? $json[0] : $json;\n\nif (!data || !data.file_id) return [];\n\nreturn [{\n  json: {\n    file_id: data.file_id,\n    filename: data.filename,\n    status: data.status,\n    count: data.count,\n    total_chunks: data.total_chunks,\n    social_status: data.social_status,\n    is_duplicate: data.is_duplicate,\n    ready: true\n  }\n}];"
-      },
-      "id": "965c8bda-b1f1-43e7-b22e-c2b0eb472c34",
-      "name": "Gate Ready",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -576,
-        -496
-      ]
     },
     {
       "parameters": {
@@ -100,8 +31,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -96,
-        -704
+        528,
+        -432
       ]
     },
     {
@@ -117,8 +48,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        0,
-        -480
+        544,
+        -240
       ]
     },
     {
@@ -129,36 +60,13 @@
       "typeVersion": 1,
       "position": [
         -1952,
-        -48
+        16
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n    fps.file_id,\n    fps.filename,\n    fps.rag_status as status,\n    fps.rag_embedding_count as count,\n    fps.rag_chunks_count as total_chunks,\n    fps.social_status,\n    CASE WHEN fps.social_status = 'completed' THEN true ELSE false END as is_duplicate\n  FROM core.file_pipeline_status fps\n  WHERE fps.rag_status = 'completed'\n  AND fps.rag_embedding_count > 0\n  ORDER BY fps.updated_at DESC\n  LIMIT 1;",
-        "options": {
-          "queryReplacement": "= [ { file_id, filename, status, created_at } ]"
-        }
-      },
-      "id": "aca29fa3-2693-4b20-bb7e-0e9bb337fffa",
-      "name": "Get Latest Episode",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2,
-      "position": [
-        -1568,
-        32
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "jd4YBgZXwugV4pZz",
-          "name": "RailwayPG-idudes"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT\n  id,\n  file_id,\n  filename,\n  chunk_index,\n  text,\n  COUNT(*) OVER (PARTITION BY file_id) AS total_chunks\n  FROM core.embeddings\n  WHERE file_id = $1\n  ORDER BY chunk_index ASC;",
+        "query": "SELECT\n    id, file_id, filename, chunk_index, text,\n    COUNT(*) OVER (PARTITION BY file_id) AS total_chunks\n  FROM core.embeddings\n  WHERE file_id = $1\n  ORDER BY chunk_index ASC;\n\n  SELECT\n    id, file_id, filename, chunk_index, text,\n    COUNT(*) OVER (PARTITION BY file_id) AS total_chunks\n  FROM core.embeddings\n  WHERE file_id = $1\n  ORDER BY chunk_index ASC\n  LIMIT 10000;",
         "options": {
           "queryReplacement": "={{ [ $json.file_id ] }}"
         }
@@ -169,7 +77,7 @@
       "typeVersion": 2,
       "position": [
         -1424,
-        32
+        64
       ],
       "credentials": {
         "postgres": {
@@ -180,15 +88,15 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalizeEpisodeTitle(candidateTitle, candidateFilename) {\n    function pick(s) { return (s || '').toString(); }\n    var t = pick(candidateTitle);\n    var f = pick(candidateFilename);\n    var rx = /(?:^|\\b)(?:ep(?:isode)?|episode)\\s*[:#-]\\s([0-9]{1,4})/i;\n    var m = t.match(rx);\n    if (m) return 'Episode ' + m[1];\n    m = f.match(rx);\n    if (m) return 'Episode ' + m[1];\n    return t || 'Episode';\n  }\n\n  var chunkItems = $items('Get Episode Chunks', 0, 0);\n  var rows = chunkItems.map(function(i){ return i.json; });\n  if (!rows.length) {\n    return [{ json: { error: 'no_chunks_found' } }];\n  }\n\n  // Sort and merge by chunk_index\n  rows.sort(function(a, b){ return (a.chunk_index || 0) - (b.chunk_index || 0); });\n  var content = rows.map(function(r){ return (r.text || '').toString(); }).join('\\n\\n');\n\n  // Get data from previous nodes (works for both webhook and manual trigger)\n  var fromLatest = $items('Get Latest Episode', 0, 0)[0] || { json: {} };\n  var first = rows[0] || {};\n\n  var file_id = fromLatest.json.file_id || first.file_id || null;\n  var filename = fromLatest.json.filename || first.filename || '';\n  var episode_title = normalizeEpisodeTitle(fromLatest.json.filename || '', filename);\n  var numMatch = (episode_title.match(/Episode\\s+([0-9]{1,4})/i) || [])[1];\n  var episode_number = numMatch ? parseInt(numMatch, 10) : null;\n\n  return [{\n    json: {\n      episode_content: content.slice(0, 20000),\n      episode_title: episode_title,\n      episode_number: episode_number,\n      file_id: file_id,\n      filename: filename,\n      chunk_count: rows.length\n    }\n  }];\n"
+        "jsCode": "function normalizeEpisodeTitle(candidateTitle, candidateFilename) {\n  const pick = s => (s || '').toString();\n  const t = pick(candidateTitle);\n  const f = pick(candidateFilename);\n  const rx = /(?:^|\\b)(?:ep(?:isode)?|episode)\\s*[:#-]?\\s*([0-9]{1,4})/i;\n  let m = t.match(rx); if (m) return 'Episode ' + m[1];\n  m = f.match(rx);     if (m) return 'Episode ' + m[1];\n  return t || 'Episode';\n}\n\n// read all chunk rows from this node's input\nconst rows = $input.all().map(i => i.json);\nif (!rows.length) {\n  return [{ json: { error: 'no_chunks_found', file_id: $json.file_id || null } }];\n}\n\n// sort + merge\nrows.sort((a,b) => (a.chunk_index||0) - (b.chunk_index||0));\nconst content = rows.map(r => String(r.text||'')).join('\\n\\n');\n\nconst first = rows[0] || {};\n\n// try to read one resolver item if available, else fall back to rows\nlet resolved = {};\ntry {\n  const r = $items('ResolveEpisode', 0, 0)?.[0]?.json;\n  if (r) resolved = r;\n} catch (_) {}\n\nconst file_id  = resolved.file_id  || first.file_id  || null;\nconst filename = resolved.filename || first.filename || '';\n\nconst episode_title  = normalizeEpisodeTitle(filename, filename);\nconst numMatch = (episode_title.match(/Episode\\s+([0-9]{1,4})/i) || [])[1];\nconst episode_number = numMatch ? parseInt(numMatch, 10) : null;\n\nreturn [{\n  json: {\n    episode_content: content.slice(0, 20000),\n    episode_title,\n    episode_number,\n    file_id,\n    filename,\n    chunk_count: rows.length\n  }\n}];\n"
       },
       "id": "ab87e3c6-802e-4911-ad2c-318821571a72",
       "name": "Combine Episode Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1280,
-        32
+        -1264,
+        64
       ]
     },
     {
@@ -200,8 +108,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -672,
-        32
+        160,
+        96
       ]
     },
     {
@@ -214,7 +122,7 @@
       "typeVersion": 2,
       "position": [
         -2176,
-        352
+        416
       ]
     },
     {
@@ -250,8 +158,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1712,
-        352
+        -1520,
+        560
       ]
     },
     {
@@ -263,8 +171,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1264,
-        352
+        -224,
+        544
       ]
     },
     {
@@ -280,8 +188,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        -1072,
-        352
+        -32,
+        416
       ],
       "credentials": {
         "postgres": {
@@ -292,22 +200,22 @@
     },
     {
       "parameters": {
-        "jsCode": "// PARSE + CLEAN — extracts 3 sections and sanitizes junk characters/markdown.\n// Keeps real hashtags (#Tag) but removes markdown headers (#, ## at line start), bullets, **bold**, etc.\n\n// ---------- helpers ----------\nconst prefer = (...vals) => {\n  for (const v of vals) if (v != null && String(v).trim() !== '') return v;\n  return '';\n};\n\nconst safeGetNodeJson = (name) => {\n  try {\n    const arr = $items(name, 0, 0);\n    if (Array.isArray(arr) && arr[0]?.json) return arr[0].json;\n  } catch {}\n  try {\n    const j = $node[name]?.json;\n    if (j) return j;\n  } catch {}\n  return null;\n};\n\nconst readFromInputs = () => {\n  const all = $input.all();\n  for (const it of all) {\n    const j = it.json || {};\n    if (typeof j.strict_output === 'string' && j.strict_output.trim()) return j.strict_output;\n    if (typeof j.output === 'string' && j.output.trim()) return j.output;\n    if (typeof j.text === 'string' && j.text.trim()) return j.text;\n    if (typeof j.content === 'string' && j.content.trim()) return j.content;\n  }\n  return '';\n};\n\n// Cleanup: remove markdown/bullets/excess whitespace but KEEP real hashtags.\nconst clean = (s) => {\n  let t = String(s ?? '');\n\n  // Normalize\n  t = t\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '')   // zero-width\n    .replace(/\\t/g, '  ');\n\n  // Strip code fences & inline code marks\n  t = t.replace(/```[\\s\\S]*?```/g, m => m.replace(/```/g,'')); // remove fences\n  t = t.replace(/`{1,3}([^`]+)`{1,3}/g, '$1');                 // inline code\n\n  // Strip markdown headers at line start (but not hashtags in text)\n  t = t.replace(/^\\s*#{1,6}\\s*/gm, '');\n\n  // Remove common bullet markers at line start\n  t = t.replace(/^\\s*[-*•·]+[\\t ]*/gm, '');\n\n  // Remove stray bullets mid-text\n  t = t.replace(/[•·]/g, '');\n\n  // Unwrap bold/italics\n  t = t.replace(/\\*\\*(.*?)\\*\\*/g, '$1').replace(/__(.*?)__/g, '$1').replace(/_(.*?)_/g, '$1');\n\n  // Normalize double dashes -> em dash\n  t = t.replace(/--+/g, '—');\n\n  // Convert [text](url) → text (url)\n  t = t.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 ($2)');\n\n  // Remove accidental heading hash clusters not attached to a word (##, ###) but KEEP #Tag\n  t = t.replace(/(^|\\s)#{2,}(?=\\s|$)/g, '$1');\n\n  // Collapse spaces before punctuation\n  t = t.replace(/\\s+([.,!?;:])(?!\\w)/g, '$1');\n\n  // Trim extra spaces per line\n  t = t.replace(/[ \\t]+\\n/g, '\\n');\n\n  // Collapse 3+ newlines → 2\n  t = t.replace(/\\n{3,}/g, '\\n\\n');\n\n  // Collapse multiple spaces (not across newlines)\n  t = t.replace(/[^\\S\\r\\n]{2,}/g, ' ');\n\n  // Final trim\n  t = t.trim();\n\n  return t;\n};\n\n// ---------- 1) SOURCE TEXT ----------\nconst cur = $json || {};\nlet rawText = String(\n  prefer(\n    cur.strict_output,  // from Format Enforcer\n    cur.output, cur.text, cur.content,\n    readFromInputs()\n  )\n);\n\n// Normalize outer text\nrawText = rawText\n  .replace(/\\r\\n/g, '\\n')\n  .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '')\n  .trim();\n\nif (!rawText) {\n  return [{\n    json: {\n      day_number: null,\n      day_theme: '',\n      episode_title: '',\n      topic_title: '',\n      instagram_content: '',\n      facebook_content: '',\n      linkedin_content: '',\n      _parser_note: 'No generator output found.'\n    }\n  }];\n}\n\n// ---------- 2) SECTION EXTRACTION ----------\nconst getSection = (src, label) => {\n  // allow leading spaces, optional colon, optional blank after header\n  const re = new RegExp(\n    String.raw`^[\\t ]*###\\s*${label}\\s*:?\\s*\\n?([\\s\\S]*?)(?=^[\\t ]*###\\s*|\\Z)`,\n    'im'\n  );\n  const m = src.match(re);\n  return m ? m[1].trim() : '';\n};\n\nlet instagram_content = getSection(rawText, 'INSTAGRAM\\\\s*REEL');\nlet facebook_content  = getSection(rawText, 'FACEBOOK\\\\s*POST');\nlet linkedin_content  = getSection(rawText, 'LINKEDIN\\\\s*POST');\n\n// Fallback label-style blocks (Instagram Reel: / Facebook: / LinkedIn:)\nconst fallbackByLabel = (labelRegex) => {\n  const re = new RegExp(String.raw`^\\s*${labelRegex}\\s*:\\s*`, 'im');\n  if (!re.test(rawText)) return '';\n  const after = rawText.split(re)[1] || '';\n  const nextHeader = after.search(/^[\\t ]*###\\s*/m);\n  return (nextHeader >= 0 ? after.slice(0, nextHeader) : after).trim();\n};\n\nif (!instagram_content) instagram_content = fallbackByLabel('Instagram\\\\s*Reel');\nif (!facebook_content)  facebook_content  = fallbackByLabel('Facebook');\nif (!linkedin_content)  linkedin_content  = fallbackByLabel('LinkedIn');\n\n// Clean sections\ninstagram_content = clean(instagram_content);\nfacebook_content  = clean(facebook_content);\nlinkedin_content  = clean(linkedin_content);\n\n// ---------- 3) METADATA (prefer Combine Enrichment Data) ----------\nconst CED = safeGetNodeJson('Combine Enrichment Data') || {};\nconst EP  = safeGetNodeJson('Combine Episode Content') || {};\n\nconst out = {\n  day_number: prefer(cur.day_number, CED.day_number, EP.day_number) || null,\n  day_theme:  prefer(cur.day_theme,  CED.day_theme,  EP.day_theme)  || '',\n  episode_title: prefer(cur.episode_title, CED.episode_title, EP.episode_title) || '',\n  topic_title:   prefer(cur.concept, cur.topic_title, CED.concept, CED.title, CED.topic_title, EP.concept) || '',\n  instagram_content,\n  facebook_content,\n  linkedin_content\n};\n\n// Note about cleanup if everything vanished\nif (![out.instagram_content, out.facebook_content, out.linkedin_content].some(s => String(s).trim())) {\n  out._parser_note = 'Parsed sections were empty after cleanup. Check upstream output formatting.';\n}\n\nreturn [{ json: out }];\n"
+        "jsCode": "// PARSE + CLEAN — extracts 3 sections and sanitizes junk characters/markdown.\n// Keeps real hashtags (#Tag) but removes markdown headers, bullets, **bold**, etc.\n\n// ---------- helpers ----------\nconst prefer = (...vals) => {\n  for (const v of vals) if (v != null && String(v).trim() !== '') return v;\n  return '';\n};\n\nconst safeGetNodeJson = (name) => {\n  try {\n    const arr = $items(name, 0, 0);\n    if (Array.isArray(arr) && arr[0]?.json) return arr[0].json;\n  } catch {}\n  try {\n    const j = $node[name]?.json;\n    if (j) return j;\n  } catch {}\n  return null;\n};\n\nconst readFromInputs = () => {\n  const all = $input.all();\n  for (const it of all) {\n    const j = it.json || {};\n    if (typeof j.strict_output === 'string' && j.strict_output.trim()) return j.strict_output;\n    if (typeof j.output        === 'string' && j.output.trim())        return j.output;\n    if (typeof j.text          === 'string' && j.text.trim())          return j.text;\n    if (typeof j.content       === 'string' && j.content.trim())       return j.content;\n  }\n  return '';\n};\n\n// Cleanup: remove markdown/bullets/excess whitespace but KEEP real hashtags.\nconst clean = (s) => {\n  let t = String(s ?? '');\n  t = t\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '') // zero-width\n    .replace(/\\t/g, '  ');\n  t = t.replace(/```[\\s\\S]*?```/g, m => m.replace(/```/g, '')); // code fences\n  t = t.replace(/`{1,3}([^`]+)`{1,3}/g, '$1');                  // inline code\n  t = t.replace(/^\\s*#{1,6}\\s*/gm, '');                         // md headers\n  t = t.replace(/^\\s*[-*•·]+[\\t ]*/gm, '');                     // bullets at BOl\n  t = t.replace(/[•·]/g, '');                                   // stray bullets\n  t = t.replace(/\\*\\*(.*?)\\*\\*/g, '$1').replace(/__(.*?)__/g, '$1').replace(/_(.*?)_/g, '$1'); // bold/italics\n  t = t.replace(/--+/g, '—');                                   // double dash\n  t = t.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 ($2)'); // [text](url)\n  t = t.replace(/(^|\\s)#{2,}(?=\\s|$)/g, '$1');                  // bare ##\n  t = t.replace(/\\s+([.,!?;:])(?!\\w)/g, '$1');                  // space before punct\n  t = t.replace(/[ \\t]+\\n/g, '\\n');                             // trim line-end spaces\n  t = t.replace(/\\n{3,}/g, '\\n\\n');                             // collapse 3+ newlines\n  t = t.replace(/[^\\S\\r\\n]{2,}/g, ' ');                         // collapse spaces\n  return t.trim();\n};\n\n// ---------- 1) SOURCE TEXT ----------\nconst cur = $json || {};\nlet rawText = String(\n  prefer(cur.strict_output, cur.output, cur.text, cur.content, readFromInputs())\n);\n\n// Normalize outer text\nrawText = rawText\n  .replace(/\\r\\n/g, '\\n')\n  .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '')\n  .trim();\n\nif (!rawText) {\n  return [{\n    json: {\n      day_number: null,\n      day_theme: '',\n      episode_title: '',\n      topic_title: '',\n      instagram_content: '',\n      facebook_content: '',\n      linkedin_content: '',\n      _parser_note: 'No generator output found.'\n    }\n  }];\n}\n\n// Soft header enforcement (optional)\nconst STRICT_HEADERS = false;\nconst hasIG = /^([\\t ]*)###\\s*INSTAGRAM\\s*REEL\\s*:?$/im.test(rawText);\nconst hasFB = /^([\\t ]*)###\\s*FACEBOOK\\s*POST\\s*:?$/im.test(rawText);\nconst hasLI = /^([\\t ]*)###\\s*LINKEDIN\\s*POST\\s*:?$/im.test(rawText);\nif (STRICT_HEADERS && !(hasIG && hasFB && hasLI)) {\n  throw new Error('Format error: expected all three headers (### INSTAGRAM REEL / ### FACEBOOK POST / ### LINKEDIN POST).');\n}\n\n// ---------- 2) SECTION EXTRACTION ----------\nconst getSection = (src, label) => {\n  const re = new RegExp(\n    String.raw`^[\\t ]*###\\s*${label}\\s*:?\\s*\\n?([\\s\\S]*?)(?=^[\\t ]*###\\s*|\\Z)`,\n    'im'\n  );\n  const m = src.match(re);\n  return m ? m[1].trim() : '';\n};\n\nlet instagram_content = getSection(rawText, 'INSTAGRAM\\\\s*REEL');\nlet facebook_content  = getSection(rawText, 'FACEBOOK\\\\s*POST');\nlet linkedin_content  = getSection(rawText, 'LINKEDIN\\\\s*POST');\n\n// Fallback label-style blocks\nconst fallbackByLabel = (labelRegex) => {\n  const re = new RegExp(String.raw`^\\s*${labelRegex}\\s*:\\s*`, 'im');\n  if (!re.test(rawText)) return '';\n  const after = rawText.split(re)[1] || '';\n  const nextHeader = after.search(/^[\\t ]*###\\s*/m);\n  return (nextHeader >= 0 ? after.slice(0, nextHeader) : after).trim();\n};\n\nif (!instagram_content) instagram_content = fallbackByLabel('Instagram\\\\s*Reel');\nif (!facebook_content)  facebook_content  = fallbackByLabel('Facebook');\nif (!linkedin_content)  linkedin_content  = fallbackByLabel('LinkedIn');\n\n// Clean sections\ninstagram_content = clean(instagram_content);\nfacebook_content  = clean(facebook_content);\nlinkedin_content  = clean(linkedin_content);\n\n// ---------- 2b) VALIDATOR ----------\nconst missing = [];\nif (!instagram_content) missing.push('INSTAGRAM REEL');\nif (!facebook_content)  missing.push('FACEBOOK POST');\nif (!linkedin_content)  missing.push('LINKEDIN POST');\nif (missing.length) {\n  throw new Error('Empty sections after parsing: ' + missing.join(', '));\n}\n\n// ---------- 2c) REBUILD strict_output ----------\nconst strict_output =\n  '### INSTAGRAM REEL\\n' + instagram_content + '\\n\\n' +\n  '### FACEBOOK POST\\n' + facebook_content  + '\\n\\n' +\n  '### LINKEDIN POST\\n' + linkedin_content;\n\n// ---------- 3) METADATA (prefer Combine Enrichment Data) ----------\nconst CED = safeGetNodeJson('Combine Enrichment Data') || {};\nconst EP  = safeGetNodeJson('Combine Episode Content') || {};\n\nconst out = {\n  day_number:    prefer(cur.day_number,  CED.day_number,  EP.day_number)  || null,\n  day_theme:     prefer(cur.day_theme,   CED.day_theme,   EP.day_theme)   || '',\n  episode_title: prefer(cur.episode_title, CED.episode_title, EP.episode_title) || '',\n  topic_title:   prefer(cur.concept, cur.topic_title, CED.concept, CED.title, CED.topic_title, EP.concept) || '',\n  instagram_content,\n  facebook_content,\n  linkedin_content,\n  strict_output\n};\n\nif (![out.instagram_content, out.facebook_content, out.linkedin_content].some(s => String(s).trim())) {\n  out._parser_note = 'Parsed sections were empty after cleanup. Check upstream output formatting.';\n}\n\nreturn [{ json: out }];\n"
       },
       "id": "0f288ac7-441c-4c10-974a-9210eded63a2",
       "name": "Parse Generated Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1104,
-        352
+        2656,
+        32
       ]
     },
     {
       "parameters": {
         "model": "gpt-5-nano",
         "options": {
-          "reasoningEffort": "medium"
+          "reasoningEffort": "low"
         }
       },
       "id": "db8b5715-4060-4ee0-b0c2-588ce0c58b77",
@@ -315,8 +223,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        512,
-        640
+        2880,
+        720
       ],
       "credentials": {
         "openAiApi": {
@@ -334,34 +242,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1600,
-        352
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const review=$json; const content=$items('Parse Generated Content',0,0)[0].json;\nconst apply=(list,txt)=>{if(!list) return txt; for(const f of list){ if(f.current&&f.fix) txt=txt.replace(f.current,f.fix);} return txt;};\nreturn {\n  day_number: content.day_number,\n  day_theme: content.day_theme,\n  episode_title: content.episode_title,\n  topic_title: content.topic_title,\n  instagram_content: apply(review.instagram_review?.required_fixes, content.instagram_content),\n  facebook_content: apply(review.facebook_review?.required_fixes, content.facebook_content),\n  linkedin_content: apply(review.linkedin_review?.required_fixes, content.linkedin_content)\n};"
-      },
-      "id": "86ac3ef6-43de-41f4-94ea-917a05e792f9",
-      "name": "Apply Review Fixes",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2448,
-        560
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const base=$items('Apply Review Fixes',0,0)[0].json;\nconst ig=$items('Optimize Instagram (GPT-5-Nano)',0,0)[0].json.text||base.instagram_content;\nconst fb=$items('Optimize Facebook (GPT-5-Nano)',0,0)[0].json.text||base.facebook_content;\nconst li=$items('Optimize LinkedIn (GPT-5-Nano)',0,0)[0].json.text||base.linkedin_content;\nreturn { ...base, instagram_final: ig, facebook_final: fb, linkedin_final: li, ready_for_scheduling: true };"
-      },
-      "id": "b61dfdff-9b44-427d-b0ae-08d5696e4fae",
-      "name": "Combine Optimized Content",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        976,
-        832
+        3696,
+        416
       ]
     },
     {
@@ -373,8 +255,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1168,
-        832
+        3728,
+        1152
       ]
     },
     {
@@ -390,8 +272,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        1360,
-        832
+        3888,
+        1152
       ],
       "credentials": {
         "postgres": {
@@ -485,8 +367,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        3488,
-        1056
+        656,
+        1328
       ],
       "id": "35a27bb9-e777-46f9-8a04-04b497a448a4",
       "name": "Switch"
@@ -494,16 +376,16 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are a world-class social copy generator for The Insurance Dudes.\n\nCONTEXT\nDAY: {{ $json.day_number }} \nCategory: \nEPISODE: {{ $json.episode_title }} ({{ $json.episode_number }})\nTOPIC: {{ $('Generate Enrichment Queries').item.json.tags }}\nScore: {{ $json.scores.weighted_total }}/10\n\nPRIMARY SOURCE (truncated):\n{{ $node[\"Combine Episode Content\"].json.episode_content.substring(0, 3000) }}\n\nENRICHMENT:\n{{ $json.enriched_content_chunks }}\n\nBRAND/TONE\n- Clear, confident, practical. Teacher > hype.\n- Use concrete outcomes from the sources; do NOT invent metrics.\n- Plain language; skim-friendly.\n\nOUTPUT FORMAT (EXACTLY — no extra text, no code fences)\n### INSTAGRAM REEL\n<1–3 punchy lines; include micro-CTA (Save/Share/Listen); 3–6 relevant hashtags>\n\n### FACEBOOK POST\n<2–4 sentences or 2–4 short bullets; one clear CTA; links allowed>\n\n### LINKEDIN POST\n<professional, concise; optional 2–4 bullets; leadership framing; one clear CTA; links allowed>\n\nGUARDRAILS\n- Preserve provided links exactly.\n- No medical/financial/legal/political claims beyond the sources.\n- No placeholders like [insert].\n- All three sections MUST be non-empty.",
+        "text": "={{ $json.system_prompt }}",
         "options": {
-          "systemMessage": "You are a formatting-strict social copy generator for The Insurance Dudes.\n\nOUTPUT CONTRACT (MUST PASS ALL)\n1) Output EXACTLY three sections, in this order, with these exact headers:\n   ### INSTAGRAM REEL\n   ### FACEBOOK POST\n   ### LINKEDIN POST\n2) No text before the first header or after the last section.\n3) Each section MUST be non-empty text (may include newlines). Do not include code fences.\n4) Do not invent facts. Preserve links as given.\n\nFORMAT (OUTPUT EXACTLY LIKE THIS)\n### INSTAGRAM REEL\n<instagram copy here>\n\n### FACEBOOK POST\n<facebook copy here>\n\n### LINKEDIN POST\n<linkedin copy here>\n\nSELF-CHECK (STRICT)\n- If any header is missing, or any section is empty, REWRITE UNTIL ALL CHECKS PASS.\n- If any extra text exists outside the three sections, REMOVE IT.\n- When finished, ensure the output starts with \"### INSTAGRAM REEL\" and ends with the LinkedIn section text (no trailing blank lines beyond one newline).\n"
+          "systemMessage": "={{ $json.system_prompt }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        736,
-        352
+        1696,
+        416
       ],
       "id": "29304aaf-1014-4fb8-8e38-6d385e34b764",
       "name": "Generate Content"
@@ -511,16 +393,16 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are the strict content-review editor for The Insurance Dudes.\n\nTASK\nReview these 3 social posts for Day {{ $json.day_number }} — {{ $json.topic_title }}.\nEpisode: {{ $json.episode_title }}\nTopic: {{ $json.topic_title }}\n\nINPUT\nThe content will be provided in exactly three sections:\n### INSTAGRAM REEL\n<text>\n\n### FACEBOOK POST\n<text>\n\n### LINKEDIN POST\n<text>\n\nEVALUATE\nScore each platform on:\n- voice_authenticity (1–10)\n- value_delivery (1–10)\n- engagement_potential (1–10)\n- brand_safety (1–10)\n\nCompute weighted_score:\nweighted_score = 0.25*voice_authenticity + 0.30*value_delivery + 0.25*engagement_potential + 0.20*brand_safety\n\nAPPROVAL RULES\n- APPROVE: weighted_score ≥ 8.0 AND brand_safety ≥ 9 AND no required_fixes.\n- APPROVE_WITH_EDITS: weighted_score ≥ 6.5 AND brand_safety ≥ 8.\n- REJECT: otherwise OR any empty section OR safety/compliance risk.\n\nOUTPUT\nReturn ONLY this JSON (valid JSON, no markdown, no comments):\n\n{\n \"overall_recommendation\": \"APPROVE\"|\"APPROVE_WITH_EDITS\"|\"REJECT\",\n \"summary\": \"1-2 sentence overview\",\n \"instagram_review\": {\n   \"scores\": {\"voice_authenticity\": 1-10,\"value_delivery\": 1-10,\"engagement_potential\": 1-10,\"brand_safety\": 1-10},\n   \"weighted_score\": number,\n   \"pass\": true|false,\n   \"strengths\": [string],\n   \"issues\": [string],\n   \"required_fixes\": [\n     {\"location\":\"hook|script|cta|hashtags\",\"current\":\"string\",\"fix\":\"string\",\"reason\":\"string\"}\n   ]\n },\n \"facebook_review\": {\n   \"scores\": {\"voice_authenticity\": 1-10,\"value_delivery\": 1-10,\"engagement_potential\": 1-10,\"brand_safety\": 1-10},\n   \"weighted_score\": number,\n   \"pass\": true|false,\n   \"strengths\": [string],\n   \"issues\": [string],\n   \"required_fixes\": [\n     {\"location\":\"hook|script|cta|hashtags\",\"current\":\"string\",\"fix\":\"string\",\"reason\":\"string\"}\n   ]\n },\n \"linkedin_review\": {\n   \"scores\": {\"voice_authenticity\": 1-10,\"value_delivery\": 1-10,\"engagement_potential\": 1-10,\"brand_safety\": 1-10},\n   \"weighted_score\": number,\n   \"pass\": true|false,\n   \"strengths\": [string],\n   \"issues\": [string],\n   \"required_fixes\": [\n     {\"location\":\"hook|script|cta|hashtags\",\"current\":\"string\",\"fix\":\"string\",\"reason\":\"string\"}\n   ]\n },\n \"action_items\": [string]\n}\n\nSTRICT\n- If any section is missing/empty: set overall_recommendation to \"REJECT\" and include a required_fixes item instructing to supply a non-empty section.\n- No extra keys; no trailing commas; numbers must be numbers; scores are integers.\n",
+        "text": "={{ $json.user_prompt }}",
         "options": {
-          "systemMessage": "You are a strict content-review editor for The Insurance Dudes.\n\nOUTPUT CONTRACT\n- Return a JSON OBJECT only (not a string). \n- No code fences, no markdown, no prose outside the JSON.\n- All scores are integers (1–10). weighted_score is a number with up to one decimal.\n- Keys and structure must exactly match the schema below.\n\nAPPROVAL RULES\n- APPROVE: weighted_score ≥ 8.0 AND brand_safety ≥ 9 AND no required_fixes\n- APPROVE_WITH_EDITS: weighted_score ≥ 6.5 AND brand_safety ≥ 8\n- REJECT: otherwise OR any empty/missing section\n\nSCHEMA (MUST MATCH EXACTLY)\n{\n \"overall_recommendation\": \"APPROVE\"|\"APPROVE_WITH_EDITS\"|\"REJECT\",\n \"summary\": \"1-2 sentence overview\",\n \"instagram_review\": {\n   \"scores\": {\"voice_authenticity\": 1-10,\"value_delivery\": 1-10,\"engagement_potential\": 1-10,\"brand_safety\": 1-10},\n   \"weighted_score\": number,\n   \"pass\": true|false,\n   \"strengths\": [string],\n   \"issues\": [string],\n   \"required_fixes\": [\n     {\"location\":\"hook|script|cta|hashtags\",\"current\":\"string\",\"fix\":\"string\",\"reason\":\"string\"}\n   ]\n },\n \"facebook_review\": {\n   \"scores\": {\"voice_authenticity\": 1-10,\"value_delivery\": 1-10,\"engagement_potential\": 1-10,\"brand_safety\": 1-10},\n   \"weighted_score\": number,\n   \"pass\": true|false,\n   \"strengths\": [string],\n   \"issues\": [string],\n   \"required_fixes\": [\n     {\"location\":\"hook|script|cta|hashtags\",\"current\":\"string\",\"fix\":\"string\",\"reason\":\"string\"}\n   ]\n },\n \"linkedin_review\": {\n   \"scores\": {\"voice_authenticity\": 1-10,\"value_delivery\": 1-10,\"engagement_potential\": 1-10,\"brand_safety\": 1-10},\n   \"weighted_score\": number,\n   \"pass\": true|false,\n   \"strengths\": [string],\n   \"issues\": [string],\n   \"required_fixes\": [\n     {\"location\":\"hook|script|cta|hashtags\",\"current\":\"string\",\"fix\":\"string\",\"reason\":\"string\"}\n   ]\n },\n \"action_items\": [string]\n}\n\nNOTES\n- If any section is missing/empty, set overall_recommendation to \"REJECT\" and include at least one required_fixes item per platform indicating the missing content.\n- Do NOT wrap the JSON in quotes or code fences.\n"
+          "systemMessage": "={{ $json.system_prompt }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        1328,
-        352
+        3392,
+        416
       ],
       "id": "3cca5996-caf5-4559-b4eb-75f4a5b240fd",
       "name": "Expert Review"
@@ -536,8 +418,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        -976,
-        32
+        -144,
+        96
       ],
       "id": "9e956b03-83c1-4098-8462-3659092e2941",
       "name": "Extract Concepts"
@@ -545,16 +427,16 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Optimize this approved Instagram Reel:\n\nCURRENT:\n{{ $json.instagram_content }}\n\nGoals: Stronger hook, tight 15–30s script, clear CTA, balanced hashtags. Must include a specific clip timestamp.\nReturn ONLY the formatted sections specified.\n  ",
+        "text": "={{ $json.user_prompt }}",
         "options": {
-          "systemMessage": "You are an Instagram Reels optimizer for The Insurance Dudes.\nRefine hook, pacing (15–30s), CTA clarity, and hashtags. Must reference a specific clip timestamp.\n\nHARD RULES\n- Output EXACTLY the required blocks and order below; no pre/post text; no code fences.\n- Hook ≤ 8 words; must be a pattern interrupt.\n- Script ≤ 3 sentences total; flows for 15–30s read-out.\n- CTA ≤ 15 words; action-oriented (Save/Share/Follow/Listen).\n- Hashtags: 5–8 targeted (mix broad + niche).\n- MUST include a clip timestamp in VISUAL SUGGESTIONS as: \"Clip: [mm:ss–mm:ss]\".\n- Do not invent facts or metrics.\n\nFORMAT (OUTPUT EXACTLY)\nOPTIMIZED HOOK: [≤ 8 words]\nOPTIMIZED SCRIPT:\n[3 sentences max with line breaks]\nOPTIMIZED CTA: [≤ 15 words]\nOPTIMIZED HASHTAGS: [5–8 targeted hashtags]\nVISUAL SUGGESTIONS:\n- [B-roll idea]\n- [Text overlay idea]\n- Clip: [mm:ss–mm:ss]"
+          "systemMessage": "={{ $json.system_prompt }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        -1280,
-        832
+        1360,
+        784
       ],
       "id": "3c27199c-930b-47e1-ab31-5705f11bec1e",
       "name": "Optimize Instagram"
@@ -562,16 +444,16 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Optimize this approved LinkedIn post:\n\nCURRENT:\n{{ $json.linkedin_content }}\n\nGoals: Credible hook, concise framework, specific data, professional tone, discussion prompt, 3–6 pro hashtags.\nReturn ONLY the formatted blocks specified.\n",
+        "text": "={{ $json.user_prompt }}",
         "options": {
-          "systemMessage": "You are a LinkedIn post optimizer for The Insurance Dudes.\nOptimize for credibility, insight density, sourced proof, and professional tone.\nNo emojis. No fluff. Do not invent facts.\n\nHARD RULES\n- Output EXACTLY the required blocks and order below; no pre/post text; no code fences.\n- Keep claims grounded in the provided content; if a metric is unsourced, generalize it.\n- Use crisp, skimmable sentences. Avoid salesy hype.\n\nFORMAT (OUTPUT EXACTLY)\nOPTIMIZED LINKEDIN POST:\n\n[Professional hook (2–3 lines for preview)]\n[Insight or framework]\n[Data/proof point]\n[Thought-leadership takeaway]\n[Discussion prompt]\n[3–6 professional hashtags]\n\nENGAGEMENT STRATEGY NOTES:\n- [Why the hook works]\n- [Discussion points to seed in comments]\n- [Who to tag or mention]\n"
+          "systemMessage": "={{ $json.system_prompt }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        624,
-        832
+        3520,
+        736
       ],
       "id": "89dffacc-c2b2-4b86-a6b7-d39dd132272c",
       "name": "Optimize LinkedIn"
@@ -579,16 +461,16 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Optimize this approved Facebook post:\n\nCURRENT:\n{{ $json.facebook_content }}\n\nGoals: Stronger hook with emoji, easy reading with line breaks, clear question, 5-10 strategic hashtags.\nReturn ONLY the formatted blocks specified.",
+        "text": "={{ $json.user_prompt }}",
         "options": {
-          "systemMessage": "You are a Facebook post optimizer for The Insurance Dudes.\nMake it visually scannable, emotionally engaging, and comment-friendly.\n\nHARD RULES\n- Output EXACTLY the required blocks and order below; no pre/post text; no code fences.\n- Use short lines and natural line breaks for readability.\n- Include ONE clear engagement question.\n- Emojis allowed only in the hook. Keep the rest clean.\n- 5–10 strategic hashtags; mix broad + niche; no spammy tags.\n\nFORMAT (OUTPUT EXACTLY)\nOPTIMIZED FACEBOOK POST:\n\n[Hook with emoji]\n[2–3 short paragraphs]\n[Story or example]\n[Engagement question]\n[5–10 hashtags]\n\nSUGGESTED COMMENT RESPONSES:\n- [Positive reply template]\n- [Question answer template]\n- [Objection response template]\n"
+          "systemMessage": "={{ $json.system_prompt }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        -960,
-        832
+        2288,
+        768
       ],
       "id": "b5ca3554-b16c-4706-92ed-5348c34fb422",
       "name": "Optimize Facebook"
@@ -600,8 +482,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1136,
-        32
+        -512,
+        96
       ],
       "id": "82dacd86-21fe-4ed2-ae06-c5b81e1e29c1",
       "name": "cleanAndPrep"
@@ -615,34 +497,11 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        1552,
-        832
+        4080,
+        1152
       ],
       "id": "d634fecb-9e13-4386-9408-5c21bcab92f7",
       "name": "Respond to Webhook"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT\n    fps.file_id,\n    fps.filename,\n    fps.rag_status as status,\n    fps.rag_embedding_count as count,\n    fps.rag_chunks_count as total_chunks,\n    fps.social_status,\n    CASE WHEN fps.social_status = 'completed' THEN true ELSE false END as is_duplicate\n  FROM core.file_pipeline_status fps\n  WHERE fps.file_id = $1\n  AND fps.rag_status = 'completed'\n  AND fps.rag_embedding_count > 0;",
-        "options": {
-          "queryReplacement": "={{ [$json.file_id] }}"
-        }
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -432,
-        -496
-      ],
-      "id": "0293ebdb-331d-445a-8f41-cf7c20b50c7d",
-      "name": "Check & Mark Processed",
-      "credentials": {
-        "postgres": {
-          "id": "jd4YBgZXwugV4pZz",
-          "name": "RailwayPG-idudes"
-        }
-      }
     },
     {
       "parameters": {
@@ -684,7 +543,32 @@
                 "conditions": [
                   {
                     "id": "06227c5a-f679-4ae3-8c3d-4a82560717f1",
-                    "leftValue": "={{ $json.is_duplicate }}",
+                    "leftValue": "={{ $json.is_ready }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ready"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "91fb158a-f54f-4ef3-a508-4d48a29a6c92",
+                    "leftValue": "={{ $json.is_ready }}",
                     "rightValue": "",
                     "operator": {
                       "type": "boolean",
@@ -696,7 +580,7 @@
                 "combinator": "and"
               },
               "renameOutput": true,
-              "outputKey": "FALSE"
+              "outputKey": "Not Ready"
             }
           ]
         },
@@ -706,34 +590,11 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.3,
       "position": [
-        -272,
-        -496
+        -384,
+        -192
       ],
       "id": "56bf96c2-ef45-4b7b-84c4-66c8835f5438",
       "name": "Switch1"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT\n  fps.file_id,\n  fps.filename,\n  fps.rag_status as status,\n  fps.rag_embedding_count as count,\n  fps.rag_chunks_count as total_chunks,\n  fps.social_status,\n  CASE WHEN fps.social_status = 'completed' THEN true ELSE false END as is_duplicate\nFROM core.file_pipeline_status fps\nWHERE fps.file_id = $1\nAND fps.rag_status = 'completed'\nAND fps.rag_embedding_count > 0;",
-        "options": {
-          "queryReplacement": "={{ [$json.file_id] }}"
-        }
-      },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        -720,
-        -496
-      ],
-      "id": "66e63f36-5d63-4e34-a76d-0217197d5420",
-      "name": "getEpisodeData",
-      "credentials": {
-        "postgres": {
-          "id": "jd4YBgZXwugV4pZz",
-          "name": "RailwayPG-idudes"
-        }
-      }
     },
     {
       "parameters": {
@@ -742,8 +603,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1952,
-        352
+        -1744,
+        416
       ],
       "id": "99426ee4-b87e-4a59-a354-c0757b2efaed",
       "name": "buildBody"
@@ -774,8 +635,8 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        32,
-        -704
+        528,
+        -576
       ],
       "id": "7fd5e9c5-edd5-4280-9878-ebd7c06ee43a",
       "name": "MoveToCompleted",
@@ -797,7 +658,7 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -1440,
+        -560,
         352
       ],
       "id": "917c69a9-b0db-4aa5-8a61-295c51ba04ec",
@@ -806,14 +667,14 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={\n  \"day_number\": {{$json.day_number}},\n  \"episode_title\": \"{{$json.episode_title}}\",\n  \"topic_title\": \"{{$json.topic_title}}\",\n  \"instagram_content\": \"{{$json.instagram_content}}\",\n  \"facebook_content\": \"{{$json.facebook_content}}\",\n  \"linkedin_content\": \"{{$json.linkedin_content}}\",\n  \"review_overall\": \"{{$json.review.overall_recommendation}}\",\n  \"review_summary\": \"{{$json.review.summary}}\"\n}\n",
+        "jsonOutput": "={\n  \"work_id\": \"{{$json.work_id}}\",\n  \"day_number\": \"{{$json.day_number}}\",\n  \"episode_title\": \"{{$json.episode_title}}\",\n  \"topic_title\": \"{{$json.topic_title}}\",\n  \"instagram_content\": \"{{$json.instagram_content}}\",\n  \"facebook_content\": \"{{$json.facebook_content}}\",\n  \"linkedin_content\": \"{{$json.linkedin_content}}\",\n  \"review_summary\": \"{{$json.review.summary}}\",\n  \"review_scores\": \"{{$json.review}}\",\n  \"attempt\": \"{{$json.attempt}}\"\n}\n",
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3136,
-        256
+        4784,
+        352
       ],
       "id": "742f3362-3896-4a8e-b1bd-1069f3e68252",
       "name": "setFields"
@@ -829,8 +690,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        240,
-        256
+        960,
+        304
       ],
       "id": "db8720db-fe7c-444d-a40a-bce869c98e07",
       "name": "Merge1"
@@ -844,19 +705,19 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -880,
-        352
+        160,
+        416
       ]
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\n\nconst items = $input.all();\nreturn items.map(item => {\n  const model = 'gpt-5-nano';\n  const system = 'You are a formatting-strict social copy generator for The Insurance Dudes.\n\nOUTPUT CONTRACT (MUST PASS ALL)\n1) Output EXACTLY three sections, in this order, with these exact headers:\n   ### INSTAGRAM REEL\n   ### FACEBOOK POST\n   ### LINKEDIN POST\n2) No text before the first header or after the last section.\n3) Each section MUST be non-empty text (may include newlines). Do not include code fences.\n4) Do not invent facts. Preserve links as given.\n\nFORMAT (OUTPUT EXACTLY LIKE THIS)\n### INSTAGRAM REEL\n<instagram copy here>\n\n### FACEBOOK POST\n<facebook copy here>\n\n### LINKEDIN POST\n<linkedin copy here>\n\nSELF-CHECK (STRICT)\n- If any header is missing, or any section is empty, REWRITE UNTIL ALL CHECKS PASS.\n- If any extra text exists outside the three sections, REMOVE IT.\n- When finished, ensure the output starts with \"### INSTAGRAM REEL\" and ends with the LinkedIn section text (no trailing blank lines beyond one newline).';\n  const user = item.json.enriched_content_chunks || '';\n  const episode_id = item.json.file_id || 'none';\n  const prompt_version = 'gen_v3';\n\n  const key_hash = crypto.createHash('sha256')\n    .update(JSON.stringify({model, system, user, episode_id, prompt_version}))\n    .digest('hex');\n\n  return {\n    json: {\n      ...item.json,\n      gen_cache_key: key_hash,\n      gen_model: model,\n      gen_prompt_version: prompt_version\n    }\n  };\n});"
+        "jsCode": "const crypto = require('crypto');\n\nconst items = $input.all();\nreturn items.map(item => {\n  const model = 'gpt-5-nano';\n\n  // ✅ Use a template literal (backticks) so multi-line is valid\n  const system = String.raw`You are a formatting-strict social copy generator for The Insurance Dudes.\n\nOUTPUT CONTRACT (MUST PASS ALL)\n1) Output EXACTLY three sections, in this order, with these exact headers:\n   ### INSTAGRAM REEL\n   ### FACEBOOK POST\n   ### LINKEDIN POST\n2) No text before the first header or after the last section.\n3) Each section MUST be non-empty text (may include newlines). Do not include code fences.\n4) Do not invent facts. Preserve links as given.\n\nFORMAT (OUTPUT EXACTLY LIKE THIS)\n### INSTAGRAM REEL\n<instagram copy here>\n\n### FACEBOOK POST\n<facebook copy here>\n\n### LINKEDIN POST\n<linkedin copy here>\n\nSELF-CHECK (STRICT)\n- If any header is missing, or any section is empty, REWRITE UNTIL ALL CHECKS PASS.\n- If any extra text exists outside the three sections, REMOVE IT.\n- When finished, ensure the output starts with \"### INSTAGRAM REEL\" and ends with the LinkedIn section text (no trailing blank lines beyond one newline).`;\n\n  const user = String(item.json.enriched_content_chunks || '');\n  const episode_id = item.json.file_id || 'none';\n  const prompt_version = 'gen_v3';\n\n  const key_hash = crypto.createHash('sha256')\n    .update(JSON.stringify({ model, system, user, episode_id, prompt_version }))\n    .digest('hex');\n\n  return {\n    json: {\n      ...item.json,\n      gen_cache_key: key_hash,\n      gen_model: model,\n      gen_prompt_version: prompt_version,\n      // optionally pass the prompts along if you want to inspect them downstream\n      system_prompt: system,\n      user_prompt: user\n    }\n  };\n});\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -496,
-        352
+        480,
+        416
       ],
       "id": "52125537-cae3-42c4-bb54-a254b3173664",
       "name": "Build Gen Cache Key"
@@ -872,11 +733,13 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -288,
-        352
+        624,
+        416
       ],
       "id": "5a3fa323-a0dc-446c-8444-a4ee3cc5be83",
       "name": "Check Gen Cache",
+      "executeOnce": false,
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "jd4YBgZXwugV4pZz",
@@ -890,7 +753,7 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "loose",
+            "typeValidation": "strict",
             "version": 2
           },
           "conditions": [
@@ -915,16 +778,15 @@
               }
             }
           ],
-          "combinator": "and"
+          "combinator": "or"
         },
-        "looseTypeValidation": true,
         "options": {}
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -80,
-        352
+        768,
+        416
       ],
       "id": "b7bb69c0-246f-4170-8211-a4bd5e11a5b2",
       "name": "Cache Hit?"
@@ -936,115 +798,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        96,
-        448
+        1296,
+        224
       ],
       "id": "94055e52-9f5a-4332-9bab-4bccdf3fa8c6",
       "name": "Use Cached Generation"
-    },
-    {
-      "parameters": {
-        "jsCode": "return [{json:{review:$json}}]"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1808,
-        112
-      ],
-      "id": "cfcbf70c-4154-4321-bbe6-a4090a33d589",
-      "name": "HardenResponse"
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.review.overall_recommendation }}",
-                    "rightValue": "APPROVE",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    },
-                    "id": "95897a2c-88c3-41c6-bdd7-b92c6b177bd5"
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "Approved"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "4ed7457c-d098-44d9-bf9a-900d04863836",
-                    "leftValue": "={{ $json.review.overall_recommendation }}",
-                    "rightValue": "APPROVE_ON_EDITS",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals",
-                      "name": "filter.operator.equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "NeedsEdits"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "6463f661-457f-40c6-8ef6-e663697f6f9d",
-                    "leftValue": "={{ $json.review.overall_recommendation }}",
-                    "rightValue": "REJECT",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals",
-                      "name": "filter.operator.equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "Rejected"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.3,
-      "position": [
-        2576,
-        320
-      ],
-      "id": "a56a1fc2-2d55-4228-8675-5ad257a16ed8",
-      "name": "Switch2"
     },
     {
       "parameters": {
@@ -1053,8 +811,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2272,
-        352
+        4192,
+        416
       ],
       "id": "81da5c36-ebfa-4ca4-a564-85fb1c57ae0d",
       "name": "setupRouter"
@@ -1070,8 +828,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        2064,
-        352
+        4048,
+        256
       ],
       "id": "155b8d0b-da6d-4d8c-8f08-c8f44998626c",
       "name": "Merge content + Review"
@@ -1083,25 +841,975 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3344,
-        256
+        5152,
+        352
       ],
       "id": "72690b8e-17cb-40aa-98a0-eb1b67bd3de4",
       "name": "contentValidator"
     },
     {
       "parameters": {
+        "jsCode": "// Init Context (place after Combine Enrichment Data)\nconst crypto = require('crypto');\nconst file_id  = $json.file_id || 'non-episode';\nconst concept  = $json.concept || $json.topic_title || 'untitled';\nconst episode  = $json.episode_number || '';\nconst work_id  = crypto.createHash('sha256').update(JSON.stringify({file_id,concept,episode})).digest('hex');\nconst attempt  = Number.isFinite($json.attempt) ? $json.attempt : 0;\nreturn [{ json: { ...$json, work_id, attempt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        512
+      ],
+      "id": "e75b440c-d305-4714-b7b4-dbb2ee2164cc",
+      "name": "InitializeContext"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Increment Attempt (Route C)\nconst nextAttempt = (Number($json.attempt) || 0) + 1;\nreturn [{ json: { ...$json, attempt: nextAttempt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4656,
+        816
+      ],
+      "id": "9f9a29a5-b560-4888-b729-95cda812b5b7",
+      "name": "incrementCounter"
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
-        "query": "ALTER TABLE core.social_content_generated\n  ADD COLUMN IF NOT EXISTS work_id  text UNIQUE,\n  ADD COLUMN IF NOT EXISTS attempt  int  DEFAULT 0;",
+        "query": "INSERT INTO core.social_content_generated\n(work_id, status, review_summary, review_scores, attempt, updated_at)\nVALUES\n($1, 'rejected', $2, $3::jsonb, $4, now())\nON CONFLICT (work_id) DO UPDATE SET\n  status         = 'rejected',\n  review_summary = EXCLUDED.review_summary,\n  review_scores  = EXCLUDED.review_scores,\n  attempt        = EXCLUDED.attempt,\n  updated_at     = now();\n",
+        "options": {
+          "queryReplacement": "={{ [$json.work_id, $json.review.summary || '', JSON.stringify($json.review), $json.attempt] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4800,
+        816
+      ],
+      "id": "564a517f-ac3f-4b56-8cf4-9e000222f442",
+      "name": "UPSERT Failed Attempt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.recommendation}}",
+                    "rightValue": "APPROVE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "95897a2c-88c3-41c6-bdd7-b92c6b177bd5"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "APPROVE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4ed7457c-d098-44d9-bf9a-900d04863836",
+                    "leftValue": "={{$json.recommendation}}",
+                    "rightValue": "APPROVE_WITH_EDITS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "APPROVE_WITH_EDITS"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6463f661-457f-40c6-8ef6-e663697f6f9d",
+                    "leftValue": "={{$json.recommendation}}",
+                    "rightValue": "REJECT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REJECT"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "fa107c38-2700-4a06-ba3d-6a9b7fd7605b",
-      "name": "Save to Database1",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        4320,
+        400
+      ],
+      "id": "a56a1fc2-2d55-4228-8675-5ad257a16ed8",
+      "name": "Recommendation"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { review: $json, recommendation: $json.overall_recommendation || 'REJECT' } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3856,
+        416
+      ],
+      "id": "cfcbf70c-4154-4321-bbe6-a4090a33d589",
+      "name": "WrapReview"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.social_content_generated\n(work_id, day_number, episode_title, topic_title,\n instagram_content, facebook_content, linkedin_content,\n status, review_summary, review_scores, attempt, updated_at)\nVALUES\n($1, $2, $3, $4, $5, $6, $7, 'approved', $8, $9::jsonb, $10, now())\nON CONFLICT (work_id) DO UPDATE SET\n  day_number        = EXCLUDED.day_number,\n  episode_title     = EXCLUDED.episode_title,\n  topic_title       = EXCLUDED.topic_title,\n  instagram_content = EXCLUDED.instagram_content,\n  facebook_content  = EXCLUDED.facebook_content,\n  linkedin_content  = EXCLUDED.linkedin_content,\n  status            = 'approved',\n  review_summary    = EXCLUDED.review_summary,\n  review_scores     = EXCLUDED.review_scores,\n  attempt           = EXCLUDED.attempt,\n  updated_at        = now();\n",
+        "options": {
+          "queryReplacement": "={{ [   $json.work_id, $json.day_number, $json.episode_title, $json.topic_title,   $json.instagram_content, $json.facebook_content, $json.linkedin_content,   $json.review_summary, JSON.stringify($json.review), $json.attempt ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4960,
+        352
+      ],
+      "id": "607b47bc-641e-404d-a835-56da4ab70100",
+      "name": "UpsertApproved",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const apply = (fixes, txt) => {\n  if (!Array.isArray(fixes) || !txt) return txt || '';\n  let out = String(txt);\n  for (const f of fixes) {\n    const from = (f?.current || '').trim();\n    const to   = (f?.fix || '').trim();\n    if (!from || !to) continue;\n    if (!out.includes(from)) continue;\n    out = out.replace(from, to);\n  }\n  return out;\n};\n\nreturn [{\n  json: {\n    ...$json,\n    instagram_content: apply($json.review?.instagram_review?.required_fixes, $json.instagram_content),\n    facebook_content:  apply($json.review?.facebook_review?.required_fixes,  $json.facebook_content),\n    linkedin_content:  apply($json.review?.linkedin_review?.required_fixes,  $json.linkedin_content)\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4144,
+        608
+      ],
+      "id": "b24450e0-ede9-48a3-b544-1c0b575a0580",
+      "name": "ApplyReviewFixes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse 3 Sections (Local) — tight version\n// INPUT accepted on this item: { strict_output? | output? | text? | content? }\n// OUTPUT: { instagram_content, facebook_content, linkedin_content, strict_output, day_number?, episode_title?, topic_title? }\n\n// ---------- helpers ----------\nconst prefer = (...vals) => {\n  for (const v of vals) if (v != null && String(v).trim() !== '') return v;\n  return '';\n};\n\nconst clean = (s) => {\n  let t = String(s ?? '');\n  return t\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '')\n    .replace(/\\t/g, '  ')\n    .replace(/```[\\s\\S]*?```/g, m => m.replace(/```/g,''))   // code fences\n    .replace(/`{1,3}([^`]+)`{1,3}/g, '$1')                   // inline code\n    .replace(/^\\s*#{1,6}\\s*/gm, '')                          // md headers\n    .replace(/^\\s*[-*•·]+[\\t ]*/gm, '')                      // bullets\n    .replace(/[•·]/g, '')                                    // stray bullets\n    .replace(/\\*\\*(.*?)\\*\\*/g, '$1').replace(/__(.*?)__/g, '$1').replace(/_(.*?)_/g, '$1') // bold/italics\n    .replace(/--+/g, '—')                                    // double dashes\n    .replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 ($2)') // [text](url) -> text (url)\n    .replace(/(^|\\s)#{2,}(?=\\s|$)/g, '$1')                   // remove bare ## clusters\n    .replace(/\\s+([.,!?;:])(?!\\w)/g, '$1')                   // space before punct\n    .replace(/[ \\t]+\\n/g, '\\n')                              // trim line-end spaces\n    .replace(/\\n{3,}/g, '\\n\\n')                              // collapse 3+ newlines\n    .replace(/[^\\S\\r\\n]{2,}/g, ' ')                          // collapse spaces\n    .trim();\n};\n\nconst getSection = (src, label) => {\n  const re = new RegExp(String.raw`^[\\t ]*###\\s*${label}\\s*:?\\s*\\n?([\\s\\S]*?)(?=^[\\t ]*###\\s*|\\Z)`,'im');\n  const m  = src.match(re);\n  return m ? m[1].trim() : '';\n};\n\nconst fallbackBlock = (src, labelRegex) => {\n  const re = new RegExp(String.raw`^\\s*${labelRegex}\\s*:\\s*`, 'im');\n  if (!re.test(src)) return '';\n  const after = src.split(re)[1] || '';\n  const next  = after.search(/^[\\t ]*###\\s*/m);\n  return (next >= 0 ? after.slice(0, next) : after).trim();\n};\n\n// ---------- 1) read input text ----------\nlet rawText = String(\n  prefer($json.strict_output, $json.output, $json.text, $json.content)\n).replace(/\\r\\n/g, '\\n').replace(/[\\u200B\\u200C\\u200D\\uFEFF]/g, '').trim();\n\nif (!rawText) throw new Error('Parse3Sections: no input text found');\n\n// ---------- 2) extract sections (with fallbacks) ----------\nlet ig = getSection(rawText, 'INSTAGRAM\\\\s*REEL');\nlet fb = getSection(rawText, 'FACEBOOK\\\\s*POST');\nlet li = getSection(rawText, 'LINKEDIN\\\\s*POST');\n\nif (!ig) ig = fallbackBlock(rawText, 'Instagram\\\\s*Reel');\nif (!fb) fb = fallbackBlock(rawText, 'Facebook');\nif (!li) li = fallbackBlock(rawText, 'LinkedIn');\n\n// ---------- 3) clean ----------\nig = clean(ig);\nfb = clean(fb);\nli = clean(li);\n\n// ---------- 4) validate ----------\nconst empty = [];\nif (!ig) empty.push('INSTAGRAM REEL');\nif (!fb) empty.push('FACEBOOK POST');\nif (!li) empty.push('LINKEDIN POST');\nif (empty.length) throw new Error('Parse3Sections: empty sections → ' + empty.join(', '));\n\n// ---------- 5) rebuild canonical strict_output ----------\nconst strict_output =\n  '### INSTAGRAM REEL\\n' + ig + '\\n\\n' +\n  '### FACEBOOK POST\\n' + fb + '\\n\\n' +\n  '### LINKEDIN POST\\n' + li;\n\n// ---------- 6) pass through light meta if present ----------\nconst out = {\n  instagram_content: ig,\n  facebook_content:  fb,\n  linkedin_content:  li,\n  strict_output\n};\nfor (const k of ['day_number','episode_title','topic_title']) {\n  if ($json[k] != null) out[k] = $json[k];\n}\n\nreturn [{ json: out }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4288,
+        608
+      ],
+      "id": "8e221e5b-7213-4cf3-9735-74fb2de32e31",
+      "name": "Parse 3 Sections"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.user_prompt }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "systemMessage": "={{ $json.system_prompt }}",
+          "frequencyPenalty": 0,
+          "maxOutputTokens": 1000,
+          "candidateCount": 1,
+          "presencePenalty": 0,
+          "temperature": 0.2,
+          "topP": 1,
+          "topK": 40
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        4848,
+        608
+      ],
+      "id": "db3198f6-0511-4ebf-b14c-bd23215ca6ae",
+      "name": "Re-Review",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Vn8aHuolEUQbTpfv",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  return {\n    json: {\n      ...item.json,\n      generated_content: item.json.output || item.json, // Adjust based on your node output\n      from_cache: false,\n      cache_hit_count: 0\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        416
+      ],
+      "id": "d367facb-846d-4e66-b1cc-2587715e8762",
+      "name": "Format Fresh Generation"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.api_cache (\n  key_hash,\n  cache_type,\n  model,\n  model_version,\n  request_payload,\n  response_data,\n  cost_usd,\n  hit_count\n) VALUES (\n  $1,\n  'generation',\n  $2,\n  $3,\n  $4::jsonb,\n  $5::jsonb,\n  $6,\n  0\n)\nON CONFLICT (key_hash)\nDO UPDATE SET\n  hit_count = core.api_cache.hit_count + 1,\n  response_data = EXCLUDED.response_data;",
+        "options": {
+          "queryReplacement": "={{ [ $('Build Gen Cache Key').first().json.gen_cache_key, $('Build Gen Cache Key').first().json.gen_model, $('Build Gen Cache Key').first().json.gen_prompt_version, JSON.stringify($('Combine Enrichment Data').first().json), JSON.stringify($json.generated_content),0.001 ] }}",
+          "replaceEmptyStrings": false
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2096,
+        288
+      ],
+      "id": "5cd4cf6d-22da-4a48-89d2-cd0ed09e70e3",
+      "name": "Store Gen Cache",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2352,
+        0
+      ],
+      "id": "6478285a-0e0a-44da-aa17-757722175a1a",
+      "name": "Merge Cached + Store Gen"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    review: $json,\n    recommendation: $json.overall_recommendation || 'REJECT'\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5280,
+        608
+      ],
+      "id": "4b0be200-c521-476d-98d3-5d40bebe8d4a",
+      "name": "Parse Re-Review"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "426532dd-9984-4347-a981-d76c429763dc",
+              "leftValue": "={{ ['APPROVE','APPROVE_WITH_EDITS'].includes($json.recommendation) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5488,
+        608
+      ],
+      "id": "3b01bf75-6c66-437d-af21-4738126dc597",
+      "name": "If:Approved"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.social_content_generated\n(work_id, day_number, episode_title, topic_title,\n instagram_content, facebook_content, linkedin_content,\n status, review_summary, review_scores, attempt, updated_at)\nVALUES\n($1, $2, $3, $4, $5, $6, $7, 'approved', $8, $9::jsonb, $10, now())\nON CONFLICT (work_id) DO UPDATE SET\n  day_number        = EXCLUDED.day_number,\n  episode_title     = EXCLUDED.episode_title,\n  topic_title       = EXCLUDED.topic_title,\n  instagram_content = EXCLUDED.instagram_content,\n  facebook_content  = EXCLUDED.facebook_content,\n  linkedin_content  = EXCLUDED.linkedin_content,\n  status            = 'approved',\n  review_summary    = EXCLUDED.review_summary,\n  review_scores     = EXCLUDED.review_scores,\n  attempt           = EXCLUDED.attempt,\n  updated_at        = now();\n",
+        "options": {
+          "queryReplacement": "={{ [   $json.work_id, $json.day_number, $json.episode_title, $json.topic_title,   $json.instagram_content, $json.facebook_content, $json.linkedin_content,   $json.review_summary, JSON.stringify($json.review), $json.attempt ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5504,
+        832
+      ],
+      "id": "e09bcb06-5a96-487c-b8c8-e1c3248eeaf8",
+      "name": "UpsertApprovedOnReReview",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "05c0e2a5-c0e2-469b-af62-4a1910de5706",
+              "leftValue": "={{ $json.attempt < 2 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5008,
+        816
+      ],
+      "id": "c7e61369-9a1c-4c96-b36d-0cefd095d65f",
+      "name": "If: Less Than 2 Attempts"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json, prompt_version: 'gen_v3_strict' } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5200,
+        800
+      ],
+      "id": "f04f75fb-091d-43e8-a6ee-a6025104d6e5",
+      "name": "useStrictPrompt"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.social_content_generated\nSET status='needs_manual', updated_at=now()\nWHERE work_id=$1;\n",
+        "options": {
+          "queryReplacement": "={{ [$json.work_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5200,
+        1056
+      ],
+      "id": "27392b82-5faa-45d1-a0b3-b5ed5c63ca0d",
+      "name": "statusManual",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.file_id }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "value": "0ADNv-WFOlNroUk9PVA",
+          "mode": "list",
+          "cachedResultName": "RAG-idudes-RAG-System",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/0ADNv-WFOlNroUk9PVA"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1hy5SJQVgP43NUB_xC5i7fpnjng-rpJpD",
+          "mode": "list",
+          "cachedResultName": "RAG-ManualReview",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1hy5SJQVgP43NUB_xC5i7fpnjng-rpJpD"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        5200,
+        1184
+      ],
+      "id": "aab398fb-a770-4ad4-b4ca-cedbbb87d37d",
+      "name": "Move2ManualReview",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OtvrT7x8YG4Mrx7n",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Persona (Marcus) + Brand memory consolidated\nconst persona = {\n  name: \"Marcus\",\n  archetype: \"Mid-Growth P&C Agency Owner\",\n  pain_points: [\n    \"burnout from endless follow-up calls\",\n    \"high producer turnover\",\n    \"carrier pressure and shrinking commissions\",\n    \"clunky AMS and inefficient processes\"\n  ],\n  goals: [\n    \"automate sales and service follow-up\",\n    \"build a self-sustaining team\",\n    \"reclaim time and freedom\"\n  ],\n  voice: \"straight-talking, practical, confident — mentor energy, not corporate fluff\",\n  mindset: \"growth-driven but exhausted by chaos\",\n  objections: [\n    \"my team won’t adopt new tools\",\n    \"automation makes us sound robotic\",\n    \"we tried this and it didn’t stick\"\n  ],\n  triggers: [\"time freedom\",\"chaos-to-control\",\"producers that stick\"],\n  cta_preferences: [\"Save/Share/Listen\", \"Join Agent Elite\", \"Comment your scenario\"]\n};\n\nconst brand = {\n  pillars: [\"clear\",\"confident\",\"practical\"],\n  tone_rules: [\n    \"teacher > hype\",\n    \"plain language\",\n    \"concrete outcomes only if present; else generalize\"\n  ],\n  telefunnel: [\"lead capture\",\"appointment setting\",\"follow-up automation\",\"nurture\",\"retention\"]\n};\n\nconst persona_tags = [\"mid_growth_owner\",\"burnout\",\"automation\",\"team\",\"retention\",\"time_freedom\",\"telefunnel\"];\nconst review_bias = { prefer_voice_authenticity_min: 8, persona: \"Marcus\" };\n\nreturn [{\n  json: {\n    ...$json,\n    persona, brand, persona_tags, review_bias\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1968,
+        416
+      ],
+      "id": "dcc929c6-bca3-4434-92db-87278d9d5188",
+      "name": "InjectPersonaContext"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = { ...$json };\ndelete j.enriched_content_chunks;\ndelete j.generator_raw;\ndelete j.strict_output;      // parser can rebuild from 'output'\ndelete j.openai_response;\ndelete j.results;            // rerank/raw results\nreturn [{ json: j }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        16
+      ],
+      "id": "766d4d92-27f3-4055-9347-984f63e65828",
+      "name": "Trim Payload"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "options": {
+          "queryReplacement": "=$1 = {{$json.prompt_key}}\n$2 = {{$json.prompt_version}}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1392,
+        384
+      ],
+      "id": "6249cc75-ffba-4f03-8a0f-345807b5951b",
+      "name": "SelectPrompt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(it => it.json);\nconst sys = rows.find(r => r.role==='system')?.content || '';\nconst usr = rows.find(r => r.role==='user')?.content   || '';\nreturn [{ json: { ...$json, system_prompt: sys, user_prompt: usr } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        416
+      ],
+      "id": "b182b1f0-b000-40a9-b48d-274c1e50c66e",
+      "name": "MapperFunction"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "options": {
+          "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2880,
+        416
+      ],
+      "id": "34bcad25-dcd6-4aee-99c9-1c1daf3aaff9",
+      "name": "SelectReviewerPrompt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(it => it.json);\nconst sys = rows.find(r => r.role==='system')?.content || '';\nconst usr = rows.find(r => r.role==='user')?.content   || '';\nreturn [{ json: { ...$json, system_prompt: sys, user_prompt: usr } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        416
+      ],
+      "id": "881697d7-afbc-4315-9ce7-3daa385b23e5",
+      "name": "MapperFunctionReviewer"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE core.social_content_generated\nSET persona_segment = COALESCE($2, persona_segment),\n    emotion_tone    = COALESCE($3, emotion_tone),\n    updated_at      = now()\nWHERE work_id = $1;\n",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.work_id,\n  'mid_growth_owner',     \n  'burnout_to_control'   \n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5072,
+        160
+      ],
+      "id": "f00642e0-a77c-4423-b731-1a8da78a3291",
+      "name": "UpdatePersona",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3232,
+        416
+      ],
+      "id": "1c2b3ee5-54a3-4c78-b02f-6b6c3260f0e2",
+      "name": "Merge content + ReviewPrompts"
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"prompt_key\": \"gemini_quick_review\",           // or 'expert_review', 'gemini_quick_review', 'optimizer_linkedin', etc.\n  \"prompt_version\": \"v2\"               // persona-aware; use 'v1' if you want neutral\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4416,
+        608
+      ],
+      "id": "dad80fa4-feba-41e4-908c-6e5d7187d81c",
+      "name": "SetReReviewerPrompt"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "options": {
+          "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4560,
+        608
+      ],
+      "id": "faa93898-5cd8-489c-b283-f56f721ab514",
+      "name": "SelectReReviewerPrompt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(it => it.json);\nconst sys = rows.find(r => r.role==='system')?.content || '';\nconst usr = rows.find(r => r.role==='user')?.content   || '';\nreturn [{ json: { ...$json, system_prompt: sys, user_prompt: usr } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4688,
+        608
+      ],
+      "id": "1aaddd34-7a47-4cbb-8161-d29623bc1fa5",
+      "name": "MapperFunctionReReviewer"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Map Gemini response to `output` (string)\nconst txt =\n  $json.candidates?.[0]?.content?.parts?.[0]?.text\n  || $json.text\n  || '';\n\n// Build new payload\nconst j = { ...$json, output: txt };\n\n// Safe trim of known heavies that are NOT needed for re-review routing\ndelete j.enriched_content_chunks;  // big, not needed here\ndelete j.generator_raw;\ndelete j.strict_output;            // parser doesn’t use this on re-review path\ndelete j.openai_response;\ndelete j.results;                  // rerank/raw\n\nreturn [{ json: j }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5136,
+        608
+      ],
+      "id": "1d3933e8-da31-418c-8550-451946b8ec4c",
+      "name": "map + safe trim"
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"prompt_key\": \"optimizer_instagram\",           // or 'expert_review', 'gemini_quick_review', 'optimizer_linkedin', etc.\n  \"prompt_version\": \"v2\"               // persona-aware; use 'v1' if you want neutral\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        784
+      ],
+      "id": "11451ce4-75dc-4073-afd9-2e3071012097",
+      "name": "SetInstaOptimizer"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "options": {
+          "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        784
+      ],
+      "id": "95c42d4b-365a-44a4-9311-d3db2c851937",
+      "name": "IG:SelectOptimizerPrompt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(it => it.json);\nconst sys = rows.find(r => r.role==='system')?.content || '';\nconst usr = rows.find(r => r.role==='user')?.content   || '';\nreturn [{ json: { ...$json, system_prompt: sys, user_prompt: usr } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        784
+      ],
+      "id": "38121d8c-d1d0-4188-8db0-32430cf6f9b4",
+      "name": "MapperFunctionInsta"
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"prompt_key\": \"optimizer_facebook\",           // or 'expert_review', 'gemini_quick_review', 'optimizer_linkedin', etc.\n  \"prompt_version\": \"v2\"               // persona-aware; use 'v1' if you want neutral\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        768
+      ],
+      "id": "fe86e124-b88e-42b5-8549-5a44e15c813f",
+      "name": "SetFacebookOptimizerPrompt"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "options": {
+          "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1952,
+        768
+      ],
+      "id": "56040de5-6fa0-49ab-8ba8-591e8db89210",
+      "name": "Facebook: OptimizerPrompt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(it => it.json);\nconst sys = rows.find(r => r.role==='system')?.content || '';\nconst usr = rows.find(r => r.role==='user')?.content   || '';\nreturn [{ json: { ...$json, system_prompt: sys, user_prompt: usr } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        768
+      ],
+      "id": "e461c864-79fe-4e65-b575-227292342c32",
+      "name": "MapperFunctionFacebookOptimizer"
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"prompt_key\": \"optimizer_linkedin\",           // or 'expert_review', 'gemini_quick_review', 'optimizer_linkedin', etc.\n  \"prompt_version\": \"v2\"               // persona-aware; use 'v1' if you want neutral\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        736
+      ],
+      "id": "ed187a19-0beb-4e8e-864d-e9294bd28fce",
+      "name": "SetLinkedInOptimizerPrompt"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content\nFROM core.prompt_library\nWHERE prompt_key = $1\n  AND version    = COALESCE($2, 'v2');\n",
+        "options": {
+          "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3184,
+        736
+      ],
+      "id": "19652ef5-31b2-4f9f-81d5-4dce8f6e47be",
+      "name": "LinkedIn: OptimizerPrompt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(it => it.json);\nconst sys = rows.find(r => r.role==='system')?.content || '';\nconst usr = rows.find(r => r.role==='user')?.content   || '';\nreturn [{ json: { ...$json, system_prompt: sys, user_prompt: usr } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3312,
+        736
+      ],
+      "id": "457b18a3-a416-40a4-b663-14a64e4d137b",
+      "name": "MapperFunctionLinkedInOptimizer"
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = String($json.output || $json.text || '').trim();\nconst must = ['OPTIMIZED HOOK:', 'OPTIMIZED SCRIPT:', 'OPTIMIZED CTA:', 'OPTIMIZED HASHTAGS:', 'VISUAL SUGGESTIONS:'];\nconst missing = must.filter(h => !t.includes(h));\nif (missing.length) throw new Error('IG optimizer format error: ' + missing.join(', '));\nreturn [{ json: { ...$json, optimized_instagram: t } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        880
+      ],
+      "id": "0c34aea4-4b09-4191-abd4-590fbcf989f6",
+      "name": "IG Validator"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base=$items('Apply Review Fixes',0,0)[0].json;\nconst ig=$items('Optimize Instagram (GPT-5-Nano)',0,0)[0].json.text||base.instagram_content;\nconst fb=$items('Optimize Facebook (GPT-5-Nano)',0,0)[0].json.text||base.facebook_content;\nconst li=$items('Optimize LinkedIn (GPT-5-Nano)',0,0)[0].json.text||base.linkedin_content;\nreturn { ...base, instagram_final: ig, facebook_final: fb, linkedin_final: li, ready_for_scheduling: true };"
+      },
+      "id": "b61dfdff-9b44-427d-b0ae-08d5696e4fae",
+      "name": "Combine Optimized Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = String($json.output || $json.text || '').trim();\nconst must = ['OPTIMIZED LINKEDIN POST:', 'ENGAGEMENT STRATEGY NOTES:'];\nconst missing = must.filter(h => !t.includes(h));\nif (missing.length) throw new Error('LI optimizer format error: ' + missing.join(', '));\nreturn [{ json: { ...$json, optimized_linkedin: t } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3376,
+        1024
+      ],
+      "id": "78340d5f-4c6a-4dd8-928b-981d89ffb627",
+      "name": "LinkedIn Validator"
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = String($json.output || $json.text || '').trim();\nconst must = ['OPTIMIZED FACEBOOK POST:', 'SUGGESTED COMMENT RESPONSES:'];\nconst missing = must.filter(h => !t.includes(h));\nif (missing.length) throw new Error('FB optimizer format error: ' + missing.join(', '));\nreturn [{ json: { ...$json, optimized_facebook: t } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2944,
+        864
+      ],
+      "id": "8bf81f3c-5523-43d5-b64f-c5d74fa8fed7",
+      "name": "FB Validator"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = Array.isArray($json) ? $json[0] : $json;\n\nif (!data || !data.file_id) return [];\n\nreturn [{\n  json: {\n    file_id: data.file_id,\n    filename: data.filename,\n    status: data.status,\n    count: data.count,\n    total_chunks: data.total_chunks,\n    social_status: data.social_status,\n    is_duplicate: data.is_duplicate,\n    ready: true\n  }\n}];"
+      },
+      "id": "965c8bda-b1f1-43e7-b22e-c2b0eb472c34",
+      "name": "Gate Ready",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $json.body || {};\nif (!b.file_id || !b.filename) {\n  return [{ json: { ok: false, status: 400, error: 'file_id and filename required' } }];\n}\nreturn [{ json: { ok: true, file_id: b.file_id, filename: b.filename } }];"
+      },
+      "id": "15beadb0-eada-4ca7-8283-f68c4feb1af8",
+      "name": "Validate Episode Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  fps.file_id,\n  fps.filename,\n  fps.rag_status AS status,\n  COALESCE(emb.cnt, 0)           AS count,\n  COALESCE(fps.rag_chunks_count,0) AS total_chunks,\n  fps.social_status,\n  (fps.social_status = 'completed')          AS is_duplicate,\n  ((fps.rag_status = 'completed') OR COALESCE(emb.cnt,0) > 0) AS is_ready\nFROM core.file_pipeline_status fps\nLEFT JOIN (\n  SELECT file_id, COUNT(*)::int AS cnt\n  FROM core.embeddings\n  GROUP BY file_id\n) emb USING (file_id)\nWHERE fps.file_id = $1;\n",
+        "options": {
+          "queryReplacement": "={{ [$json.file_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -752,
+        -192
+      ],
+      "id": "0293ebdb-331d-445a-8f41-cf7c20b50c7d",
+      "name": "FetchFileStatus",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert 0-row result to a single placeholder; keep first row if exists.\nconst rows = $input.all().map(i => i.json);\nconst r = rows[0] || {};\nconst out = {\n  file_id: $json.file_id,\n  filename: $json.filename,\n  status: r.status || 'missing',\n  count: r.count ?? 0,\n  total_chunks: r.total_chunks ?? 0,\n  social_status: r.social_status || null,\n  is_duplicate: !!r.is_duplicate,\n  is_ready: !!r.is_ready\n};\nreturn [{ json: out }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -192
+      ],
+      "id": "8a9d9b5e-b0e6-4eb4-aad0-4f45a0ffb569",
+      "name": "FoldStatus"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        -112
+      ],
+      "id": "91207179-bb04-4bfc-a9a2-513f82e41efc",
+      "name": "Wait",
+      "webhookId": "5d015ff5-22b6-4186-a67b-9b30d92c0cbd"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH chosen AS (\n  SELECT fps.file_id, fps.filename, fps.updated_at\n  FROM core.file_pipeline_status fps\n  WHERE\n    -- if a file_id is provided, pick it\n    (fps.file_id = $1)\n    OR\n    -- else pick the most recent completed with embeddings\n    ($1 IS NULL\n     AND fps.rag_status = 'completed'\n     AND COALESCE(fps.rag_embedding_count, 0) > 0)\n  ORDER BY fps.updated_at DESC\n  LIMIT 1\n)\nSELECT c.file_id, c.filename\nFROM chosen c;\n",
+        "options": {
+          "queryReplacement": "={{ [ $json.file_id || null ] }}"
+        }
+      },
+      "id": "aca29fa3-2693-4b20-bb7e-0e9bb337fffa",
+      "name": "ResolveEpisode",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        800,
-        -448
+        -1648,
+        64
       ],
       "credentials": {
         "postgres": {
@@ -1112,16 +1820,56 @@
     },
     {
       "parameters": {
-        "jsCode": "// Init Context (place after Combine Enrichment Data)\nconst crypto = require('crypto');\nconst file_id  = $json.file_id || 'non-episode';\nconst concept  = $json.concept || $json.topic_title || 'untitled';\nconst episode  = $json.episode_number || '';\nconst work_id  = crypto.createHash('sha256').update(JSON.stringify({file_id,concept,episode})).digest('hex');\nconst attempt  = Number.isFinite($json.attempt) ? $json.attempt : 0;\nreturn [{ json: { ...$json, work_id, attempt } }];\n"
+        "operation": "executeQuery",
+        "query": "SELECT current_database() AS db, current_user AS role;\n\nSELECT COUNT(*) AS cnt\nFROM core.embeddings\nWHERE file_id = $1;\n",
+        "options": {
+          "queryReplacement": "={{ [ $json.file_id ] }}"
+        }
       },
-      "type": "n8n-nodes-base.code",
+      "id": "02e9811a-a6ca-4197-bd18-a3fc3e11ef97",
+      "name": "Get Episode Chunks1",
+      "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
       "position": [
-        -672,
-        352
+        -1152,
+        1040
       ],
-      "id": "e75b440c-d305-4714-b7b4-dbb2ee2164cc",
-      "name": "InitializeContext"
+      "credentials": {
+        "postgres": {
+          "id": "9YUzCl4JCgWCDD57",
+          "name": "RAG_READ_KEY"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"prompt_key\": \"generator\",\n  \"prompt_version\": \"v2\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        336
+      ],
+      "id": "9bc84df4-a621-4847-9809-1b5f12794023",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"prompt_key\": \"expert_review\",\n  \"prompt_version\": \"v2\"          \n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2672,
+        336
+      ],
+      "id": "145d24fb-ae9e-4ed9-a53e-547fc9d62846",
+      "name": "setPromptExpert"
     }
   ],
   "connections": {
@@ -1130,55 +1878,6 @@
         [
           {
             "node": "Validate Episode Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Payload OK": {
-      "main": [
-        [
-          {
-            "node": "getEpisodeData",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Payload Invalid": {
-      "main": [
-        [
-          {
-            "node": "Respond Bad Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Episode Payload": {
-      "main": [
-        [
-          {
-            "node": "Payload OK",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Payload Invalid",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Gate Ready": {
-      "main": [
-        [
-          {
-            "node": "Check & Mark Processed",
             "type": "main",
             "index": 0
           }
@@ -1194,18 +1893,7 @@
       "main": [
         [
           {
-            "node": "Get Latest Episode",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Latest Episode": {
-      "main": [
-        [
-          {
-            "node": "Get Episode Chunks",
+            "node": "ResolveEpisode",
             "type": "main",
             "index": 0
           }
@@ -1249,7 +1937,7 @@
       "main": [
         [
           {
-            "node": "buildBody",
+            "node": "InjectPersonaContext",
             "type": "main",
             "index": 0
           }
@@ -1293,7 +1981,17 @@
       "main": [
         [
           {
-            "node": "Expert Review",
+            "node": "Merge content + Review",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge content + ReviewPrompts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "setPromptExpert",
             "type": "main",
             "index": 0
           }
@@ -1340,28 +2038,7 @@
       "main": [
         [
           {
-            "node": "HardenResponse",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Merge content + Review",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Apply Review Fixes": {
-      "main": [
-        []
-      ]
-    },
-    "Combine Optimized Content": {
-      "main": [
-        [
-          {
-            "node": "Prepare Insert Payload",
+            "node": "WrapReview",
             "type": "main",
             "index": 0
           }
@@ -1394,21 +2071,21 @@
       "main": [
         [
           {
-            "node": "Optimize LinkedIn",
+            "node": "SetLinkedInOptimizerPrompt",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Optimize Facebook",
+            "node": "SetFacebookOptimizerPrompt",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Optimize Instagram",
+            "node": "SetInstaOptimizer",
             "type": "main",
             "index": 0
           }
@@ -1419,7 +2096,7 @@
       "main": [
         [
           {
-            "node": "Parse Generated Content",
+            "node": "Format Fresh Generation",
             "type": "main",
             "index": 0
           }
@@ -1452,7 +2129,7 @@
       "main": [
         [
           {
-            "node": "Combine Optimized Content",
+            "node": "IG Validator",
             "type": "main",
             "index": 0
           }
@@ -1463,7 +2140,7 @@
       "main": [
         [
           {
-            "node": "Combine Optimized Content",
+            "node": "LinkedIn Validator",
             "type": "main",
             "index": 0
           }
@@ -1474,7 +2151,7 @@
       "main": [
         [
           {
-            "node": "Combine Optimized Content",
+            "node": "FB Validator",
             "type": "main",
             "index": 0
           }
@@ -1486,17 +2163,6 @@
         [
           {
             "node": "Extract Concepts",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check & Mark Processed": {
-      "main": [
-        [
-          {
-            "node": "Switch1",
             "type": "main",
             "index": 0
           }
@@ -1524,18 +2190,14 @@
             "index": 0
           },
           {
-            "node": "Get Episode Chunks",
+            "node": "ResolveEpisode",
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "getEpisodeData": {
-      "main": [
+        ],
         [
           {
-            "node": "Gate Ready",
+            "node": "Wait",
             "type": "main",
             "index": 0
           }
@@ -1565,11 +2227,6 @@
             "node": "Extract Embeddings",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge1",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -1578,7 +2235,7 @@
       "main": [
         [
           {
-            "node": "contentValidator",
+            "node": "UpsertApproved",
             "type": "main",
             "index": 0
           }
@@ -1589,7 +2246,7 @@
       "main": [
         [
           {
-            "node": "Generate Content",
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
@@ -1651,41 +2308,18 @@
       "main": [
         [
           {
-            "node": "Generate Content",
+            "node": "Merge Cached + Store Gen",
             "type": "main",
             "index": 0
           }
         ]
-      ]
-    },
-    "HardenResponse": {
-      "main": [
-        [
-          {
-            "node": "Merge content + Review",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Switch2": {
-      "main": [
-        [
-          {
-            "node": "setFields",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        []
       ]
     },
     "setupRouter": {
       "main": [
         [
           {
-            "node": "Switch2",
+            "node": "Recommendation",
             "type": "main",
             "index": 0
           }
@@ -1724,6 +2358,561 @@
           }
         ]
       ]
+    },
+    "incrementCounter": {
+      "main": [
+        [
+          {
+            "node": "UPSERT Failed Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPSERT Failed Attempt": {
+      "main": [
+        [
+          {
+            "node": "If: Less Than 2 Attempts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recommendation": {
+      "main": [
+        [
+          {
+            "node": "setFields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ApplyReviewFixes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "incrementCounter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WrapReview": {
+      "main": [
+        [
+          {
+            "node": "Merge content + Review",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "UpsertApproved": {
+      "main": [
+        [
+          {
+            "node": "contentValidator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "UpdatePersona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ApplyReviewFixes": {
+      "main": [
+        [
+          {
+            "node": "Parse 3 Sections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse 3 Sections": {
+      "main": [
+        [
+          {
+            "node": "SetReReviewerPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Re-Review": {
+      "main": [
+        [
+          {
+            "node": "map + safe trim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Fresh Generation": {
+      "main": [
+        [
+          {
+            "node": "Store Gen Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Gen Cache": {
+      "main": [
+        [
+          {
+            "node": "Merge Cached + Store Gen",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Cached + Store Gen": {
+      "main": [
+        [
+          {
+            "node": "Trim Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Re-Review": {
+      "main": [
+        [
+          {
+            "node": "If:Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If:Approved": {
+      "main": [
+        [
+          {
+            "node": "UpsertApprovedOnReReview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If: Less Than 2 Attempts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpsertApprovedOnReReview": {
+      "main": [
+        [
+          {
+            "node": "contentValidator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If: Less Than 2 Attempts": {
+      "main": [
+        [
+          {
+            "node": "useStrictPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move2ManualReview",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "statusManual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "useStrictPrompt": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InjectPersonaContext": {
+      "main": [
+        [
+          {
+            "node": "buildBody",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trim Payload": {
+      "main": [
+        [
+          {
+            "node": "Parse Generated Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SelectPrompt": {
+      "main": [
+        [
+          {
+            "node": "MapperFunction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapperFunction": {
+      "main": [
+        [
+          {
+            "node": "Generate Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SelectReviewerPrompt": {
+      "main": [
+        [
+          {
+            "node": "MapperFunctionReviewer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapperFunctionReviewer": {
+      "main": [
+        [
+          {
+            "node": "Merge content + ReviewPrompts",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge content + ReviewPrompts": {
+      "main": [
+        [
+          {
+            "node": "Expert Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetReReviewerPrompt": {
+      "main": [
+        [
+          {
+            "node": "SelectReReviewerPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SelectReReviewerPrompt": {
+      "main": [
+        [
+          {
+            "node": "MapperFunctionReReviewer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapperFunctionReReviewer": {
+      "main": [
+        [
+          {
+            "node": "Re-Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "map + safe trim": {
+      "main": [
+        [
+          {
+            "node": "Parse Re-Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetInstaOptimizer": {
+      "main": [
+        [
+          {
+            "node": "IG:SelectOptimizerPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG:SelectOptimizerPrompt": {
+      "main": [
+        [
+          {
+            "node": "MapperFunctionInsta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapperFunctionInsta": {
+      "main": [
+        [
+          {
+            "node": "Optimize Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetFacebookOptimizerPrompt": {
+      "main": [
+        [
+          {
+            "node": "Facebook: OptimizerPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook: OptimizerPrompt": {
+      "main": [
+        [
+          {
+            "node": "MapperFunctionFacebookOptimizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapperFunctionFacebookOptimizer": {
+      "main": [
+        [
+          {
+            "node": "Optimize Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetLinkedInOptimizerPrompt": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn: OptimizerPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn: OptimizerPrompt": {
+      "main": [
+        [
+          {
+            "node": "MapperFunctionLinkedInOptimizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MapperFunctionLinkedInOptimizer": {
+      "main": [
+        [
+          {
+            "node": "Optimize LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG Validator": {
+      "main": [
+        [
+          {
+            "node": "Combine Optimized Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Optimized Content": {
+      "main": [
+        [
+          {
+            "node": "Prepare Insert Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn Validator": {
+      "main": [
+        [
+          {
+            "node": "Combine Optimized Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate Ready": {
+      "main": [
+        [
+          {
+            "node": "FetchFileStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Episode Payload": {
+      "main": [
+        [
+          {
+            "node": "Gate Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FetchFileStatus": {
+      "main": [
+        [
+          {
+            "node": "FoldStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FoldStatus": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "FetchFileStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ResolveEpisode": {
+      "main": [
+        [
+          {
+            "node": "Get Episode Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "SelectPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "setPromptExpert": {
+      "main": [
+        [
+          {
+            "node": "SelectReviewerPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {
@@ -1732,7 +2921,7 @@
         "headers": {
           "host": "ai.thirdeyediagnostics.com",
           "user-agent": "axios/1.12.0",
-          "content-length": "123",
+          "content-length": "94",
           "accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7",
           "accept-encoding": "gzip, compress, deflate, br",
           "content-type": "application/json",
@@ -1746,8 +2935,8 @@
         "params": {},
         "query": {},
         "body": {
-          "file_id": "1F5hfhg-DAy9wikYR3ZzUGrBeF4t89m6y",
-          "filename": "Episode 754 - Untold Power of Insurance with Andrew Engler.txt"
+          "file_id": "19_PvHNRakfzzLjL6WsYGW0VJqkv5if2aMtFDYyFh_Bo",
+          "filename": "Million_dollar_agency_"
         },
         "webhookUrl": "https://ai.thirdeyediagnostics.com/webhook/events/episode-ready",
         "executionMode": "production"

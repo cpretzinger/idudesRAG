@@ -499,3 +499,247 @@ After adding cache nodes:
 **Implementation Time Estimate:** 30-45 minutes per cache integration
 **Testing Time Estimate:** 15 minutes per cache
 **Expected Cost Reduction:** 50-80% on duplicate content generation
+
+Yes—Cohere is a great fit for **Rank Topics**. Here’s the clean way to upgrade your current code-only ranking into a **hybrid** that uses Cohere’s **Rerank** (fast, cheap, purpose-built for ranking) while keeping your existing heuristics for tie-breakers.
+
+---
+
+## TL;DR Recommendation
+
+* **Use Cohere Rerank** to semantically rank your 15–20 candidate concepts against your goals (query).
+* Keep your **W-weights** (actionability, platform_fit, proof_type, hook_potential) as a **secondary scoring layer**.
+* **Do not** change your pgvector/embeddings DB; this step is just picking the top concepts before enrichment.
+* Add a tiny **cache wrapper** so repeated runs don’t pay again.
+
+---
+
+## Where it lives in your flow
+
+```
+Extractor / Concept List  →  Build Rerank Query (Code)
+                           →  Cohere Rerank (HTTP)
+                           →  Merge & Score (Code)  →  TOP N concepts
+                           →  Generate Enrichment Queries  →  (your existing pipeline)
+```
+
+---
+
+## 1) Build the Rerank query (Code node)
+
+Create a **Code** node right after you have your concept array.
+
+**Input expected:** `$json.concepts` = `[{ title, summary, tags, ... }]`
+
+**Code (paste):**
+
+```js
+// Build a single query that reflects your ranking intent
+const day  = $json.day_number || '';
+const topic = $json.concept || $json.topic_title || '';
+const goals = [
+  'insurance P&C agency growth',
+  'practical frameworks',
+  'clear CTA potential',
+  'telefunnel alignment (lead→call→booked→bind→retention)'
+];
+
+const query = `Rank concepts for Insurance Dudes content. Prioritize:
+1) agency growth practicality, 2) clear framework, 3) CTA potential, 4) TeleFunnel mapping.
+Context: Day ${day} — Topic: ${topic}.`;
+
+const docs = ($json.concepts || []).map((c, i) => ({
+  id: i,
+  text: [
+    c.title ? `TITLE: ${c.title}` : '',
+    c.summary ? `SUMMARY: ${c.summary}` : '',
+    (Array.isArray(c.tags) && c.tags.length) ? `TAGS: ${c.tags.join(', ')}` : ''
+  ].filter(Boolean).join('\n')
+}));
+
+return [{ json: { ...$json, rerank_query: query, rerank_docs: docs } }];
+```
+
+---
+
+## 2) Cohere Rerank (HTTP Request)
+
+**Node:** HTTP Request
+**Method:** POST
+**URL:** `https://api.cohere.ai/v2/rerank`
+**Headers:**
+
+* `Authorization: Bearer {{$env.COHERE_API_KEY}}`
+* `Content-Type: application/json`
+
+**Send Body as:** JSON
+**Body (Expression ON → paste):**
+
+```js
+{{
+JSON.stringify({
+  model: "rerank-3.5",      // or "rerank-3" if you prefer
+  query: $json.rerank_query,
+  documents: $json.rerank_docs.map(d => ({ id: String(d.id), text: d.text })),
+  top_n: 20,                 // same as docs length or just let Cohere return all
+  return_documents: false
+})
+}}
+```
+
+**Response to keep:** `$.results` → an array like:
+`[{ index: <int>, relevance_score: <float>, document: { id: "…" }}, …]`
+
+---
+
+## 3) Merge Cohere scores + your heuristics (Code)
+
+Place this **after** the HTTP node.
+
+**Code (paste):**
+
+```js
+// Input: $json has rerank_docs (with id) and HTTP response at $json.results (n8n attaches)
+// If your HTTP node returns into a separate item, merge by position first or get it via $input.all()
+
+const results = $json.results || $json.data || $json; // be flexible if provider shape differs
+const byIdScore = new Map();
+
+(results || []).forEach(r => {
+  const id = r.document?.id || String(r.index);
+  const score = Number(r.relevance_score || r.score || 0);
+  byIdScore.set(String(id), score);
+});
+
+// Bring in original concepts
+const concepts = $json.concepts || [];
+
+// Your existing W-weights
+const W = { a: 0.35, p: 0.25, r: 0.20, v: 0.15, e: 0.05 };
+
+// Heuristic scorer (same as before, but we’ll blend with Cohere)
+const hScore = (c) => {
+  const actionability = String(c.actionability || 'medium');
+  const proofType = String(c.proof_type || 'story');
+  const platformFit = String(c.platform_fit || 'all');
+  const hookPotential = Number(c.hook_potential || 7) || 7;
+  const a = 7 + (actionability === 'high' ? 2 : actionability === 'medium' ? 1 : 0) + (proofType !== 'none' ? 1 : 0);
+  const p = platformFit === 'all' ? 10 : 8;
+  const r = proofType === 'data' ? 9 : (proofType === 'framework' ? 8 : 7);
+  const v = Math.max(1, Math.min(10, hookPotential));
+  const en = 7;
+  return a * W.a + p * W.p + r * W.r + v * W.v + en * W.e; // ~1-10 scale
+};
+
+// Blend Cohere relevance (0–1) with heuristic (~1–10 normalized)
+const blended = concepts.map((c, i) => {
+  const cohere = byIdScore.get(String(i)) ?? 0;
+  const heuristic = hScore(c);
+  // Normalize heuristic to 0–1 by dividing by 10; blend weights: 0.7 cohere, 0.3 heuristic (tune as you like)
+  const final = 0.7 * cohere + 0.3 * (heuristic / 10);
+  return { ...c, scores: { cohere, heuristic, blended: Math.round(final * 1000) / 1000 } };
+});
+
+// Sort by blended descending, pick top N
+const TOP_N = 10;
+const top = blended.sort((a,b) => b.scores.blended - a.scores.blended).slice(0, TOP_N);
+
+// Pass forward (keep episode meta, file_id for enrichment)
+return [{ json: { ...$json, concepts_ranked: top } }];
+```
+
+> Now wire **Generate Enrichment Queries** to read `concepts_ranked[0]` (or allow user to pick). You can still use your old code as fallback if the Cohere call errors.
+
+---
+
+## 4) (Optional) Cache the rerank call (tiny PG table)
+
+**Why:** ranking the same list day-to-day should be free.
+
+```sql
+CREATE TABLE IF NOT EXISTS core.rerank_cache (
+  key_hash  text PRIMARY KEY,   -- sha256(model+query+doc_fingerprints)
+  model     text NOT NULL,
+  query     text NOT NULL,
+  result    jsonb NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+```
+
+**Key builder (Code before HTTP):**
+
+```js
+const crypto = require('crypto');
+const model = 'rerank-3.5';
+const query = $json.rerank_query;
+const fp = ($json.rerank_docs || []).map(d => d.text.slice(0, 256)).join('\n---\n');
+const key_hash = crypto.createHash('sha256').update(JSON.stringify({model,query,fp})).digest('hex');
+return [{ json: { ...$json, rerank_model: model, rerank_key_hash: key_hash } }];
+```
+
+**PG check:** `SELECT result FROM core.rerank_cache WHERE key_hash=$1 LIMIT 1;`
+**On hit:** set `$json.results = row.result.results` and **skip HTTP**.
+**On miss:** call Cohere, then **upsert**:
+
+```sql
+INSERT INTO core.rerank_cache(key_hash, model, query, result)
+VALUES ($1, $2, $3, $4::jsonb)
+ON CONFLICT (key_hash) DO NOTHING;
+```
+
+---
+
+## 5) Alternative: Cohere Command-R for multi-criteria scoring
+
+If you want the model to output **per-criterion scores** (voice fit, TeleFunnel alignment, hook strength), you can add a **second pass** using **Command-R** to produce a small JSON per concept and then sort. It’s slower/costlier than Rerank, so I recommend **Rerank → (optional) Command-R on the top 15** only.
+
+**HTTP Request → POST `https://api.cohere.ai/v2/chat`**
+
+* Headers: `Authorization: Bearer {{$env.COHERE_API_KEY}}`, `Content-Type: application/json`
+* Body (per batch or per concept):
+
+```js
+{{
+JSON.stringify({
+  model: "command-r",
+  temperature: 0,
+  messages: [
+    { role: "system", content:
+      "You are scoring concept ideas for The Insurance Dudes. Return JSON only." },
+    { role: "user", content:
+      `Score this concept on 0-10:
+       - tele_funnel_fit (lead->call->booked->bind->retention)
+       - practicality
+       - hook_strength
+       - leadership/brand voice
+       Concept:
+       TITLE: ${$json.title}
+       SUMMARY: ${$json.summary}
+       TAGS: ${($json.tags||[]).join(', ')}
+
+       Return: {"tele_funnel_fit":int,"practicality":int,"hook_strength":int,"voice_fit":int,"notes":"string"}`
+    }
+  ],
+  response_format: { type: "json_object" }
+})
+}}
+```
+
+Collect scores, average/weight them, and blend with the Cohere Rerank score if you like.
+
+---
+
+## 6) Costs & performance
+
+* **Rerank-3.5** is purpose-built: very good **semantic ordering**, faster/cheaper than doing a full chat LLM score on each item.
+* Hybrid scoring (0.7 * rerank + 0.3 * heuristics) gives you **stable, controllable** results. Tune to taste.
+* Cache the rerank result with a key on **model + query + doc fingerprints** and you basically pay once.
+
+---
+
+## 7) Minimal changes to the rest of your pipeline
+
+* Keep embeddings + pgvector as-is.
+* Keep enrichment, generation, review, router, and UPSERT logic exactly the same.
+* The only new parts: **Build Rerank Query → Cohere Rerank → Merge & Score → pick top concept(s).**
+
+If you want, I can hand you a tiny n8n export fragment for the three new nodes (Query Builder → Rerank (HTTP) → Merge & Score) that plugs right into your existing “Rank Topics” location.

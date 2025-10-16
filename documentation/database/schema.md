@@ -1,6 +1,6 @@
 # Railway PostgreSQL Schema (core)
 
-**Last Updated:** 2025-10-15T19-00Z
+**Last Updated:** 2025-10-16T01-00Z
 **Database:** railway (yamabiko.proxy.rlwy.net:15649)
 **Schema:** core (16 active tables)
 **User:** rag_read (read-only)
@@ -38,7 +38,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict hzunf6Ffo9ArnsqD9uvijj5PRujRR8Ta0f9U01r0gbZN8d8TFdS9oEeIPYIrfpv
+\restrict ogoAf6mfHEPZiwiYsC6DcxHYltGZo9m73A8f9s0YaLn0CSqSTe2SjYoaKnnYcJR
 
 -- Dumped from database version 16.10 (Debian 16.10-1.pgdg12+1)
 -- Dumped by pg_dump version 17.6 (Ubuntu 17.6-0ubuntu0.25.04.1)
@@ -1872,5 +1872,5 @@ ALTER TABLE ONLY core.user_sessions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict hzunf6Ffo9ArnsqD9uvijj5PRujRR8Ta0f9U01r0gbZN8d8TFdS9oEeIPYIrfpv
+\unrestrict ogoAf6mfHEPZiwiYsC6DcxHYltGZo9m73A8f9s0YaLn0CSqSTe2SjYoaKnnYcJR
 ```

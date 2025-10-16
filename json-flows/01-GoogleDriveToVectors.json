@@ -186,7 +186,7 @@
         "operation": "executeQuery",
         "query": "UPDATE core.file_pipeline_status\nSET\n  rag_status = 'completed',\n  rag_chunks_count = $2,\n  rag_embedding_count = $2,\n  rag_completed_at = NOW(),\n  updated_at = NOW()\nWHERE file_id = $1\nRETURNING *;",
         "options": {
-          "queryReplacement": "={{ [$json.file_id, $json.chunks_count] }}"
+          "queryReplacement": "={{ [$json.file_id, $json.total_chunks] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",

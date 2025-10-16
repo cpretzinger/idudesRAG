@@ -17,6 +17,10 @@ auth_logs,status,character varying,NOT NULL,
 auth_logs,ip_address,character varying,NULL,
 auth_logs,user_agent,text,NULL,
 auth_logs,created_at,timestamp with time zone,NOT NULL,(now() AT TIME ZONE 'America/Phoenix'::text)
+documents_pg,id,uuid,NOT NULL,gen_random_uuid()
+documents_pg,text,text,NULL,
+documents_pg,metadata,jsonb,NULL,
+documents_pg,embedding,USER-DEFINED,NULL,
 drive_sync_state,id,text,NOT NULL,'drive_changes'::text
 drive_sync_state,page_token,text,NOT NULL,
 drive_sync_state,last_sync_at,timestamp with time zone,NULL,now()
@@ -35,6 +39,7 @@ embeddings,created_at,timestamp with time zone,NULL,now()
 embeddings,updated_at,timestamp with time zone,NULL,now()
 embeddings,content_hash,text,NULL,
 embeddings,content_type,text,NULL,'episode'::text
+embeddings,episode_number,integer,NULL,
 enrichment_logs,id,uuid,NOT NULL,gen_random_uuid()
 enrichment_logs,tenant,text,NOT NULL,'idudes'::text
 enrichment_logs,document_id,uuid,NOT NULL,
@@ -78,6 +83,18 @@ password_resets,user_id,uuid,NULL,
 password_resets,token_hash,character varying,NOT NULL,
 password_resets,expires_at,timestamp without time zone,NOT NULL,
 password_resets,created_at,timestamp without time zone,NULL,now()
+persona_library,persona_key,text,NOT NULL,
+persona_library,name,text,NOT NULL,
+persona_library,archetype,text,NULL,
+persona_library,pain_points,jsonb,NULL,
+persona_library,goals,jsonb,NULL,
+persona_library,voice,text,NULL,
+persona_library,mindset,text,NULL,
+persona_library,objections,jsonb,NULL,
+persona_library,triggers,jsonb,NULL,
+persona_library,cta_preferences,jsonb,NULL,
+persona_library,created_at,timestamp with time zone,NULL,now()
+persona_library,updated_at,timestamp with time zone,NULL,now()
 prompt_library,id,bigint,NOT NULL,nextval('prompt_library_id_seq'::regclass)
 prompt_library,prompt_key,text,NOT NULL,
 prompt_library,version,text,NOT NULL,
@@ -107,8 +124,6 @@ social_content_generated,created_at,timestamp with time zone,NULL,now()
 social_content_generated,updated_at,timestamp with time zone,NULL,now()
 social_content_generated,work_id,text,NULL,
 social_content_generated,attempt,integer,NULL,0
-social_content_generated,persona_segment,text,NULL,
-social_content_generated,emotion_tone,text,NULL,
 social_feedback_insights,id,uuid,NOT NULL,gen_random_uuid()
 social_feedback_insights,pattern_type,character varying,NOT NULL,
 social_feedback_insights,pattern_description,text,NOT NULL,
@@ -159,6 +174,12 @@ social_scheduling,source,character varying,NULL,
 social_scheduling,notes,text,NULL,
 social_scheduling,created_at,timestamp with time zone,NULL,now()
 social_scheduling,updated_at,timestamp with time zone,NULL,now()
+tone_library,tone_key,text,NOT NULL,
+tone_library,display_name,text,NOT NULL,
+tone_library,description,text,NULL,
+tone_library,language_patterns,jsonb,NULL,
+tone_library,emphasis,text,NULL,
+tone_library,created_at,timestamp with time zone,NULL,now()
 user_sessions,token,character varying,NOT NULL,
 user_sessions,user_id,uuid,NOT NULL,
 user_sessions,expires_at,timestamp with time zone,NOT NULL,

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  sync-ui:
+    build: .
+    container_name: n8n-sync-ui
+    ports:
+      - "3456:3456"
+    environment:
+      - NODE_ENV=production
+      - SYNC_UI_PORT=3456
+    volumes:
+      # Mount the parent scripts directory (for sync script access)
+      - ../:/app/scripts:ro
+      # Mount json-flows directory (read/write for syncing)
+      - ../../json-flows:/app/json-flows:rw
+      # Share Docker socket to execute docker commands
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - 3e-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sync-ui.rule=Host(`sync.thirdeyediagnostics.com`)"
+      - "traefik.http.routers.sync-ui.entrypoints=websecure"
+      - "traefik.http.routers.sync-ui.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sync-ui.loadbalancer.server.port=3456"
+
+  sync-daemon:
+    build: .
+    container_name: n8n-sync-daemon
+    command: ["pnpm", "daemon"]
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_HOST=ai-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=ai_user
+      - POSTGRES_PASSWORD=PtLIu0SN9oJWEvMVxxe5rCGym
+      - POSTGRES_DB=ai_assistant
+    volumes:
+      # Mount the parent scripts directory (for sync script access)
+      - ../:/app/scripts:ro
+      # Mount json-flows directory (read/write for syncing)
+      - ../../json-flows:/app/json-flows:rw
+      # Mount log file
+      - ./sync-daemon.log:/app/sync-daemon.log
+      # Share Docker socket to execute docker commands
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - 3e-network
+    restart: unless-stopped
+    depends_on:
+      - sync-ui
+
+networks:
+  3e-network:
+    external: true

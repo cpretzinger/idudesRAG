@@ -1,6 +1,6 @@
 # Railway PostgreSQL Schema (core)
 
-**Last Updated:** 2025-10-16T01-00Z
+**Last Updated:** 2025-10-16T22-00Z
 **Database:** railway (yamabiko.proxy.rlwy.net:15649)
 **Schema:** core (16 active tables)
 **User:** rag_read (read-only)
@@ -38,7 +38,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ogoAf6mfHEPZiwiYsC6DcxHYltGZo9m73A8f9s0YaLn0CSqSTe2SjYoaKnnYcJR
+\restrict qqQtaTWWayKHC3BCvsqeXK22rZ1pS5a7PXm9IE6MkiOB6kIrlsfJy8HC6NnE9UE
 
 -- Dumped from database version 16.10 (Debian 16.10-1.pgdg12+1)
 -- Dumped by pg_dump version 17.6 (Ubuntu 17.6-0ubuntu0.25.04.1)
@@ -855,6 +855,18 @@ CREATE TABLE core.auth_logs (
 
 
 --
+-- Name: documents_pg; Type: TABLE; Schema: core; Owner: -
+--
+
+CREATE TABLE core.documents_pg (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    text text,
+    metadata jsonb,
+    embedding public.vector
+);
+
+
+--
 -- Name: drive_sync_state; Type: TABLE; Schema: core; Owner: -
 --
 
@@ -906,7 +918,8 @@ CREATE TABLE core.embeddings (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     content_hash text,
-    content_type text DEFAULT 'episode'::text
+    content_type text DEFAULT 'episode'::text,
+    episode_number integer
 );
 
 
@@ -1039,6 +1052,26 @@ CREATE TABLE core.password_resets (
 
 
 --
+-- Name: persona_library; Type: TABLE; Schema: core; Owner: -
+--
+
+CREATE TABLE core.persona_library (
+    persona_key text NOT NULL,
+    name text NOT NULL,
+    archetype text,
+    pain_points jsonb,
+    goals jsonb,
+    voice text,
+    mindset text,
+    objections jsonb,
+    triggers jsonb,
+    cta_preferences jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
 -- Name: prompt_library; Type: TABLE; Schema: core; Owner: -
 --
 
@@ -1099,8 +1132,6 @@ CREATE TABLE core.social_content_generated (
     updated_at timestamp with time zone DEFAULT now(),
     work_id text,
     attempt integer DEFAULT 0,
-    persona_segment text,
-    emotion_tone text,
     CONSTRAINT social_content_generated_day_number_check CHECK (((day_number >= 1) AND (day_number <= 10)))
 );
 
@@ -1220,6 +1251,20 @@ COMMENT ON TABLE core.social_scheduling IS 'Optimal posting times per platform b
 
 
 --
+-- Name: tone_library; Type: TABLE; Schema: core; Owner: -
+--
+
+CREATE TABLE core.tone_library (
+    tone_key text NOT NULL,
+    display_name text NOT NULL,
+    description text,
+    language_patterns jsonb,
+    emphasis text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
 -- Name: user_sessions; Type: TABLE; Schema: core; Owner: -
 --
 
@@ -1280,6 +1325,14 @@ ALTER TABLE ONLY core.api_cache
 
 ALTER TABLE ONLY core.auth_logs
     ADD CONSTRAINT auth_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: documents_pg documents_pg_pkey; Type: CONSTRAINT; Schema: core; Owner: -
+--
+
+ALTER TABLE ONLY core.documents_pg
+    ADD CONSTRAINT documents_pg_pkey PRIMARY KEY (id);
 
 
 --
@@ -1363,6 +1416,14 @@ ALTER TABLE ONLY core.password_resets
 
 
 --
+-- Name: persona_library persona_library_pkey; Type: CONSTRAINT; Schema: core; Owner: -
+--
+
+ALTER TABLE ONLY core.persona_library
+    ADD CONSTRAINT persona_library_pkey PRIMARY KEY (persona_key);
+
+
+--
 -- Name: prompt_library prompt_library_pkey; Type: CONSTRAINT; Schema: core; Owner: -
 --
 
@@ -1376,14 +1437,6 @@ ALTER TABLE ONLY core.prompt_library
 
 ALTER TABLE ONLY core.social_content_generated
     ADD CONSTRAINT social_content_generated_pkey PRIMARY KEY (id);
-
-
---
--- Name: social_content_generated social_content_generated_work_id_key; Type: CONSTRAINT; Schema: core; Owner: -
---
-
-ALTER TABLE ONLY core.social_content_generated
-    ADD CONSTRAINT social_content_generated_work_id_key UNIQUE (work_id);
 
 
 --
@@ -1416,6 +1469,14 @@ ALTER TABLE ONLY core.social_processed
 
 ALTER TABLE ONLY core.social_scheduling
     ADD CONSTRAINT social_scheduling_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tone_library tone_library_pkey; Type: CONSTRAINT; Schema: core; Owner: -
+--
+
+ALTER TABLE ONLY core.tone_library
+    ADD CONSTRAINT tone_library_pkey PRIMARY KEY (tone_key);
 
 
 --
@@ -1532,6 +1593,13 @@ CREATE INDEX idx_embeddings_content_type ON core.embeddings USING btree (content
 --
 
 CREATE INDEX idx_embeddings_created_at ON core.embeddings USING btree (created_at DESC);
+
+
+--
+-- Name: idx_embeddings_episode_number; Type: INDEX; Schema: core; Owner: -
+--
+
+CREATE INDEX idx_embeddings_episode_number ON core.embeddings USING btree (episode_number) WHERE (episode_number IS NOT NULL);
 
 
 --
@@ -1801,13 +1869,6 @@ CREATE INDEX idx_users_role ON core.users USING btree (role) WHERE ((role)::text
 
 
 --
--- Name: prompt_library_key_ver_role; Type: INDEX; Schema: core; Owner: -
---
-
-CREATE UNIQUE INDEX prompt_library_key_ver_role ON core.prompt_library USING btree (prompt_key, version, role);
-
-
---
 -- Name: ux_embeddings_file_idx; Type: INDEX; Schema: core; Owner: -
 --
 
@@ -1872,5 +1933,5 @@ ALTER TABLE ONLY core.user_sessions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ogoAf6mfHEPZiwiYsC6DcxHYltGZo9m73A8f9s0YaLn0CSqSTe2SjYoaKnnYcJR
+\unrestrict qqQtaTWWayKHC3BCvsqeXK22rZ1pS5a7PXm9IE6MkiOB6kIrlsfJy8HC6NnE9UE
 ```

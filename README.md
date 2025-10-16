@@ -412,6 +412,40 @@ SELECT * FROM core.get_cache_stats();
 
 ## 🔄 **n8n WORKFLOW CONFIGURATION**
 
+### **Workflow Sync Tool** ⚡
+
+**Keep your local workflow files in sync with n8n database:**
+
+```bash
+# Sync a workflow from n8n → local files
+./scripts/sync-n8n-workflow.sh "01-GoogleDriveToVectors"
+
+# Sync by workflow ID
+./scripts/sync-n8n-workflow.sh fCTt9QyABrKKBmv7
+
+# Preview changes without writing (dry-run)
+./scripts/sync-n8n-workflow.sh "01-GoogleDriveToVectors" --dry-run
+
+# Force overwrite local files
+./scripts/sync-n8n-workflow.sh "01-GoogleDriveToVectors" --force
+```
+
+**Features:**
+- ✅ **Arizona Timezone** - All timestamps in MST/MDT for accuracy
+- ✅ **Conflict Detection** - Warns when local file is newer than DB
+- ✅ **Interactive Prompts** - Choose to overwrite, archive, or cancel
+- ✅ **Archive System** - Auto-backup to `json-flows/_archive/YYYYMMDD/`
+- ✅ **READ ONLY** - Safe database reads, never modifies n8n workflows
+- ✅ **JSON Validation** - Ensures valid workflow structure
+
+**Documentation:** See `/scripts/README-sync-workflow.md` for complete guide
+
+**List available workflows:**
+```bash
+docker exec ai-postgres psql -U ai_user -d ai_assistant -c \
+  "SELECT name, id FROM workflow_entity ORDER BY \"updatedAt\" DESC LIMIT 20;"
+```
+
 ### **Upload Workflow (5 Nodes)**
 1. **Webhook** - Receive document uploads
 2. **Code** - Decode base64 and extract metadata

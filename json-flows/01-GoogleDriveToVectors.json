@@ -161,9 +161,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO core.embeddings (\n    file_id, filename, chunk_index, text, chunk_size,\n    embedding, file_type, file_size, content_type, created_at, updated_at\n  ) VALUES (\n    $1, $2, $3, $4, $5, $6::vector(1536), $7, $8, $9, NOW(), NOW()\n  )",
+        "query": "INSERT INTO core.embeddings (\n    file_id, filename, chunk_index, text, chunk_size,\n    embedding, file_type, file_size, content_type, episode_number, created_at, updated_at\n  ) VALUES (\n    $1, $2, $3, $4, $5, $6::vector(1536), $7, $8, $9, $10, NOW(), NOW()\n  )",
         "options": {
-          "queryReplacement": "={{ [$json.file_id, $json.filename, $json.chunk_index, $json.text, $json.chunk_size, JSON.stringify($json.embedding), $json.file_type, $json.file_size, $json.content_type] }}"
+          "queryReplacement": "={{ [$json.file_id, $json.filename, $json.chunk_index, $json.text, $json.chunk_size, JSON.stringify($json.embedding), $json.file_type, $json.file_size, $json.content_type, $json.episode_number] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",

@@ -1,0 +1,32 @@
+{
+  "name": "n8n-workflow-sync-ui",
+  "version": "1.0.0",
+  "description": "Web UI for syncing n8n workflows from PostgreSQL to local files",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "daemon": "node sync-daemon.js",
+    "daemon:dev": "nodemon sync-daemon.js"
+  },
+  "packageManager": "pnpm@8.0.0",
+  "keywords": [
+    "n8n",
+    "workflow",
+    "sync",
+    "postgres",
+    "automation"
+  ],
+  "author": "Craig Pretzinger",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

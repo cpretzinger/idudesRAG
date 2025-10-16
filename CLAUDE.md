@@ -436,3 +436,4 @@ Be **crisp, direct, and execution-focused**. No fluff. If something's risky or a
 *Template Version: 2.0 - idudesRAG with Behavioral Rules*
 *Last Updated: October 14, 2025*
 *Precision-first coding • Zero guessing • Schema enforcement • n8n UI discipline*
+- rememeber the summary

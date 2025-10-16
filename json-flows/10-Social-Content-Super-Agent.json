@@ -1,0 +1,424 @@
+{
+  "name": "10-Social-Content-Super-Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/events/episode-ready",
+        "options": {
+          "responseData": "={{ 'success' }}"
+        }
+      },
+      "id": "webhook-entry",
+      "name": "Episode Ready Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [-2400, 300],
+      "webhookId": "episode-ready-webhook"
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-2400, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, file_id, filename, chunk_index, text, content_type, COUNT(*) OVER (PARTITION BY file_id) AS total_chunks FROM core.embeddings WHERE file_id = $1 ORDER BY chunk_index ASC LIMIT 10000;",
+        "options": {
+          "queryReplacement": "={{ [ $json.file_id ] }}"
+        }
+      },
+      "id": "get-chunks",
+      "name": "Get Episode Chunks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [-2000, 400],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get content_type from first chunk\nconst first = $input.first().json;\nconst content_type = first.content_type || 'episode';\n\nreturn [{\n  json: {\n    ...$json,\n    content_type,\n    is_episode: content_type === 'episode',\n    is_book: content_type === 'book',\n    is_newsletter: content_type === 'newsletter'\n  }\n}];"
+      },
+      "id": "get-content-type",
+      "name": "Get Content Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1800, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeEpisodeTitle(candidateTitle, candidateFilename) {\n  const pick = s => (s || '').toString();\n  const t = pick(candidateTitle);\n  const f = pick(candidateFilename);\n  const rx = /(?:^|\\b)(?:ep(?:isode)?|episode)\\s*[:#-]?\\s*([0-9]{1,4})/i;\n  let m = t.match(rx); if (m) return 'Episode ' + m[1];\n  m = f.match(rx);     if (m) return 'Episode ' + m[1];\n  return t || 'Episode';\n}\n\nconst rows = $input.all().map(i => i.json);\nif (!rows.length) {\n  return [{ json: { error: 'no_chunks_found', file_id: $json.file_id || null } }];\n}\n\nrows.sort((a,b) => (a.chunk_index||0) - (b.chunk_index||0));\nconst content = rows.map(r => String(r.text||'')).join('\\n\\n');\n\nconst first = rows[0] || {};\nconst file_id  = first.file_id  || null;\nconst filename = first.filename || '';\nconst content_type = first.content_type || 'episode';\n\nconst episode_title  = normalizeEpisodeTitle(filename, filename);\nconst numMatch = (episode_title.match(/Episode\\s+([0-9]{1,4})/i) || [])[1];\nconst episode_number = numMatch ? parseInt(numMatch, 10) : null;\n\nreturn [{\n  json: {\n    episode_content: content.slice(0, 20000),\n    episode_title,\n    episode_number,\n    file_id,\n    filename,\n    content_type,\n    chunk_count: rows.length\n  }\n}];"
+      },
+      "id": "combine-content",
+      "name": "Combine Episode Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1600, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a concept extractor.\n\nINPUT\nContent Type: {{ $json.content_type }}\nTitle: {{ $json.episode_title }}\n\nContent (truncated to ~3,500 chars):\n{{ $json.episode_content.slice(0, 3500) }}\n\nTASK\nExtract 15–20 distinct, high-signal concepts from the content that could power social posts or talking points. Each concept should be specific, self-contained, and grounded in the text (no made-up facts).\n\nOUTPUT (valid JSON array only; no markdown, no comments)\n[\n  {\n    \"title\": \"string (concise concept name)\",\n    \"summary\": \"1–2 sentence explanation grounded in the text\",\n    \"evidence_snippet\": \"short quote or paraphrase from the content\",\n    \"tags\": [\"mindset\",\"risk\",\"tech\"]\n  }\n]\n\nSTRICT\n- 15–20 objects required.\n- No keys beyond the four specified.\n- Keep quotes/paraphrases short; do not exceed 220 chars per field.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [-1400, 400],
+      "id": "extract-concepts",
+      "name": "Extract Concepts"
+    },
+    {
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {}
+      },
+      "id": "llm-extract",
+      "name": "OpenAI Chat Model (Extract)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [-1400, 600],
+      "credentials": {
+        "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
+          "name": "ZARAapiKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// RANK TOPICS (copy from Workflow 10)\nconst first = $input.first();\nconst raw = String((first && first.json && (first.json.output ?? first.json.text)) || '').trim();\n\nlet concepts = [];\nconst stripFences = s => s.replace(/```json|```/g, '').trim();\n\nconst isLikelyJSON = (s) => {\n  const t = s.trim().slice(0, 1);\n  return t === '[' || t === '{';\n};\n\ntry {\n  if (isLikelyJSON(raw)) {\n    const clean = stripFences(raw);\n    const parsed = JSON.parse(clean);\n    concepts = Array.isArray(parsed) ? parsed : (parsed.concepts || []);\n  }\n} catch (e) {\n  throw new Error('Concept JSON parse fail: ' + e.message);\n}\n\nconst W = { a: 0.35, p: 0.25, r: 0.20, v: 0.15, e: 0.05 };\nconst pick = (obj, key, fallback) => (obj && obj[key] != null ? obj[key] : fallback);\n\nconst scored = concepts.map(c => {\n  const actionability = String(pick(c, 'actionability', 'medium'));\n  const proofType = String(pick(c, 'proof_type', 'story'));\n  const platformFit = String(pick(c, 'platform_fit', 'all'));\n  const hookPotential = Number(pick(c, 'hook_potential', 7)) || 7;\n\n  const a = 7 + (actionability === 'high' ? 2 : actionability === 'medium' ? 1 : 0) + (proofType !== 'none' ? 1 : 0);\n  const p = platformFit === 'all' ? 10 : 8;\n  const r = proofType === 'data' ? 9 : (proofType === 'framework' ? 8 : 7);\n  const v = Math.max(1, Math.min(10, hookPotential));\n  const en = 7;\n\n  const wt = a * W.a + p * W.p + r * W.r + v * W.v + en * W.e;\n  return { \n    ...c, \n    scores: { weighted_total: Math.round(wt * 100) / 100 } \n  };\n});\n\nlet ep;\ntry {\n  const arr = $items('Combine Episode Content', 0, 0);\n  ep = (arr && arr[0] && arr[0].json) || {};\n} catch (_) {\n  ep = {};\n}\n\nconst top = scored\n  .sort((a, b) => b.scores.weighted_total - a.scores.weighted_total)\n  .slice(0, 10);\n\nreturn top.map((c, i) => ({\n  day_number: i + 1,\n  ...c,\n  episode_title: ep.episode_title || $json?.episode_title || '',\n  episode_number: ep.episode_number || $json?.episode_number || '',\n  file_id: ep.file_id || $json?.file_id || '',\n  content_type: ep.content_type || $json?.content_type || 'episode'\n}));"
+      },
+      "id": "rank-topics",
+      "name": "Rank Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1200, 400]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search for content from the current episode/book/knowledge file. Use this to get relevant chunks from the source material.",
+        "tableName": "documents_pg",
+        "topK": 5,
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file_id",
+                "value": "={{ $json.file_id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [-800, 200],
+      "id": "rag-tool-episode",
+      "name": "RAG Tool: Search Episode"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get metadata about the current file (content_type, filename, episode_number). Use this to understand what type of content you're working with.",
+        "operation": "executeQuery",
+        "query": "SELECT content_type, filename FROM core.embeddings WHERE file_id = $1 LIMIT 1;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('file_id') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [-600, 200],
+      "id": "sql-tool-metadata",
+      "name": "SQL Tool: Get Metadata"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search for related content from ALL files in the knowledge base for enrichment. Use this to find similar topics, examples, or complementary information.",
+        "tableName": "documents_pg",
+        "topK": 3,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [-400, 200],
+      "id": "rag-tool-related",
+      "name": "RAG Tool: Get Related"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [-800, 400],
+      "id": "embeddings-rag",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate social media content for DAY {{ $json.day_number }} based on this concept:\n\nCONCEPT: {{ $json.title }}\nSUMMARY: {{ $json.summary }}\nCONTENT TYPE: {{ $json.content_type }}\nSOURCE: {{ $json.episode_title }}\n\nUse the RAG tools to:\n1. Get source content from the current file\n2. Check metadata to understand content type\n3. Find related content for enrichment\n\nGenerate 3 platform-specific posts:\n### INSTAGRAM REEL\n### FACEBOOK POST\n### LINKEDIN POST\n\nEach post should be brand-safe, specific, and actionable.",
+        "options": {
+          "systemMessage": "=You are a social content generator for The Insurance Dudes.\n\nVOICE: Clear, confident, practical. Helpful teacher, not hype.\nBRAND PILLARS: Clear, Confident, Practical\n\nCONTENT TYPE ADAPTATIONS:\n- episode: Use conversational, behind-the-scenes energy\n- book: Use authoritative, educational framing\n- newsletter: Use timely, actionable insights\n\nOUTPUT FORMAT (EXACT):\n### INSTAGRAM REEL\n<content here>\n\n### FACEBOOK POST\n<content here>\n\n### LINKEDIN POST\n<content here>\n\nPLATFORM RULES:\n- Instagram: 1-3 punchy lines + 3-6 hashtags\n- Facebook: 2-4 sentences or bullets + clear CTA\n- LinkedIn: Professional, 2-4 bullets, leadership framing\n\nPROHIBITED:\n- No medical/financial/legal claims\n- No invented facts or metrics\n- No placeholders like [insert]\n- No code fences or markdown in output"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [-800, 600],
+      "id": "social-agent",
+      "name": "Social Content Generator Agent"
+    },
+    {
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {}
+      },
+      "id": "llm-agent",
+      "name": "OpenAI Chat Model (Agent)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [-800, 800],
+      "credentials": {
+        "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
+          "name": "ZARAapiKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Generated Content (from agent output)\nconst readFromInputs = () => {\n  const all = $input.all();\n  for (const it of all) {\n    const j = it.json || {};\n    let candidate = j.output || j.text || j.generated_content || j.response_data;\n\n    if (typeof candidate === 'string' && candidate.trim()) {\n      return candidate.trim();\n    }\n  }\n  return '';\n};\n\nconst content = readFromInputs();\n\nif (!content) {\n  throw new Error('No generated content found in inputs');\n}\n\n// Extract sections\nconst ig = (content.match(/###\\s*INSTAGRAM REEL\\s*\\n([\\s\\S]*?)(?=###|$)/i) || [])[1] || '';\nconst fb = (content.match(/###\\s*FACEBOOK POST\\s*\\n([\\s\\S]*?)(?=###|$)/i) || [])[1] || '';\nconst li = (content.match(/###\\s*LINKEDIN POST\\s*\\n([\\s\\S]*?)(?=###|$)/i) || [])[1] || '';\n\nreturn [{\n  json: {\n    ...$json,\n    instagram_content: ig.trim(),\n    facebook_content: fb.trim(),\n    linkedin_content: li.trim(),\n    generated_content: content\n  }\n}];"
+      },
+      "id": "parse-content",
+      "name": "Parse Generated Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Inject CTAs\nconst day = Number($json.day_number || 1);\n\nconst cta = (day <= 5) \n  ? \"\\n\\n👉 Like, comment, and subscribe for more!\"\n  : \"\\n\\n👉 Join our FREE Skool community: https://www.skool.com/agentelite/about\";\n\nconst addCTA = (content) => {\n  if (!content) return content;\n  const hasSkool = content.includes('skool.com');\n  const hasSubscribe = content.toLowerCase().includes('subscribe');\n  if (hasSkool || hasSubscribe) return content;\n  return content + cta;\n};\n\nreturn [{\n  json: {\n    ...$json,\n    instagram_content: addCTA($json.instagram_content),\n    facebook_content: addCTA($json.facebook_content),\n    linkedin_content: addCTA($json.linkedin_content),\n    cta_type: day <= 5 ? 'engagement' : 'skool'\n  }\n}];"
+      },
+      "id": "inject-ctas",
+      "name": "Inject CTAs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 600]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_prompt }}\\n\\n{{ $json.instagram_content }}\\n\\n{{ $json.facebook_content }}\\n\\n{{ $json.linkedin_content }}",
+        "options": {
+          "systemMessage": "={{ $json.system_prompt }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [200, 600],
+      "id": "expert-review",
+      "name": "Expert Review"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content FROM core.prompt_library WHERE prompt_key = $1 AND version = COALESCE($2, 'v3') ORDER BY role;",
+        "options": {
+          "queryReplacement": "={{ [$json.prompt_key, $json.prompt_version] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [0, 400],
+      "id": "select-review-prompt",
+      "name": "SelectReviewerPrompt",
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// setPromptVersion for review\nconst force = String($json.force_version || '').toLowerCase();\nlet v = null;\n\nif (force === 'v2' || force === 'v3' || force === 'v4') {\n  v = force;\n} else {\n  const status = String($json.review_status || '').toUpperCase();\n  const needsStrict = (status === 'REJECT' || status === 'APPROVE_WITH_EDITS' || status === 'CHANGES_REQUESTED');\n  v = needsStrict ? 'v2' : 'v4';  // Use v4 by default\n}\n\nreturn [{ json: { ...$json, prompt_key: 'expert_review', prompt_version: v } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 600],
+      "id": "set-prompt-version",
+      "name": "setPromptVersionLLMS"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Review JSON\nif (typeof $json === 'object' && $json.overall_recommendation) {\n  return [{ json: $json }];\n}\n\nconst raw = (typeof $json.output === 'string' && $json.output) || (typeof $json.text === 'string' && $json.text) || '';\n\nif (!raw) {\n  return [{\n    json: {\n      overall_recommendation: \"REJECT\",\n      summary: \"No output field found in Expert Reviewer response.\",\n      action_items: [\"Check Expert Reviewer node configuration.\"]\n    }\n  }];\n}\n\nlet obj;\ntry {\n  obj = JSON.parse(raw);\n} catch (directError) {\n  try {\n    const cleaned = raw.replace(/```json|```/g, '').trim();\n    obj = JSON.parse(cleaned);\n  } catch (fenceError) {\n    const s = raw.indexOf('{');\n    const e = raw.lastIndexOf('}');\n    if (s >= 0 && e > s) {\n      try {\n        obj = JSON.parse(raw.slice(s, e + 1));\n      } catch (extractError) {}\n    }\n  }\n}\n\nif (!obj || !obj.overall_recommendation) {\n  obj = {\n    overall_recommendation: \"REJECT\",\n    summary: \"Reviewer output was not valid JSON\",\n    action_items: [\"Re-run Expert Review with strict JSON output.\"]\n  };\n}\n\nreturn [{ json: obj }];"
+      },
+      "id": "parse-review",
+      "name": "Parse Review JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { review: $json, recommendation: $json.overall_recommendation || 'REJECT' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 600],
+      "id": "wrap-review",
+      "name": "WrapReview"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge Review + Enriched\nconst reviewData = $input.first().json;\nconst enrichedData = $('Combine Episode Content').first().json;\n\nreturn [{\n  json: {\n    ...enrichedData,\n    ...reviewData,\n    episode_title: enrichedData.episode_title || reviewData.episode_title,\n    file_id: enrichedData.file_id || reviewData.file_id,\n    content_type: enrichedData.content_type || reviewData.content_type || 'episode'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 600],
+      "id": "merge-review-enriched",
+      "name": "Merge Review + Enriched"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO core.social_content_generated (day_number, episode_title, topic_title, instagram_content, facebook_content, linkedin_content, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, 'approved', NOW(), NOW()) RETURNING id, day_number, episode_title;",
+        "options": {
+          "queryReplacement": "={{ [ $json.day_number, $json.episode_title, $json.title, $json.instagram_content, $json.facebook_content, $json.linkedin_content ] }}"
+        }
+      },
+      "id": "upsert-approved",
+      "name": "UpsertApproved",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1000, 600],
+      "credentials": {
+        "postgres": {
+          "id": "jd4YBgZXwugV4pZz",
+          "name": "RailwayPG-idudes"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 600],
+      "id": "respond-success",
+      "name": "Respond Success"
+    },
+    {
+      "parameters": {
+        "model": "gpt-5-nano",
+        "options": {}
+      },
+      "id": "llm-review",
+      "name": "OpenAI Chat Model (Review)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [200, 800],
+      "credentials": {
+        "openAiApi": {
+          "id": "EQYdxPEgshiwvESa",
+          "name": "ZARAapiKey"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Episode Ready Webhook": {
+      "main": [[{ "node": "Get Episode Chunks", "type": "main", "index": 0 }]]
+    },
+    "Manual Trigger": {
+      "main": [[{ "node": "Get Episode Chunks", "type": "main", "index": 0 }]]
+    },
+    "Get Episode Chunks": {
+      "main": [[{ "node": "Get Content Type", "type": "main", "index": 0 }]]
+    },
+    "Get Content Type": {
+      "main": [[{ "node": "Combine Episode Content", "type": "main", "index": 0 }]]
+    },
+    "Combine Episode Content": {
+      "main": [[{ "node": "Extract Concepts", "type": "main", "index": 0 }]]
+    },
+    "Extract Concepts": {
+      "main": [[{ "node": "Rank Topics", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model (Extract)": {
+      "ai_languageModel": [[{ "node": "Extract Concepts", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Rank Topics": {
+      "main": [[{ "node": "Social Content Generator Agent", "type": "main", "index": 0 }]]
+    },
+    "RAG Tool: Search Episode": {
+      "ai_tool": [[{ "node": "Social Content Generator Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "SQL Tool: Get Metadata": {
+      "ai_tool": [[{ "node": "Social Content Generator Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "RAG Tool: Get Related": {
+      "ai_tool": [[{ "node": "Social Content Generator Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [{ "node": "RAG Tool: Search Episode", "type": "ai_embedding", "index": 0 }],
+        [{ "node": "RAG Tool: Get Related", "type": "ai_embedding", "index": 0 }]
+      ]
+    },
+    "Social Content Generator Agent": {
+      "main": [[{ "node": "Parse Generated Content", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model (Agent)": {
+      "ai_languageModel": [[{ "node": "Social Content Generator Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Parse Generated Content": {
+      "main": [[{ "node": "Inject CTAs", "type": "main", "index": 0 }]]
+    },
+    "Inject CTAs": {
+      "main": [[{ "node": "setPromptVersionLLMS", "type": "main", "index": 0 }]]
+    },
+    "setPromptVersionLLMS": {
+      "main": [[{ "node": "SelectReviewerPrompt", "type": "main", "index": 0 }]]
+    },
+    "SelectReviewerPrompt": {
+      "main": [[{ "node": "Expert Review", "type": "main", "index": 0 }]]
+    },
+    "Expert Review": {
+      "main": [[{ "node": "Parse Review JSON", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model (Review)": {
+      "ai_languageModel": [[{ "node": "Expert Review", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Parse Review JSON": {
+      "main": [[{ "node": "WrapReview", "type": "main", "index": 0 }]]
+    },
+    "WrapReview": {
+      "main": [[{ "node": "Merge Review + Enriched", "type": "main", "index": 0 }]]
+    },
+    "Merge Review + Enriched": {
+      "main": [[{ "node": "UpsertApproved", "type": "main", "index": 0 }]]
+    },
+    "UpsertApproved": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

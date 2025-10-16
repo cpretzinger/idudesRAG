@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>n8n Workflow Sync Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            color: #999;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            color: #333;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 40px 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .workflows-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .workflows-card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .workflow-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .workflow-table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .workflow-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .workflow-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .workflow-id {
+            color: #999;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-synced {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-newer {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-outdated {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-unknown {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .log-output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ n8n Workflow Sync Tool</h1>
+            <p>Keep your local workflow files in sync with n8n database (Arizona Time)</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total Workflows</h3>
+                <div class="value" id="total-workflows">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Synced</h3>
+                <div class="value" id="synced-workflows" style="color: #10b981;">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Needs Update</h3>
+                <div class="value" id="outdated-workflows" style="color: #ef4444;">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Local Newer</h3>
+                <div class="value" id="newer-workflows" style="color: #f59e0b;">-</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="controls-grid">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Search workflows by name or ID...">
+                    <span class="search-icon">🔍</span>
+                </div>
+                <button class="btn btn-primary" onclick="refreshWorkflows()">🔄 Refresh List</button>
+            </div>
+        </div>
+
+        <!-- Workflows Table -->
+        <div class="workflows-card">
+            <h2>Workflows</h2>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Loading workflows...</p>
+            </div>
+
+            <div id="workflows-container">
+                <table class="workflow-table" id="workflows-table">
+                    <thead>
+                        <tr>
+                            <th>Workflow</th>
+                            <th>DB Updated (AZ)</th>
+                            <th>File Modified (AZ)</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workflows-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Modal -->
+    <div class="modal" id="sync-modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Sync Workflow</h3>
+            <div id="modal-message"></div>
+            <div class="log-output" id="log-output" style="display: none;"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let workflows = [];
+        let filteredWorkflows = [];
+
+        // Load workflows on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            refreshWorkflows();
+
+            // Setup search
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                filterWorkflows(e.target.value);
+            });
+        });
+
+        async function refreshWorkflows() {
+            const loading = document.getElementById('loading');
+            const container = document.getElementById('workflows-container');
+
+            loading.classList.add('active');
+
+            try {
+                const response = await fetch('/api/workflows');
+                workflows = await response.json();
+                filteredWorkflows = workflows;
+
+                renderWorkflows();
+                updateStats();
+            } catch (error) {
+                console.error('Error loading workflows:', error);
+                showModal('Error', 'Failed to load workflows: ' + error.message);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        function filterWorkflows(searchTerm) {
+            const term = searchTerm.toLowerCase();
+            filteredWorkflows = workflows.filter(wf =>
+                wf.name.toLowerCase().includes(term) ||
+                wf.id.toLowerCase().includes(term)
+            );
+            renderWorkflows();
+        }
+
+        function renderWorkflows() {
+            const tbody = document.getElementById('workflows-body');
+
+            if (filteredWorkflows.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <div>📂</div>
+                                <p>No workflows found</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filteredWorkflows.map(wf => `
+                <tr>
+                    <td>
+                        <div class="workflow-name">${wf.name}</div>
+                        <div class="workflow-id">${wf.id}</div>
+                    </td>
+                    <td>
+                        <span class="timestamp">${wf.dbUpdated || 'Unknown'}</span>
+                    </td>
+                    <td>
+                        <span class="timestamp">${wf.fileModified || 'Not exists'}</span>
+                    </td>
+                    <td>
+                        <span class="status-badge status-${wf.statusClass}">${wf.statusText}</span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            ${getActionButtons(wf)}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getActionButtons(wf) {
+            if (wf.status === 'synced') {
+                return `
+                    <button class="btn btn-secondary" onclick="syncWorkflow('${wf.id}', true)">Force Sync</button>
+                `;
+            } else if (wf.status === 'db_newer') {
+                return `
+                    <button class="btn btn-success" onclick="syncWorkflow('${wf.id}', false)">Pull from DB</button>
+                `;
+            } else if (wf.status === 'file_newer') {
+                return `
+                    <button class="btn btn-warning" onclick="showConflictModal('${wf.id}', '${wf.name}')">Resolve Conflict</button>
+                `;
+            } else {
+                return `
+                    <button class="btn btn-primary" onclick="syncWorkflow('${wf.id}', false)">Sync</button>
+                `;
+            }
+        }
+
+        async function syncWorkflow(workflowId, force) {
+            showModal('Syncing...', 'Please wait while syncing workflow...', true);
+
+            try {
+                const response = await fetch('/api/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workflowId, force })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showModal('Success', result.message, false, result.log);
+                    refreshWorkflows();
+                } else {
+                    showModal('Error', result.error, false, result.log);
+                }
+            } catch (error) {
+                showModal('Error', 'Sync failed: ' + error.message);
+            }
+        }
+
+        function showConflictModal(workflowId, workflowName) {
+            const modalContent = `
+                <p><strong>⚠️ Conflict Detected</strong></p>
+                <p>Local file <strong>${workflowName}</strong> is newer than database version.</p>
+                <p>Choose an action:</p>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-danger" onclick="syncWorkflow('${workflowId}', true); closeModal();" style="margin-right: 10px;">
+                        Overwrite Local (Use DB)
+                    </button>
+                    <button class="btn btn-warning" onclick="archiveAndSync('${workflowId}'); closeModal();">
+                        Archive Local + Pull DB
+                    </button>
+                </div>
+            `;
+
+            showModal('Resolve Conflict', modalContent);
+        }
+
+        async function archiveAndSync(workflowId) {
+            showModal('Archiving...', 'Archiving local file and syncing...', true);
+
+            try {
+                const response = await fetch('/api/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workflowId, archive: true })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showModal('Success', result.message, false, result.log);
+                    refreshWorkflows();
+                } else {
+                    showModal('Error', result.error, false, result.log);
+                }
+            } catch (error) {
+                showModal('Error', 'Archive failed: ' + error.message);
+            }
+        }
+
+        function updateStats() {
+            const total = workflows.length;
+            const synced = workflows.filter(w => w.status === 'synced').length;
+            const outdated = workflows.filter(w => w.status === 'db_newer').length;
+            const newer = workflows.filter(w => w.status === 'file_newer').length;
+
+            document.getElementById('total-workflows').textContent = total;
+            document.getElementById('synced-workflows').textContent = synced;
+            document.getElementById('outdated-workflows').textContent = outdated;
+            document.getElementById('newer-workflows').textContent = newer;
+        }
+
+        function showModal(title, message, loading = false, log = null) {
+            const modal = document.getElementById('sync-modal');
+            const titleEl = document.getElementById('modal-title');
+            const messageEl = document.getElementById('modal-message');
+            const logEl = document.getElementById('log-output');
+
+            titleEl.textContent = title;
+            messageEl.innerHTML = loading ? '<div class="spinner"></div>' + message : message;
+
+            if (log) {
+                logEl.textContent = log;
+                logEl.style.display = 'block';
+            } else {
+                logEl.style.display = 'none';
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('sync-modal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
